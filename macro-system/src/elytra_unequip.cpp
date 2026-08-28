@@ -3,8 +3,8 @@
 namespace macro {
 
 ElytraUnequipBot::ElytraUnequipBot(ElytraUnequipConfig config, RandomEngine& rng,
-                                   GameStateGuard& guard)
-    : config_(config), rng_(rng), guard_(guard), input_(rng) {}
+                                   GameStateGuard& guard, GlobalBindings& bindings)
+    : config_(config), rng_(rng), guard_(guard), bindings_(bindings), input_(rng) {}
 
 void ElytraUnequipBot::setConfig(const ElytraUnequipConfig& config) { config_ = config; }
 
@@ -37,7 +37,7 @@ void ElytraUnequipBot::stop() {
 bool ElytraUnequipBot::isRunning() const { return running_; }
 
 void ElytraUnequipBot::executeUnequipSequence() {
-    input_.pressKey(config_.inventoryKey);
+    input_.pressKey(bindings_.inventoryKey);
     input_.microDelay(config_.microDelayMinMs, config_.microDelayMaxMs);
 
     input_.moveCursor(config_.chestplateSlotX, config_.chestplateSlotY);
@@ -45,7 +45,7 @@ void ElytraUnequipBot::executeUnequipSequence() {
 
     input_.shiftLeftClick();
     input_.microDelay(config_.microDelayMinMs, config_.microDelayMaxMs);
-    input_.pressKey(config_.inventoryKey);
+    input_.pressKey(bindings_.inventoryKey);
 
     lastActionTime_ = now();
 }

@@ -12,10 +12,16 @@ namespace {
 macro::AppConfig defaultConfig() {
     macro::AppConfig cfg;
 
+    cfg.bindings.inventoryKey = 'E';
+    cfg.bindings.offhandSwapKey = 'F';
+    cfg.bindings.useKey = 'R';
+    cfg.bindings.attackSlotKey = '1';
+
     cfg.stunslam.cooldownMs = 1000;
     cfg.stunslam.successChance = 85;
     cfg.stunslam.activationKey = VK_XBUTTON1;
     cfg.stunslam.axeSlotKey = '2';
+    cfg.stunslam.maceSlotKey = '3';
     cfg.stunslam.fall.motionSampleIntervalMs = 10;
     cfg.stunslam.fall.fallDetectionWindowMs = 220;
     cfg.stunslam.fall.upwardVelocityThreshold = 32.0f;

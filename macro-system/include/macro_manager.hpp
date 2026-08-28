@@ -4,6 +4,7 @@
 
 #include "common.hpp"
 #include "game_state_guard.hpp"
+#include "global_bindings.hpp"
 
 namespace macro {
 
@@ -30,11 +31,13 @@ public:
     ElytraUnequipBot& elytra();
     AutoTotemBot& autoTotem();
     GameStateGuard& gameState();
+    GlobalBindings& bindings();
 
 private:
     AppConfig config_;
     RandomEngine rng_;
     GameStateGuard guard_;
+    GlobalBindings bindings_;
     StunslamBot stunslam_;
     PearlcatchMacros pearlcatch_;
     ElytraUnequipBot elytra_;

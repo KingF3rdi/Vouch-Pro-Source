@@ -3,8 +3,8 @@
 namespace macro {
 
 PearlcatchMacros::PearlcatchMacros(PearlcatchMacrosConfig config, RandomEngine& rng,
-                                   GameStateGuard& guard)
-    : config_(config), rng_(rng), guard_(guard), input_(rng) {}
+                                   GameStateGuard& guard, GlobalBindings& bindings)
+    : config_(config), rng_(rng), guard_(guard), bindings_(bindings), input_(rng) {}
 
 void PearlcatchMacros::setConfig(const PearlcatchMacrosConfig& config) { config_ = config; }
 
@@ -66,10 +66,9 @@ void PearlcatchMacros::executeDiagonalPearlcatch(bool leftDiagonal) {
 }
 
 void PearlcatchMacros::executeOffhandPearlcatch() {
-    // Offhand Pearlcatch: Windcharges offhand -> Perle -> Doppel-RC -> Windcharges offhand
     input_.pressKey(config_.windchargeSlotKey);
     input_.sleepMs(config_.delayMinMs, config_.delayMaxMs);
-    input_.pressKey(config_.offhandSwapKey);
+    input_.pressKey(bindings_.offhandSwapKey);
     input_.sleepMs(config_.delayMinMs, config_.delayMaxMs);
 
     input_.pressKey(config_.pearlSlotKey);
@@ -81,25 +80,24 @@ void PearlcatchMacros::executeOffhandPearlcatch() {
 
     input_.pressKey(config_.windchargeSlotKey);
     input_.sleepMs(config_.delayMinMs, config_.delayMaxMs);
-    input_.pressKey(config_.offhandSwapKey);
+    input_.pressKey(bindings_.offhandSwapKey);
 }
 
 void PearlcatchMacros::executeLungeSwap() {
     input_.pressKey(config_.lungeSlotB);
     input_.sleepMs(config_.delayMinMs, config_.delayMaxMs);
-    input_.pressKey(config_.lungeUseKey);
+    input_.pressKey(bindings_.useKey);
     input_.sleepMs(config_.delayMinMs, config_.delayMaxMs);
-    input_.pressKey(config_.lungeSlotA);
+    input_.pressKey(bindings_.attackSlotKey);
 }
 
 void PearlcatchMacros::executeHotbarTotemSwap() {
-    // Offhand Hotbar Totem: Totem-Slot -> Swap Offhand -> zurueck auf vorherigen Slot
     const WORD returnSlot = guard_.lastActiveHotbarSlot() != 0 ? guard_.lastActiveHotbarSlot()
-                                                                 : config_.fallbackReturnSlotKey;
+                                                                 : bindings_.attackSlotKey;
 
     input_.pressKey(config_.totemHotbarSlotKey);
     input_.sleepMs(config_.delayMinMs, config_.delayMaxMs);
-    input_.pressKey(config_.offhandSwapKey);
+    input_.pressKey(bindings_.offhandSwapKey);
     input_.sleepMs(config_.delayMinMs, config_.delayMaxMs);
     input_.pressKey(returnSlot);
 }

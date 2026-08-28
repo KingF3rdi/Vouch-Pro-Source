@@ -4,20 +4,26 @@ namespace macro {
 
 MacroManager::MacroManager(AppConfig config)
     : config_(config),
+      bindings_(config.bindings),
       stunslam_(config.stunslam, rng_, guard_),
-      pearlcatch_(config.pearlcatch, rng_, guard_),
-      elytra_(config.elytra, rng_, guard_),
+      pearlcatch_(config.pearlcatch, rng_, guard_, bindings_),
+      elytra_(config.elytra, rng_, guard_, bindings_),
       autoTotem_(config.autoTotem, rng_, guard_) {}
 
 void MacroManager::setConfig(const AppConfig& config) {
     config_ = config;
+    bindings_ = config.bindings;
     stunslam_.setConfig(config.stunslam);
     pearlcatch_.setConfig(config.pearlcatch);
     elytra_.setConfig(config.elytra);
     autoTotem_.setConfig(config.autoTotem);
 }
 
-AppConfig MacroManager::config() const { return config_; }
+AppConfig MacroManager::config() const {
+    AppConfig cfg = config_;
+    cfg.bindings = bindings_;
+    return cfg;
+}
 
 void MacroManager::startAll() {
     if (running_) {
@@ -62,5 +68,7 @@ ElytraUnequipBot& MacroManager::elytra() { return elytra_; }
 AutoTotemBot& MacroManager::autoTotem() { return autoTotem_; }
 
 GameStateGuard& MacroManager::gameState() { return guard_; }
+
+GlobalBindings& MacroManager::bindings() { return bindings_; }
 
 }  // namespace macro

@@ -7,6 +7,7 @@
 
 #include "common.hpp"
 #include "game_state_guard.hpp"
+#include "global_bindings.hpp"
 #include "input_simulator.hpp"
 #include "screen_analyzer.hpp"
 
@@ -16,7 +17,6 @@
 namespace macro {
 
 struct ElytraUnequipConfig {
-    WORD inventoryKey{'E'};
     int chestplateSlotX{0};
     int chestplateSlotY{0};
     int scanIntervalMs{12};
@@ -28,10 +28,10 @@ struct ElytraUnequipConfig {
     bool enabled{true};
 };
 
-/// Auto Unequip Elytra bei erkanntem Nahkampf-Gegner im Fadenkreuz.
 class ElytraUnequipBot {
 public:
-    ElytraUnequipBot(ElytraUnequipConfig config, RandomEngine& rng, GameStateGuard& guard);
+    ElytraUnequipBot(ElytraUnequipConfig config, RandomEngine& rng, GameStateGuard& guard,
+                     GlobalBindings& bindings);
 
     void start();
     void stop();
@@ -49,6 +49,7 @@ private:
     ElytraUnequipConfig config_;
     RandomEngine& rng_;
     GameStateGuard& guard_;
+    GlobalBindings& bindings_;
     InputSimulator input_;
     ScreenAnalyzer screen_;
 
