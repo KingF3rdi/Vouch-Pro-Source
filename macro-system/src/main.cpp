@@ -15,7 +15,11 @@ macro::TriggerBotConfig defaultTriggerConfig() {
     cfg.cooldownMs = 1000;
     cfg.successChance = 85;
     cfg.isAlwaysActive = false;
-    cfg.activationKey = VK_XBUTTON1;
+    cfg.clickHoldMinMs = 25;
+    cfg.clickHoldMaxMs = 60;
+    cfg.fall.motionSampleIntervalMs = 15;
+    cfg.fall.fallDetectionWindowMs = 300;
+    cfg.fall.upwardVelocityThreshold = 28.0f;
     return cfg;
 }
 
@@ -33,7 +37,7 @@ macro::SequenceMacroConfig defaultSequenceConfig() {
 
 void printBanner() {
     std::cout << "=== Macro System (Stunslam + Pearlcatch) ===\n"
-              << "TriggerBot: XButton1 halten (oder isAlwaysActive=true)\n"
+              << "TriggerBot: XButton1 halten + Fall erkannt + Schild aktiv\n"
               << "SequenceMacro: F6 druecken\n"
               << "Beenden: ESC\n";
 }

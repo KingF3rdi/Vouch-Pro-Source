@@ -5,6 +5,10 @@ namespace macro {
 SequenceMacro::SequenceMacro(SequenceMacroConfig config, RandomEngine& rng)
     : config_(config), rng_(rng), input_(rng) {}
 
+void SequenceMacro::setConfig(const SequenceMacroConfig& config) { config_ = config; }
+
+SequenceMacroConfig SequenceMacro::config() const { return config_; }
+
 void SequenceMacro::start() {
     if (running_) {
         return;
@@ -67,7 +71,7 @@ void SequenceMacro::runLoop() {
         }
 
         hotkeyWasDown_ = hotkeyDown;
-        cpuRelief(rng_);
+        cpuRelief(rng_, config_.loopReliefMinMs, config_.loopReliefMaxMs);
     }
 }
 

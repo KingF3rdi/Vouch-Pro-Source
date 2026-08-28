@@ -21,8 +21,8 @@ private:
     std::mt19937 rng_;
 };
 
-/// Kurze CPU-Pause (2-5 ms) fuer Hintergrund-Schleifen.
-void cpuRelief(RandomEngine& rng);
+/// Kurze CPU-Pause fuer Hintergrund-Schleifen (Standard: 2-5 ms).
+void cpuRelief(RandomEngine& rng, int minMs = 2, int maxMs = 5);
 
 /// Aktuelle Zeitpunkt via steady_clock (monoton, nicht systemabhaengig).
 inline std::chrono::steady_clock::time_point now() {

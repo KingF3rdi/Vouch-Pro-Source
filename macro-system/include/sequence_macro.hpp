@@ -22,6 +22,8 @@ struct SequenceMacroConfig {
     int preThrowDelayMaxMs{20};
     int betweenSlotsDelayMinMs{40};
     int betweenSlotsDelayMaxMs{60};
+    int loopReliefMinMs{2};
+    int loopReliefMaxMs{5};
 };
 
 /// Sequentielles Makro: Slot A -> Rechtsklick -> Slot B -> Rechtsklick.
@@ -32,6 +34,9 @@ public:
     void start();
     void stop();
     bool isRunning() const;
+
+    void setConfig(const SequenceMacroConfig& config);
+    SequenceMacroConfig config() const;
 
 private:
     void runLoop();

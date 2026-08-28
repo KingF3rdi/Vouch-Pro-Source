@@ -26,8 +26,8 @@ bool RandomEngine::rollPercent(int chancePercent) {
     return dist(rng_) <= chancePercent;
 }
 
-void cpuRelief(RandomEngine& rng) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(rng.uniformInt(2, 5)));
+void cpuRelief(RandomEngine& rng, int minMs, int maxMs) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(rng.uniformInt(minMs, maxMs)));
 }
 
 }  // namespace macro
