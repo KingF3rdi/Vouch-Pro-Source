@@ -1,5 +1,11 @@
 #include "gui_app.hpp"
 
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#include <windowsx.h>
+#include <objidl.h>
 #include <gdiplus.h>
 #include <commctrl.h>
 
@@ -93,7 +99,7 @@ bool GuiApp::createWindow(HINSTANCE instance) {
     wc.style = CS_HREDRAW | CS_VREDRAW;
     wc.lpfnWndProc = WndProc;
     wc.hInstance = instance;
-    wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
+    wc.hCursor = LoadCursorW(nullptr, reinterpret_cast<LPCWSTR>(IDC_ARROW));
     wc.lpszClassName = L"MacroSystemGuiWindow";
     RegisterClassExW(&wc);
 
