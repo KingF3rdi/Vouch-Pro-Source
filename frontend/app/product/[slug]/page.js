@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Header from '../../../components/Header';
 import ProductCard from '../../../components/ProductCard';
+import CategoryBadge from '../../../components/CategoryBadge';
+import CategoryDivider from '../../../components/CategoryDivider';
 import { api } from '../../../lib/api';
 import AddToCartButton from '../../../components/AddToCartButton';
 import { formatIngamePrice } from '../../../lib/formatPrice';
@@ -134,7 +136,7 @@ export default function ProductPage() {
           <div className="product-info glass-panel product-info-panel">
             <h1>{product.name}</h1>
             {product.category && (
-              <span className="tag">{product.category.name}</span>
+              <CategoryBadge className="tag--category">{product.category.name}</CategoryBadge>
             )}
             <div className="price-large">
               {formatIngamePrice(getFinalPrice())}
@@ -202,8 +204,9 @@ export default function ProductPage() {
         </div>
 
         {similar.length > 0 && (
-          <section className="section category-suggestions">
-            <div className="section-header glass-panel section-header-panel">
+          <section className="section category-suggestions section--category-divided">
+            <CategoryDivider label={product.category?.name || 'Kategorie'} />
+            <div className="section-header category-glass-panel section-header-panel">
               <div>
                 <h2>Ähnliche Produkte</h2>
                 {product.category && (

@@ -4,6 +4,7 @@ import HeroBanner from '../components/HeroBanner';
 import VouchesSection from '../components/VouchesSection';
 import RecentPurchases from '../components/RecentPurchases';
 import ProductCard from '../components/ProductCard';
+import CategoryDivider from '../components/CategoryDivider';
 
 async function getData() {
   const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -35,7 +36,7 @@ export default async function HomePage() {
       <main className="main-content">
         <section className="section">
           <div className="container">
-            <div className="section-header glass-panel section-header-panel">
+            <div className="section-header category-glass-panel section-header-panel">
               <h2>🔥 Bestseller</h2>
             </div>
             <div className="product-grid">
@@ -50,9 +51,10 @@ export default async function HomePage() {
           </div>
         </section>
 
-        <section className="section">
+        <section className="section section--category-divided">
           <div className="container">
-            <div className="section-header glass-panel section-header-panel">
+            <CategoryDivider label="Texture Packs" />
+            <div className="section-header category-glass-panel section-header-panel">
               <h2>✨ Neue Produkte</h2>
             </div>
             <div className="product-grid">

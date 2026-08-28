@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
+import CategoryDivider from './CategoryDivider';
 
 export default function VouchesSection() {
   const [data, setData] = useState(null);
@@ -15,7 +16,8 @@ export default function VouchesSection() {
   return (
     <section className="section">
       <div className="container">
-        <div className="vouches-section glass-panel">
+        <CategoryDivider label="Community" />
+        <div className="vouches-section category-glass-panel">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h2>Vouches</h2>
             <div className="vouch-count">{data.total}</div>

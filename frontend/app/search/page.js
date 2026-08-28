@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Header from '../../components/Header';
 import ProductCard from '../../components/ProductCard';
+import CategoryBadge from '../../components/CategoryBadge';
 import { api } from '../../lib/api';
 
 function SearchContent() {
@@ -49,12 +50,16 @@ function SearchContent() {
 
   return (
       <main className="container main-content main-content--offset">
-      <div className="page-header glass-panel page-header-panel">
+        <div className="page-header glass-panel page-header-panel category-glass-panel">
         <h1>Suche</h1>
         <p className="page-subtitle">
-          {activeCategory
-            ? `Kategorie: ${activeCategory.name}`
-            : 'Finde Texture Packs und mehr'}
+          {activeCategory ? (
+            <>
+              Kategorie: <CategoryBadge>{activeCategory.name}</CategoryBadge>
+            </>
+          ) : (
+            'Finde Texture Packs und mehr'
+          )}
         </p>
       </div>
 
@@ -64,7 +69,11 @@ function SearchContent() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <select value={category} onChange={(e) => setCategory(e.target.value)}>
+        <select
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          className="category-filter-select"
+        >
           <option value="">Alle Kategorien</option>
           {categories.map((c) => (
             <option key={c.id} value={c.slug}>{c.name}</option>

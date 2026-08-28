@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
+import CategoryDivider from './CategoryDivider';
 import { formatIngamePrice } from '../lib/formatPrice';
 
 export default function RecentPurchases() {
@@ -14,8 +15,9 @@ export default function RecentPurchases() {
   if (!purchases.length) return null;
 
   return (
-    <section className="section">
+    <section className="section section--category-divided">
       <div className="container">
+        <CategoryDivider label="Shop Aktivität" />
         <div className="glass-panel recent-purchases">
           <div className="section-header" style={{ marginBottom: '1rem' }}>
             <h2>✅ Letzte Käufe</h2>

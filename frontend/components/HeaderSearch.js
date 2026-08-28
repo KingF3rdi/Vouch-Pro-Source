@@ -42,7 +42,7 @@ export default function HeaderSearch() {
         aria-label="Suche"
       />
       <select
-        className="header-search-select"
+        className="header-search-select category-filter-select"
         value={category}
         onChange={(e) => setCategory(e.target.value)}
         aria-label="Kategorie"
