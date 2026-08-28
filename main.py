@@ -5,6 +5,7 @@ import config
 import discord
 import userCommands
 import adminCommands
+import shop_bridge
 
 from discordHelper import newEmbed, errorMessage, RED, BLUE, GREEN, YELLOW
 
@@ -61,6 +62,11 @@ class DiscordBot(discord.Client):
         # Make sure we don't respond to ourselves
         if message.author == self.user:
             return
+
+        # TxTEmpire Shop Commands (!shop ...)
+        if message.content.strip().lower().startswith('!shop'):
+            if await shop_bridge.handle_shop_command(message):
+                return
 
         isMaster = message.author.id in self.masterIDs
         isStaff = message.author.id in self.staffIDs or isMaster

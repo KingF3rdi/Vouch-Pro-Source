@@ -2,6 +2,7 @@
 
 import data
 import discord
+import shop_bridge
 
 from discordHelper import User, Vouch, newEmbed, errorMessage, RED, BLUE, GREEN, YELLOW
 
@@ -288,6 +289,14 @@ async def approve(vouchID: int, channel: discord.TextChannel,
     embed.set_footer(
         text='Approved Vouch')
     await logChannel.send(embed=embed)
+
+    # TxTEmpire Shop: Vouch zur Website synchronisieren
+    await shop_bridge.sync_vouch_to_shop(
+        giverUser.name if giverUser else str(vouch.giverID),
+        vouch.message,
+        vouch.isPositive,
+        vouchID,
+    )
 
 
 async def reply(targetUser: discord.User,
