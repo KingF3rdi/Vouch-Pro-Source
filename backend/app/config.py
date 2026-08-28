@@ -17,6 +17,32 @@ class Settings(BaseSettings):
     upload_dir: str = "./uploads"
     default_discount_percent: int = 10
 
+    # Rate limits: (max_requests, window_seconds)
+    rate_limit_default_max: int = 120
+    rate_limit_default_window: int = 60
+    rate_limit_search_max: int = 40
+    rate_limit_search_window: int = 60
+    rate_limit_write_max: int = 30
+    rate_limit_write_window: int = 60
+    rate_limit_auth_max: int = 15
+    rate_limit_auth_window: int = 60
+
+    @property
+    def rate_limit_default(self) -> tuple[int, int]:
+        return (self.rate_limit_default_max, self.rate_limit_default_window)
+
+    @property
+    def rate_limit_search(self) -> tuple[int, int]:
+        return (self.rate_limit_search_max, self.rate_limit_search_window)
+
+    @property
+    def rate_limit_write(self) -> tuple[int, int]:
+        return (self.rate_limit_write_max, self.rate_limit_write_window)
+
+    @property
+    def rate_limit_auth(self) -> tuple[int, int]:
+        return (self.rate_limit_auth_max, self.rate_limit_auth_window)
+
     class Config:
         env_file = ".env"
 

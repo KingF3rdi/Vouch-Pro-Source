@@ -54,7 +54,7 @@ function SearchContent() {
         <p className="page-subtitle">
           {activeCategory
             ? `Kategorie: ${activeCategory.name}`
-            : 'Finde Texture Packs, Shader und mehr'}
+            : 'Finde Texture Packs und mehr'}
         </p>
       </div>
 

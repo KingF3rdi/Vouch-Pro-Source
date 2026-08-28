@@ -19,8 +19,7 @@ async def seed():
             db.add(ShopStats(total_revenue=1250000.0, total_sales=47))
 
         cat_tp = Category(name="Texture Packs", slug="texture-packs")
-        cat_shader = Category(name="Shader", slug="shader")
-        db.add_all([cat_tp, cat_shader])
+        db.add(cat_tp)
         await db.flush()
 
         products = [
@@ -37,14 +36,14 @@ async def seed():
                 is_new=False,
             ),
             Product(
-                name="TxTEmpire Neon Shader",
-                slug="txtempire-neon-shader",
-                description="TxTEmpire Neon Shader Pro — Leuchtende Shader mit Custom Lighting und Bloom.",
+                name="TxTEmpire Fantasy Pack",
+                slug="txtempire-fantasy-pack",
+                description="TxTEmpire Fantasy Pack — Magisches 128x Texture Pack mit leuchtenden Details.",
                 price=15000,
-                preview_url="https://placehold.co/600x400/1a2332/fbbf24?text=Neon+Shader",
+                preview_url="https://placehold.co/600x400/1a2332/fbbf24?text=Fantasy+Pack",
                 discord_role_id="1234567891",
-                category_id=cat_shader.id,
-                tags="shader,neon,bloom",
+                category_id=cat_tp.id,
+                tags="fantasy,128x,magic",
                 sales_count=18,
                 is_new=True,
             ),
@@ -70,7 +69,7 @@ async def seed():
 
         db.add_all([
             Vouch(giver_name="MaxMC", message="Super schnelle Lieferung, Pack ist mega!", is_positive=True),
-            Vouch(giver_name="CraftKing", message="Beste Shader die ich je hatte, 10/10", is_positive=True),
+            Vouch(giver_name="CraftKing", message="Bestes Texture Pack das ich je hatte, 10/10", is_positive=True),
             Vouch(giver_name="PixelPro", message="Sehr zufrieden, gerne wieder!", is_positive=True),
         ])
 

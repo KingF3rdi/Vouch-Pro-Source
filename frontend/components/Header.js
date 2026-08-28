@@ -25,6 +25,12 @@ export default function Header({ onHero = false }) {
         <nav className="nav nav--compact">
           <Link href="/wishlist" className="nav-link">Wunschliste</Link>
           <Link href="/account" className="nav-link">Profil</Link>
+          <Link href="/wishlist" className="nav-icon-link nav-icon-link--hide-desktop" aria-label="Wunschliste">
+            ♡
+          </Link>
+          <Link href="/account" className="nav-icon-link nav-icon-link--hide-desktop" aria-label="Profil">
+            👤
+          </Link>
           <DiscordJoinButton className="btn btn-sm btn-outline-glass nav-discord" />
           {user ? (
             <span className="user-badge">

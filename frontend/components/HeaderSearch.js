@@ -34,7 +34,7 @@ export default function HeaderSearch() {
       <input
         type="search"
         className="header-search-input"
-        placeholder="Packs, Shader, Kategorien suchen…"
+        placeholder="Texture Packs suchen…"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onFocus={() => setFocused(true)}

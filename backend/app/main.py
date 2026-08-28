@@ -6,10 +6,14 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.database import Base, engine
-from app.models import Category, DiscountCode, ShopStats
+from app.models import Category, DiscountCode, Product, ShopStats
+from app.rate_limit import RateLimitMiddleware
 from app.routers import auth, bot, shop, user
+from app import services
 
 app = FastAPI(title="TxTEmpire Shop API", version="1.0.0")
+
+app.add_middleware(RateLimitMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -61,9 +65,9 @@ async def startup():
         cats_count = await db.scalar(select(func.count()).select_from(Category))
         if not cats_count:
             db.add(Category(name="Texture Packs", slug="texture-packs"))
-            db.add(Category(name="Shader", slug="shader"))
             db.add(Category(name="Mods", slug="mods"))
 
+        await services.deactivate_shader_products(db)
         await db.commit()
 
 

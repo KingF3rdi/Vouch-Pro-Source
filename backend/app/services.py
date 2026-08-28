@@ -22,6 +22,22 @@ from app.models import (
     WishlistItem,
 )
 
+EXCLUDED_CATEGORY_SLUGS = frozenset({"shader"})
+
+
+def _shader_category_ids_subquery():
+    return select(Category.id).where(Category.slug.in_(EXCLUDED_CATEGORY_SLUGS))
+
+
+def _active_product_filters():
+    return (
+        Product.is_active == True,
+        or_(
+            Product.category_id.is_(None),
+            Product.category_id.not_in(_shader_category_ids_subquery()),
+        ),
+    )
+
 
 def generate_code(length: int = 8) -> str:
     alphabet = string.ascii_uppercase + string.digits
@@ -71,7 +87,7 @@ async def get_bestsellers(db: AsyncSession, limit: int = 8):
     result = await db.execute(
         select(Product)
         .options(selectinload(Product.category))
-        .where(Product.is_active == True)
+        .where(*_active_product_filters())
         .order_by(Product.sales_count.desc(), Product.created_at.desc())
         .limit(limit)
     )
@@ -82,7 +98,7 @@ async def get_new_products(db: AsyncSession, limit: int = 8):
     result = await db.execute(
         select(Product)
         .options(selectinload(Product.category))
-        .where(Product.is_active == True, Product.is_new == True)
+        .where(*_active_product_filters(), Product.is_new == True)
         .order_by(Product.created_at.desc())
         .limit(limit)
     )
@@ -99,7 +115,7 @@ async def search_products(
     query = (
         select(Product)
         .options(selectinload(Product.category))
-        .where(Product.is_active == True)
+        .where(*_active_product_filters())
     )
 
     if q:
@@ -113,6 +129,8 @@ async def search_products(
         )
 
     if category_slug:
+        if category_slug in EXCLUDED_CATEGORY_SLUGS:
+            return []
         query = query.join(Category).where(Category.slug == category_slug)
 
     if tag:
@@ -126,7 +144,7 @@ async def get_product_by_slug(db: AsyncSession, slug: str) -> Product | None:
     result = await db.execute(
         select(Product)
         .options(selectinload(Product.category), selectinload(Product.media))
-        .where(Product.slug == slug, Product.is_active == True)
+        .where(Product.slug == slug, *_active_product_filters())
     )
     return result.scalar_one_or_none()
 
@@ -141,7 +159,7 @@ async def get_similar_products(db: AsyncSession, product: Product, limit: int = 
             .options(selectinload(Product.category))
             .where(
                 Product.id != product.id,
-                Product.is_active == True,
+                *_active_product_filters(),
                 Product.category_id == product.category_id,
             )
             .order_by(Product.sales_count.desc(), Product.created_at.desc())
@@ -157,7 +175,7 @@ async def get_similar_products(db: AsyncSession, product: Product, limit: int = 
                 .options(selectinload(Product.category))
                 .where(
                     Product.id != product.id,
-                    Product.is_active == True,
+                    *_active_product_filters(),
                     func.lower(Product.tags).like(f"%{tag.lower()}%"),
                 )
                 .order_by(Product.sales_count.desc())
@@ -175,8 +193,25 @@ async def get_similar_products(db: AsyncSession, product: Product, limit: int = 
 
 
 async def get_categories(db: AsyncSession):
-    result = await db.execute(select(Category).order_by(Category.name))
+    result = await db.execute(
+        select(Category)
+        .where(Category.slug.not_in(EXCLUDED_CATEGORY_SLUGS))
+        .order_by(Category.name)
+    )
     return result.scalars().all()
+
+
+async def deactivate_shader_products(db: AsyncSession):
+    shader_ids = (
+        await db.scalars(select(Category.id).where(Category.slug.in_(EXCLUDED_CATEGORY_SLUGS)))
+    ).all()
+    if not shader_ids:
+        return
+    result = await db.execute(
+        select(Product).where(Product.category_id.in_(shader_ids), Product.is_active == True)
+    )
+    for product in result.scalars().all():
+        product.is_active = False
 
 
 async def create_link_code(
