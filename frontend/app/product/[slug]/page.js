@@ -8,6 +8,7 @@ import CategoryBadge from '../../../components/CategoryBadge';
 import CategoryDivider from '../../../components/CategoryDivider';
 import { api } from '../../../lib/api';
 import AddToCartButton from '../../../components/AddToCartButton';
+import OutlineIcon from '../../../components/OutlineIcon';
 import { formatIngamePrice } from '../../../lib/formatPrice';
 
 export default function ProductPage() {
@@ -111,7 +112,7 @@ export default function ProductPage() {
                   <img src={allMedia[activeMedia]?.url} alt={product.name} />
                 )
               ) : (
-                <div className="preview-placeholder">Pack</div>
+                <OutlineIcon char="□" className="preview-placeholder-icon preview-placeholder-icon--lg" />
               )}
             </div>
             {allMedia.length > 1 && (

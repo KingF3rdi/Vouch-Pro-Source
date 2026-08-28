@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '../lib/api';
+import OutlineIcon from './OutlineIcon';
 
 export default function HeaderSearch() {
   const router = useRouter();
@@ -30,7 +31,7 @@ export default function HeaderSearch() {
       className={`header-search${focused ? ' header-search--focused' : ''}`}
       onSubmit={handleSubmit}
     >
-      <span className="header-search-icon" aria-hidden="true" />
+      <OutlineIcon char="O" className="header-search-icon-mark" round />
       <input
         type="search"
         className="header-search-input"
@@ -53,7 +54,7 @@ export default function HeaderSearch() {
         ))}
       </select>
       <button type="submit" className="header-search-btn" aria-label="Suchen">
-        Suchen
+        <OutlineIcon char=">" round />
       </button>
     </form>
   );
