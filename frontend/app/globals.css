@@ -591,3 +591,37 @@ a {
   font-size: 1.75rem;
   font-weight: 700;
 }
+
+.recent-purchases {
+  padding: 1.75rem;
+}
+
+.purchase-feed {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.75rem;
+}
+
+.purchase-feed-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+}
+
+.purchase-feed-check {
+  color: #22c55e;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.purchase-feed-product {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.purchase-feed-buyer {
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin-top: 0.15rem;
+}

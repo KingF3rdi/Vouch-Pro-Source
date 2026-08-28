@@ -121,6 +121,7 @@ class Order(Base):
     payment_reference: Mapped[str | None] = mapped_column(String(100), nullable=True)
     ticket_channel_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
     ticket_url: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    confirmation_posted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     mc_confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
     discord_confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

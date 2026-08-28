@@ -14,6 +14,8 @@ from app.schemas import (
     OrderOut,
     ProductListItem,
     ProductOut,
+    PurchaseConfirmationOut,
+    DiscordConfigOut,
     StatsOut,
     UserOut,
     VouchSummaryOut,
@@ -22,6 +24,17 @@ from app.routers.user import build_user_out
 from app import services
 
 router = APIRouter(prefix="/api", tags=["shop"])
+
+
+@router.get("/config/discord", response_model=DiscordConfigOut)
+async def discord_config():
+    from app.config import settings
+    return {"invite_url": settings.discord_invite_url}
+
+
+@router.get("/purchases/recent", response_model=list[PurchaseConfirmationOut])
+async def recent_purchases(db: AsyncSession = Depends(get_db)):
+    return await services.get_recent_purchases(db)
 
 
 @router.get("/stats", response_model=StatsOut)

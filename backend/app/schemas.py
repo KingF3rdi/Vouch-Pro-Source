@@ -219,3 +219,15 @@ class BotPriceChangeNotify(BaseModel):
     product_id: int
     old_price: float
     new_price: float
+
+
+class PurchaseConfirmationOut(BaseModel):
+    order_id: int
+    product_name: str
+    buyer_display: str
+    amount: float
+    confirmed_at: datetime
+
+
+class DiscordConfigOut(BaseModel):
+    invite_url: str

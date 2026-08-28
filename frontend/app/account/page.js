@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Header from '../../components/Header';
+import DiscordJoinButton from '../../components/DiscordJoinButton';
 import { api } from '../../lib/api';
 
 export default function AccountPage() {
@@ -92,9 +93,10 @@ export default function AccountPage() {
           <p style={{ color: 'var(--muted)', fontSize: '0.9rem', marginBottom: '0.75rem' }}>
             Für Käufe per Discord-Ticket und Wunschlisten-Benachrichtigungen.
           </p>
-          <a href="/api/auth/discord/login" className="btn" style={{ width: '100%' }}>
+          <a href="/api/auth/discord/login" className="btn" style={{ width: '100%', marginBottom: '0.75rem' }}>
             Mit Discord verbinden
           </a>
+          <DiscordJoinButton className="btn btn-outline-glass" style={{ width: '100%', display: 'flex' }} />
 
           <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '1.5rem 0' }} />
 

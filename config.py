@@ -1,3 +1,10 @@
-DISCORD_TOKEN = 'here nigger'
+import os
+
+DISCORD_TOKEN = 'YOUR_DISCORD_BOT_TOKEN'
 PENDING_VOUCHES_CHANNELID = 807063234280554530
 LOG_CHANNEL_ID = 807063234280554530
+
+# TxTEmpire Shop API
+SHOP_API_URL = os.getenv('SHOP_API_URL', 'http://localhost:8000')
+BOT_API_KEY = os.getenv('BOT_API_KEY', 'change-bot-api-key')
+DISCORD_INVITE_URL = 'https://discord.gg/UjH99aR5ph'

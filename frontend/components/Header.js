@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import DiscordJoinButton from './DiscordJoinButton';
 import { api } from '../lib/api';
 
 export default function Header({ onHero = false }) {
@@ -22,6 +23,7 @@ export default function Header({ onHero = false }) {
           <Link href="/search">Suche</Link>
           <Link href="/wishlist">Wunschliste</Link>
           <Link href="/account">Profil</Link>
+          <DiscordJoinButton className="btn btn-sm btn-outline-glass" />
           {user ? (
             <span className="user-badge">
               {user.connection_type === 'discord' || user.connection_type === 'both' ? (

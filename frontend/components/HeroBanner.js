@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '../lib/api';
+import DiscordJoinButton from './DiscordJoinButton';
 
 export default function HeroBanner() {
   const [stats, setStats] = useState(null);
@@ -49,6 +50,7 @@ export default function HeroBanner() {
           <Link href="/account" className="btn btn-outline-glass">
             Profil verbinden
           </Link>
+          <DiscordJoinButton />
         </div>
       </div>
     </section>

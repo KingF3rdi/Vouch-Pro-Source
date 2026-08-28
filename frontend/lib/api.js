@@ -56,4 +56,6 @@ export const api = {
   toggleWishlist: (productId) =>
     fetchApi(`/api/user/wishlist/${productId}`, { method: 'POST' }),
   getWishlist: () => fetchApi('/api/user/wishlist'),
+  getRecentPurchases: () => fetchApi('/api/purchases/recent'),
+  getDiscordConfig: () => fetchApi('/api/config/discord'),
 };

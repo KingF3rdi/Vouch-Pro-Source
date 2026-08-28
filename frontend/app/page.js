@@ -2,6 +2,7 @@ import './globals.css';
 import Header from '../components/Header';
 import HeroBanner from '../components/HeroBanner';
 import VouchesSection from '../components/VouchesSection';
+import RecentPurchases from '../components/RecentPurchases';
 import ProductCard from '../components/ProductCard';
 
 async function getData() {
@@ -67,6 +68,7 @@ export default async function HomePage() {
         </section>
 
         <VouchesSection />
+        <RecentPurchases />
       </main>
 
       <footer className="footer">

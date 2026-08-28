@@ -530,6 +530,27 @@ async def finalize_order(db: AsyncSession, order: Order) -> Order:
 
     await db.commit()
     await db.refresh(order)
+
+    # Kaufbestätigung in Discord (Log, Ticket, DM)
+    if not order.confirmation_posted_at:
+        user_result = await db.execute(select(User).where(User.id == order.user_id))
+        buyer = user_result.scalar_one_or_none()
+        from app.discord_notify import post_purchase_confirmation
+
+        await post_purchase_confirmation(
+            order_id=order.id,
+            product_name=product.name,
+            amount=order.amount,
+            ign=order.ign,
+            discord_user_id=buyer.discord_id if buyer else None,
+            discord_username=buyer.discord_username if buyer else None,
+            discount_code=order.discount_code,
+            ticket_channel_id=order.ticket_channel_id,
+        )
+        order.confirmation_posted_at = datetime.utcnow()
+        await db.commit()
+        await db.refresh(order)
+
     return order
 
 
@@ -609,6 +630,34 @@ async def get_user_profile(db: AsyncSession, user_id: int):
     )
     unlocked = unlocked_result.scalars().all()
     return user, unlocked
+
+
+async def get_recent_purchases(db: AsyncSession, limit: int = 8):
+    from app.models import OrderStatus
+
+    result = await db.execute(
+        select(Order)
+        .options(selectinload(Order.product), selectinload(Order.user))
+        .where(Order.status == OrderStatus.confirmed)
+        .order_by(Order.paid_at.desc())
+        .limit(limit)
+    )
+    orders = result.scalars().all()
+    output = []
+    for o in orders:
+        display = o.ign
+        if o.user and o.user.discord_username:
+            display = o.user.discord_username
+        output.append(
+            {
+                "order_id": o.id,
+                "product_name": o.product.name if o.product else "Pack",
+                "buyer_display": display,
+                "amount": o.amount,
+                "confirmed_at": o.paid_at or o.created_at,
+            }
+        )
+    return output
 
 
 async def update_product_price(db: AsyncSession, product_id: int, new_price: float) -> Product:

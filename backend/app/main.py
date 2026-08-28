@@ -37,6 +37,7 @@ async def startup():
             "ALTER TABLE users ADD COLUMN discord_username VARCHAR(100)",
             "ALTER TABLE orders ADD COLUMN ticket_channel_id VARCHAR(32)",
             "ALTER TABLE orders ADD COLUMN ticket_url VARCHAR(200)",
+            "ALTER TABLE orders ADD COLUMN confirmation_posted_at DATETIME",
         ]
         for sql in migrations:
             try:
