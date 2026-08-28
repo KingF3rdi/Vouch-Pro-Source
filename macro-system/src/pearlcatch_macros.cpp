@@ -66,12 +66,20 @@ void PearlcatchMacros::executeDiagonalPearlcatch(bool leftDiagonal) {
 }
 
 void PearlcatchMacros::executeOffhandPearlcatch() {
+    // Offhand Pearlcatch: Windcharges offhand -> Perle -> Doppel-RC -> Windcharges offhand
     input_.pressKey(config_.windchargeSlotKey);
     input_.sleepMs(config_.delayMinMs, config_.delayMaxMs);
     input_.pressKey(config_.offhandSwapKey);
     input_.sleepMs(config_.delayMinMs, config_.delayMaxMs);
+
+    input_.pressKey(config_.pearlSlotKey);
+    input_.sleepMs(config_.delayMinMs, config_.delayMaxMs);
+
     input_.doubleRightClick(config_.delayMinMs, config_.delayMaxMs, config_.delayMinMs,
                             config_.delayMaxMs);
+    input_.sleepMs(config_.delayMinMs, config_.delayMaxMs);
+
+    input_.pressKey(config_.windchargeSlotKey);
     input_.sleepMs(config_.delayMinMs, config_.delayMaxMs);
     input_.pressKey(config_.offhandSwapKey);
 }
