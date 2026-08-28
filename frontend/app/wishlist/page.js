@@ -19,11 +19,13 @@ export default function WishlistPage() {
   return (
     <>
       <Header />
-      <main className="container" style={{ padding: '2rem 0' }}>
-        <h1 style={{ marginBottom: '1.5rem' }}>Wunschliste</h1>
+      <main className="container main-content">
+        <div className="page-header">
+          <h1>Wunschliste</h1>
+        </div>
 
         {error && (
-          <div className="account-card">
+          <div className="account-card glass-panel">
             <p>{error}</p>
             <Link href="/account" className="btn" style={{ marginTop: '1rem' }}>
               Account verknüpfen
@@ -40,7 +42,7 @@ export default function WishlistPage() {
         {!error && items.length > 0 && (
           <div className="product-grid">
             {items.map((item) => (
-              <Link key={item.id} href={`/product/${item.product.slug}`} className="product-card">
+              <Link key={item.id} href={`/product/${item.product.slug}`} className="product-card glass-card">
                 <div className="product-card-image">
                   {item.product.preview_url ? (
                     <img src={item.product.preview_url} alt={item.product.name} />

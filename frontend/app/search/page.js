@@ -37,8 +37,10 @@ export default function SearchPage() {
   return (
     <>
       <Header />
-      <main className="container" style={{ padding: '2rem 0' }}>
-        <h1 style={{ marginBottom: '1rem' }}>Produktsuche</h1>
+      <main className="container main-content">
+        <div className="page-header">
+          <h1>Produktsuche</h1>
+        </div>
         <form className="search-box" onSubmit={handleSubmit}>
           <input
             placeholder="Suche nach Name, Tag..."

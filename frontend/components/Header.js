@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '../lib/api';
 
-export default function Header() {
+export default function Header({ onHero = false }) {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
@@ -12,7 +12,7 @@ export default function Header() {
   }, []);
 
   return (
-    <header className="header">
+    <header className={`header${onHero ? ' header--hero' : ''}`}>
       <div className="container header-inner">
         <Link href="/" className="logo">
           TxTEmpire
@@ -25,17 +25,17 @@ export default function Header() {
           {user ? (
             <span className="user-badge">
               {user.connection_type === 'discord' || user.connection_type === 'both' ? (
-                <span className="user-badge-icon">💬</span>
+                <span>💬</span>
               ) : (
-                <span className="user-badge-icon">⛏️</span>
+                <span>⛏️</span>
               )}
-              <span className="user-badge-name">{user.display_name}</span>
+              <span>{user.display_name}</span>
               {user.connection_type === 'both' && user.ign && (
                 <span className="user-badge-sub">· {user.ign}</span>
               )}
             </span>
           ) : (
-            <Link href="/account" className="btn btn-sm btn-outline">Anmelden</Link>
+            <Link href="/account" className="btn btn-sm btn-outline-glass">Anmelden</Link>
           )}
         </nav>
       </div>

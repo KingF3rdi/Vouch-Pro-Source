@@ -129,7 +129,7 @@ export default function ProductPage() {
             )}
           </div>
 
-          <div className="product-info">
+          <div className="product-info glass-panel product-info-panel">
             <h1>{product.name}</h1>
             {product.category && (
               <span className="tag">{product.category.name}</span>
@@ -156,12 +156,13 @@ export default function ProductPage() {
               <label style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>Creator / Rabatt Code (10%)</label>
               <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.35rem' }}>
                 <input
-                  style={{ flex: 1, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '0.75rem', color: 'var(--text)' }}
+                  className="form-input"
+                  style={{ flex: 1, marginBottom: 0 }}
                   value={discountCode}
                   onChange={(e) => setDiscountCode(e.target.value)}
                   placeholder="CREATOR10"
                 />
-                <button className="btn btn-outline" onClick={validateDiscount}>Prüfen</button>
+                <button className="btn btn-outline-glass" onClick={validateDiscount}>Prüfen</button>
               </div>
               {discountResult && (
                 <p style={{ color: discountResult.valid ? 'var(--accent)' : 'var(--danger)', fontSize: '0.85rem', marginTop: '0.35rem' }}>
@@ -173,7 +174,7 @@ export default function ProductPage() {
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>Minecraft IGN</label>
               <input
-                style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '0.75rem', color: 'var(--text)', marginTop: '0.35rem' }}
+                className="form-input"
                 value={ign}
                 onChange={(e) => setIgn(e.target.value)}
                 placeholder="DeinIngameName"
@@ -184,7 +185,7 @@ export default function ProductPage() {
               <button className="btn" onClick={handleOrder}>
                 {user?.discord_id ? 'Bezahlen (Discord Ticket)' : 'Discord verbinden zum Kaufen'}
               </button>
-              <button className="btn btn-outline" onClick={toggleWishlist}>♥ Wunschliste</button>
+              <button className="btn btn-outline-glass" onClick={toggleWishlist}>♥ Wunschliste</button>
             </div>
 
             {orderMsg && (

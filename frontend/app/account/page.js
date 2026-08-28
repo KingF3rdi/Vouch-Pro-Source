@@ -38,11 +38,11 @@ export default function AccountPage() {
     <>
       <Header />
       <main className="container">
-        <div className="account-card" style={{ maxWidth: '720px' }}>
+        <div className="account-card glass-panel">
           <h2>TxTEmpire Profil</h2>
 
           {user ? (
-            <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--bg)', borderRadius: '12px' }}>
+            <div className="profile-card-inner glass-card">
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <span style={{ fontSize: '2rem' }}>
                   {user.connection_type === 'minecraft' ? '⛏️' : '💬'}
@@ -68,7 +68,7 @@ export default function AccountPage() {
               <h3>Freigeschaltete Produkte ({user.unlocked_products.length})</h3>
               <div className="unlocked-grid">
                 {user.unlocked_products.map((item) => (
-                  <Link key={item.id} href={`/product/${item.product.slug}`} className="unlocked-item">
+                  <Link key={item.id} href={`/product/${item.product.slug}`} className="unlocked-item glass-card">
                     <div className="check">✓</div>
                     <div style={{ fontWeight: 600 }}>{item.product.name}</div>
                     <div style={{ color: 'var(--muted)', fontSize: '0.8rem', marginTop: '0.25rem' }}>
@@ -99,7 +99,7 @@ export default function AccountPage() {
           <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '1.5rem 0' }} />
 
           <h3>IGN per Code verknüpfen</h3>
-          <button className="btn btn-outline" onClick={generateIgnCode} style={{ width: '100%', marginTop: '0.5rem' }}>
+          <button className="btn btn-outline-glass" onClick={generateIgnCode} style={{ width: '100%', marginTop: '0.5rem' }}>
             IGN-Verknüpfungscode generieren
           </button>
 
@@ -113,18 +113,8 @@ export default function AccountPage() {
           )}
 
           <div style={{ marginTop: '1rem' }}>
-            <input
-              style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '12px', padding: '0.75rem', color: 'var(--text)', marginBottom: '0.5rem' }}
-              placeholder="Verknüpfungscode"
-              value={redeemCode}
-              onChange={(e) => setRedeemCode(e.target.value.toUpperCase())}
-            />
-            <input
-              style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '12px', padding: '0.75rem', color: 'var(--text)', marginBottom: '0.5rem' }}
-              placeholder="Minecraft IGN"
-              value={redeemIgn}
-              onChange={(e) => setRedeemIgn(e.target.value)}
-            />
+            <input className="form-input" placeholder="Verknüpfungscode" value={redeemCode} onChange={(e) => setRedeemCode(e.target.value.toUpperCase())} />
+            <input className="form-input" placeholder="Minecraft IGN" value={redeemIgn} onChange={(e) => setRedeemIgn(e.target.value)} />
             <button className="btn" onClick={redeemCodeHandler} style={{ width: '100%' }}>
               Code einlösen
             </button>
