@@ -1,31 +1,13 @@
 import './globals.css';
+import { Suspense } from 'react';
 import Header from '../components/Header';
 import HeroBanner from '../components/HeroBanner';
 import VouchesSection from '../components/VouchesSection';
 import RecentPurchases from '../components/RecentPurchases';
-import ProductCard from '../components/ProductCard';
-import CategoryDivider from '../components/CategoryDivider';
+import BestsellersSection, { BestsellersSectionSkeleton } from '../components/home/BestsellersSection';
+import NewProductsSection, { NewProductsSectionSkeleton } from '../components/home/NewProductsSection';
 
-async function getData() {
-  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-  const [bestsellers, newProducts] = await Promise.all([
-    fetch(`${base}/api/products/bestsellers`, { cache: 'no-store' }).then((r) => r.json()),
-    fetch(`${base}/api/products/new`, { cache: 'no-store' }).then((r) => r.json()),
-  ]);
-  return { bestsellers, newProducts };
-}
-
-export default async function HomePage() {
-  let bestsellers = [];
-  let newProducts = [];
-  try {
-    const data = await getData();
-    bestsellers = data.bestsellers;
-    newProducts = data.newProducts;
-  } catch {
-    // Backend nicht erreichbar
-  }
-
+export default function HomePage() {
   return (
     <>
       <div className="home-hero-wrap">
@@ -34,44 +16,13 @@ export default async function HomePage() {
       </div>
 
       <main className="main-content">
-        <section className="section">
-          <div className="container">
-            <div className="section-header category-glass-panel section-header-panel">
-              <h2>🔥 Bestseller</h2>
-            </div>
-            <div className="section-surface section-grid-surface">
-              <div className="product-grid">
-                {bestsellers.length > 0 ? (
-                  bestsellers.map((p) => <ProductCard key={p.id} product={p} />)
-                ) : (
-                  <p className="glass-card" style={{ padding: '1.5rem', color: 'var(--muted)', gridColumn: '1 / -1' }}>
-                    Noch keine Bestseller — Produkte werden vom Discord Bot synchronisiert.
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        </section>
+        <Suspense fallback={<BestsellersSectionSkeleton />}>
+          <BestsellersSection />
+        </Suspense>
 
-        <section className="section section--category-divided">
-          <div className="container">
-            <CategoryDivider label="Texture Packs" />
-            <div className="section-header category-glass-panel section-header-panel">
-              <h2>✨ Neue Produkte</h2>
-            </div>
-            <div className="section-surface section-grid-surface">
-              <div className="product-grid">
-                {newProducts.length > 0 ? (
-                  newProducts.map((p) => <ProductCard key={p.id} product={p} />)
-                ) : (
-                  <p className="glass-card" style={{ padding: '1.5rem', color: 'var(--muted)', gridColumn: '1 / -1' }}>
-                    Keine neuen Produkte verfügbar.
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        </section>
+        <Suspense fallback={<NewProductsSectionSkeleton />}>
+          <NewProductsSection />
+        </Suspense>
 
         <VouchesSection />
         <RecentPurchases />

@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import Link from 'next/link';
 import Header from '../../../components/Header';
 import ProductCard from '../../../components/ProductCard';
 import CategoryBadge from '../../../components/CategoryBadge';
 import CategoryDivider from '../../../components/CategoryDivider';
 import { api } from '../../../lib/api';
 import AddToCartButton from '../../../components/AddToCartButton';
+import BuyNowButton from '../../../components/BuyNowButton';
+import ProductDetailSkeleton from '../../../components/skeletons/ProductDetailSkeleton';
 import { formatIngamePrice } from '../../../lib/formatPrice';
 
 export default function ProductPage() {
@@ -19,11 +20,19 @@ export default function ProductPage() {
   const [activeMedia, setActiveMedia] = useState(0);
   const [user, setUser] = useState(null);
   const [orderMsg, setOrderMsg] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.getProduct(slug).then(setProduct).catch(console.error);
-    api.getSimilar(slug).then(setSimilar).catch(console.error);
-    api.getMe().then(setUser).catch(() => setUser(null));
+    setLoading(true);
+    setProduct(null);
+    setSimilar([]);
+    setActiveMedia(0);
+
+    Promise.all([
+      api.getProduct(slug).then(setProduct).catch(console.error),
+      api.getSimilar(slug).then(setSimilar).catch(console.error),
+      api.getMe().then(setUser).catch(() => setUser(null)),
+    ]).finally(() => setLoading(false));
   }, [slug]);
 
   const allMedia = product
@@ -42,13 +51,24 @@ export default function ProductPage() {
     setOrderMsg('Wunschliste aktualisiert!');
   }
 
+  if (loading) {
+    return (
+      <>
+        <Header />
+        <ProductDetailSkeleton />
+      </>
+    );
+  }
+
   if (!product) {
     return (
       <>
         <Header />
-        <div className="container" style={{ padding: '3rem', textAlign: 'center' }}>
-          Lade Produkt...
-        </div>
+        <main className="container main-content main-content--offset">
+          <div className="glass-panel cart-empty-panel">
+            <p>Produkt nicht gefunden.</p>
+          </div>
+        </main>
       </>
     );
   }
@@ -111,12 +131,12 @@ export default function ProductPage() {
               IGN und Rabattcode werden an der Kasse abgefragt.
             </p>
 
-            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <div className="product-detail-actions">
               <AddToCartButton product={product} className="btn" label="In den Warenkorb" />
-              <Link href="/cart" className="btn btn-outline-glass">
-                Zur Kasse
-              </Link>
-              <button className="btn btn-outline-glass" onClick={toggleWishlist}>♥ Wunschliste</button>
+              <BuyNowButton product={product} label="Jetzt kaufen" />
+              <button type="button" className="btn btn-outline-glass" onClick={toggleWishlist}>
+                ♥ Wunschliste
+              </button>
             </div>
 
             {orderMsg && (

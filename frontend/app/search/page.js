@@ -6,6 +6,7 @@ import Header from '../../components/Header';
 import ProductCard from '../../components/ProductCard';
 import CategoryBadge from '../../components/CategoryBadge';
 import { api } from '../../lib/api';
+import ProductGridSkeleton from '../../components/skeletons/ProductGridSkeleton';
 
 function SearchContent() {
   const searchParams = useSearchParams();
@@ -84,7 +85,7 @@ function SearchContent() {
 
       <div className="search-results">
         {loading ? (
-          <p className="search-empty">Lade Ergebnisse…</p>
+          <ProductGridSkeleton count={6} />
         ) : products.length > 0 ? (
           <>
             <p className="search-result-count">{products.length} Ergebnis{products.length !== 1 ? 'se' : ''}</p>

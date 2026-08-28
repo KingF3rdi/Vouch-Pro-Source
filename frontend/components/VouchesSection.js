@@ -3,14 +3,20 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import CategoryDivider from './CategoryDivider';
+import VouchesSectionSkeleton from './skeletons/VouchesSectionSkeleton';
 
 export default function VouchesSection() {
   const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.getVouches().then(setData).catch(console.error);
+    api.getVouches()
+      .then(setData)
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, []);
 
+  if (loading) return <VouchesSectionSkeleton />;
   if (!data) return null;
 
   return (
