@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Header from '../../components/Header';
 import DiscordJoinButton from '../../components/DiscordJoinButton';
-import OutlineIcon from '../../components/OutlineIcon';
 import { api } from '../../lib/api';
 
 export default function AccountPage() {
@@ -46,10 +45,9 @@ export default function AccountPage() {
           {user ? (
             <div className="profile-card-inner glass-card">
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <OutlineIcon
-                  char={user.connection_type === 'minecraft' ? 'M' : 'D'}
-                  large
-                />
+                <span style={{ fontSize: '2rem' }}>
+                  {user.connection_type === 'minecraft' ? '⛏️' : '💬'}
+                </span>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--accent)' }}>
                     {user.display_name}
@@ -75,7 +73,7 @@ export default function AccountPage() {
               <div className="unlocked-grid">
                 {user.unlocked_products.map((item) => (
                   <Link key={item.id} href={`/product/${item.product.slug}`} className="unlocked-item glass-card">
-                    <OutlineIcon char="v" round className="unlocked-check-icon" />
+                    <div className="check">✓</div>
                     <div style={{ fontWeight: 600 }}>{item.product.name}</div>
                     <div style={{ color: 'var(--muted)', fontSize: '0.8rem', marginTop: '0.25rem' }}>
                       Freigeschaltet

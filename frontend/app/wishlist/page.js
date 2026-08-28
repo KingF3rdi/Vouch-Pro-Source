@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Header from '../../components/Header';
-import OutlineIcon from '../../components/OutlineIcon';
 import { api } from '../../lib/api';
 import { formatIngamePrice } from '../../lib/formatPrice';
 
@@ -49,7 +48,7 @@ export default function WishlistPage() {
                   {item.product.preview_url ? (
                     <img src={item.product.preview_url} alt={item.product.name} />
                   ) : (
-                    <OutlineIcon char="□" className="preview-placeholder-icon" />
+                    <span className="preview-placeholder">📦</span>
                   )}
                 </div>
                 <div className="product-card-body">

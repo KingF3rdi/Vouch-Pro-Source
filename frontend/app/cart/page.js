@@ -6,7 +6,6 @@ import Header from '../../components/Header';
 import { useCart } from '../../lib/cartContext';
 import { api } from '../../lib/api';
 import { formatIngamePrice } from '../../lib/formatPrice';
-import OutlineIcon from '../../components/OutlineIcon';
 
 export default function CartPage() {
   const { items, removeItem, clearCart, total } = useCart();
@@ -100,7 +99,7 @@ export default function CartPage() {
                     {item.preview_url ? (
                       <img src={item.preview_url} alt={item.name} />
                     ) : (
-                      <OutlineIcon char="□" className="preview-placeholder-icon preview-placeholder-icon--sm" />
+                      <span className="preview-placeholder">📦</span>
                     )}
                   </Link>
                   <div className="cart-item-info">

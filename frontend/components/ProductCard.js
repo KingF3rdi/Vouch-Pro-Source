@@ -4,8 +4,6 @@ import Link from 'next/link';
 import { formatIngamePrice } from '../lib/formatPrice';
 import AddToCartButton from './AddToCartButton';
 
-import OutlineIcon from './OutlineIcon';
-
 export default function ProductCard({ product }) {
   const tags = product.tags
     ? product.tags.split(',').map((t) => t.trim()).filter(Boolean)
@@ -18,7 +16,7 @@ export default function ProductCard({ product }) {
           {product.preview_url ? (
             <img src={product.preview_url} alt={product.name} />
           ) : (
-            <OutlineIcon char="□" className="preview-placeholder-icon" />
+            <span className="product-card-placeholder">📦</span>
           )}
           {product.category && (
             <span className="product-card-category">{product.category.name}</span>

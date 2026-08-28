@@ -8,7 +8,6 @@ import CategoryBadge from '../../../components/CategoryBadge';
 import CategoryDivider from '../../../components/CategoryDivider';
 import { api } from '../../../lib/api';
 import AddToCartButton from '../../../components/AddToCartButton';
-import OutlineIcon from '../../../components/OutlineIcon';
 import { formatIngamePrice } from '../../../lib/formatPrice';
 
 export default function ProductPage() {
@@ -112,7 +111,7 @@ export default function ProductPage() {
                   <img src={allMedia[activeMedia]?.url} alt={product.name} />
                 )
               ) : (
-                <OutlineIcon char="□" className="preview-placeholder-icon preview-placeholder-icon--lg" />
+                <div className="preview-placeholder">📦</div>
               )}
             </div>
             {allMedia.length > 1 && (
@@ -191,7 +190,7 @@ export default function ProductPage() {
                 {user?.discord_id ? 'Bezahlen (Discord Ticket)' : 'Discord verbinden zum Kaufen'}
               </button>
               <AddToCartButton product={product} />
-              <button className="btn btn-outline-glass" onClick={toggleWishlist}>Wunschliste</button>
+              <button className="btn btn-outline-glass" onClick={toggleWishlist}>♥ Wunschliste</button>
             </div>
 
             {orderMsg && (
