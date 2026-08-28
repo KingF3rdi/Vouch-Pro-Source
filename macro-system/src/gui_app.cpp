@@ -12,7 +12,7 @@
 namespace {
 
 constexpr int kWindowWidth = 480;
-constexpr int kWindowHeight = 760;
+constexpr int kWindowHeight = 820;
 constexpr int kCornerRadius = 26;
 constexpr int kTitleBarHeight = 58;
 COLORREF kWhite = RGB(245, 248, 255);
@@ -128,6 +128,10 @@ void GuiApp::createControls(HWND hwnd) {
         const wchar_t* label;
         const wchar_t* value;
     } fields[] = {
+        {ControlIds::GlobalInventory, L"Inventar-Taste (global)", L"E"},
+        {ControlIds::GlobalOffhand, L"Offhand-Taste (global)", L"F"},
+        {ControlIds::GlobalUse, L"Use-Taste (global)", L"R"},
+        {ControlIds::GlobalAttackSlot, L"Angriffs-Slot (global)", L"1"},
         {ControlIds::Cooldown, L"Stunslam Cooldown (ms)", L"1000"},
         {ControlIds::SuccessChance, L"Erfolgschance (%)", L"85"},
         {ControlIds::ClickHoldMin, L"Klick Min (ms)", L"15"},
@@ -233,8 +237,25 @@ float GuiApp::readFloat(int controlId, float fallback) const {
     }
 }
 
+WORD GuiApp::readKey(int controlId, WORD fallback) const {
+    wchar_t buffer[8]{};
+    GetDlgItemTextW(hwnd_, controlId, buffer, 7);
+    if (buffer[0] == L'\0') {
+        return fallback;
+    }
+    return static_cast<WORD>(buffer[0]);
+}
+
 AppConfig GuiApp::readConfigFromUi() const {
     AppConfig config{};
+    config.bindings.inventoryKey =
+        readKey(ControlIds::GlobalInventory, config.bindings.inventoryKey);
+    config.bindings.offhandSwapKey =
+        readKey(ControlIds::GlobalOffhand, config.bindings.offhandSwapKey);
+    config.bindings.useKey = readKey(ControlIds::GlobalUse, config.bindings.useKey);
+    config.bindings.attackSlotKey =
+        readKey(ControlIds::GlobalAttackSlot, config.bindings.attackSlotKey);
+
     config.stunslam.cooldownMs = readInt(ControlIds::Cooldown, config.stunslam.cooldownMs);
     config.stunslam.successChance =
         std::clamp(readInt(ControlIds::SuccessChance, config.stunslam.successChance), 0, 100);
@@ -270,6 +291,18 @@ AppConfig GuiApp::readConfigFromUi() const {
 }
 
 void GuiApp::writeConfigToUi(const AppConfig& config) {
+    wchar_t keyBuf[2]{};
+    keyBuf[1] = L'\0';
+
+    keyBuf[0] = static_cast<wchar_t>(config.bindings.inventoryKey);
+    SetDlgItemTextW(hwnd_, ControlIds::GlobalInventory, keyBuf);
+    keyBuf[0] = static_cast<wchar_t>(config.bindings.offhandSwapKey);
+    SetDlgItemTextW(hwnd_, ControlIds::GlobalOffhand, keyBuf);
+    keyBuf[0] = static_cast<wchar_t>(config.bindings.useKey);
+    SetDlgItemTextW(hwnd_, ControlIds::GlobalUse, keyBuf);
+    keyBuf[0] = static_cast<wchar_t>(config.bindings.attackSlotKey);
+    SetDlgItemTextW(hwnd_, ControlIds::GlobalAttackSlot, keyBuf);
+
     SetDlgItemTextW(hwnd_, ControlIds::Cooldown, toWide(config.stunslam.cooldownMs).c_str());
     SetDlgItemTextW(hwnd_, ControlIds::SuccessChance, toWide(config.stunslam.successChance).c_str());
     SetDlgItemTextW(hwnd_, ControlIds::ClickHoldMin, toWide(config.stunslam.clickHoldMinMs).c_str());

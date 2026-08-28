@@ -17,14 +17,14 @@ macro::AppConfig defaultConfig() {
     cfg.bindings.useKey = 'R';
     cfg.bindings.attackSlotKey = '1';
 
-    cfg.stunslam.cooldownMs = 1000;
-    cfg.stunslam.successChance = 85;
+    cfg.stunslam.cooldownMs = 620;
+    cfg.stunslam.successChance = 100;
     cfg.stunslam.activationKey = VK_XBUTTON1;
     cfg.stunslam.axeSlotKey = '2';
     cfg.stunslam.maceSlotKey = '3';
-    cfg.stunslam.fall.motionSampleIntervalMs = 10;
-    cfg.stunslam.fall.fallDetectionWindowMs = 220;
-    cfg.stunslam.fall.upwardVelocityThreshold = 32.0f;
+    cfg.stunslam.fall.motionSampleIntervalMs = 8;
+    cfg.stunslam.fall.fallDetectionWindowMs = 180;
+    cfg.stunslam.fall.upwardVelocityThreshold = 28.0f;
 
     cfg.pearlcatch.hotkeyStandard = VK_F6;
     cfg.pearlcatch.hotkeyHotbarTotem = VK_F5;

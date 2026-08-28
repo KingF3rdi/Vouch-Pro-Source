@@ -10,9 +10,9 @@
 namespace macro {
 
 struct FallDetectorConfig {
-    int motionSampleIntervalMs{10};
-    int fallDetectionWindowMs{220};
-    float upwardVelocityThreshold{32.0f};
+    int motionSampleIntervalMs{8};
+    int fallDetectionWindowMs{180};
+    float upwardVelocityThreshold{28.0f};
 };
 
 /// Rasterbasierte Bewegungserkennung: vertikale Kontrastverschiebung nach oben.

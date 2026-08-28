@@ -14,9 +14,7 @@ StunslamBotConfig StunslamBot::config() const { return config_; }
 
 bool StunslamBot::isInFreeFall() const { return fallDetector_.isInFreeFall(); }
 
-bool StunslamBot::isShieldActive() const {
-    return shieldInRange_ || shieldOnGround_;
-}
+bool StunslamBot::isShieldActive() const { return shieldInRange_ || shieldOnGround_; }
 
 bool StunslamBot::isEnemyShieldInRange() const { return shieldInRange_; }
 
@@ -54,19 +52,19 @@ bool StunslamBot::isActivationActive() const {
 }
 
 void StunslamBot::executeAirStunslam() {
-    // Luft-Stunslam: Treffer -> Axt -> Mace -> Treffer -> optional zurueck zur Axt
+    // Optimiert: minimaler Tick-Gap zwischen Fall-Hit, Swap-Kette und Mace-Finisher
     input_.microDelay(config_.microDelayMinMs, config_.microDelayMaxMs);
     input_.leftClick(config_.clickHoldMinMs, config_.clickHoldMaxMs);
 
-    input_.sleepMs(config_.preClickDelayMinMs, config_.preClickDelayMaxMs);
+    input_.sleepMs(config_.preSwapDelayMinMs, config_.preSwapDelayMaxMs);
     input_.pressKey(config_.axeSlotKey);
-    input_.sleepMs(config_.preClickDelayMinMs, config_.preClickDelayMaxMs);
+    input_.sleepMs(config_.preSwapDelayMinMs, config_.preSwapDelayMaxMs);
     input_.pressKey(config_.maceSlotKey);
-    input_.sleepMs(config_.preClickDelayMinMs, config_.preClickDelayMaxMs);
+    input_.sleepMs(config_.preSwapDelayMinMs, config_.preSwapDelayMaxMs);
     input_.leftClick(config_.clickHoldMinMs, config_.clickHoldMaxMs);
 
     if (config_.switchBackToAxeWhenActivated && isActivationActive()) {
-        input_.sleepMs(config_.preClickDelayMinMs, config_.preClickDelayMaxMs);
+        input_.sleepMs(config_.preSwapDelayMinMs, config_.preSwapDelayMaxMs);
         input_.pressKey(config_.axeSlotKey);
     }
 
@@ -74,11 +72,10 @@ void StunslamBot::executeAirStunslam() {
 }
 
 void StunslamBot::executeGroundShieldStun() {
-    // Boden-Stun: Treffer -> waehrend Hit Axt-Swap -> zweiter Treffer
     input_.microDelay(config_.microDelayMinMs, config_.microDelayMaxMs);
     input_.leftClickWithMidSwap(config_.axeSlotKey, config_.clickHoldMinMs, config_.clickHoldMaxMs,
                                 config_.midSwapMinMs, config_.midSwapMaxMs);
-    input_.sleepMs(config_.preClickDelayMinMs, config_.preClickDelayMaxMs);
+    input_.sleepMs(config_.betweenHitsMinMs, config_.betweenHitsMaxMs);
     input_.leftClick(config_.clickHoldMinMs, config_.clickHoldMaxMs);
 
     lastGroundStunTime_ = now();
@@ -88,17 +85,13 @@ void StunslamBot::runLoop() {
     while (!stopRequested_) {
         guard_.update();
         fallDetector_.update();
+        screen_.tickShieldDetection();
 
         const bool gameplayAllowed =
             guard_.isAllowed(GameStateGuard::MacroPolicy::Gameplay);
 
-        bool enemyShield = false;
-        bool groundShield = false;
-
-        if (gameplayAllowed) {
-            enemyShield = screen_.isEnemyShieldInRange();
-            groundShield = screen_.isShieldOnGround();
-        }
+        const bool enemyShield = gameplayAllowed && screen_.isEnemyShieldInRange();
+        const bool groundShield = gameplayAllowed && screen_.isShieldOnGround();
 
         shieldInRange_ = enemyShield;
         shieldOnGround_ = groundShield;
@@ -113,11 +106,9 @@ void StunslamBot::runLoop() {
         const bool groundCooldownReady =
             elapsedMs(lastGroundStunTime_) >= config_.groundStunCooldownMs;
 
-        if (airCooldownReady && falling && enemyShield &&
-            rng_.rollPercent(config_.successChance)) {
+        if (airCooldownReady && falling && enemyShield) {
             executeAirStunslam();
-        } else if (groundCooldownReady && groundShield &&
-                   rng_.rollPercent(config_.successChance)) {
+        } else if (groundCooldownReady && groundShield) {
             executeGroundShieldStun();
         }
 

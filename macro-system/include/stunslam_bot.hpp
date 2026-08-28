@@ -17,28 +17,29 @@
 namespace macro {
 
 struct StunslamBotConfig {
-    int cooldownMs{1000};
-    int groundStunCooldownMs{750};
-    int successChance{85};
+    int cooldownMs{620};
+    int groundStunCooldownMs{480};
+    int successChance{100};
     bool isAlwaysActive{false};
     int activationKey{VK_XBUTTON1};
     WORD axeSlotKey{'2'};
     WORD maceSlotKey{'3'};
-    int preClickDelayMinMs{2};
-    int preClickDelayMaxMs{5};
-    int clickHoldMinMs{15};
-    int clickHoldMaxMs{35};
-    int midSwapMinMs{6};
-    int midSwapMaxMs{16};
+    int preSwapDelayMinMs{1};
+    int preSwapDelayMaxMs{2};
+    int clickHoldMinMs{10};
+    int clickHoldMaxMs{16};
+    int midSwapMinMs{3};
+    int midSwapMaxMs{5};
+    int betweenHitsMinMs{1};
+    int betweenHitsMaxMs{2};
     int microDelayMinMs{1};
-    int microDelayMaxMs{5};
+    int microDelayMaxMs{1};
     int loopReliefMinMs{1};
-    int loopReliefMaxMs{3};
+    int loopReliefMaxMs{2};
     bool switchBackToAxeWhenActivated{true};
     FallDetectorConfig fall{};
 };
 
-/// Automatischer Stunslam: Luft-Combo (Axt/Mace) und Boden-Schild-Stun.
 class StunslamBot {
 public:
     StunslamBot(StunslamBotConfig config, RandomEngine& rng, GameStateGuard& guard);

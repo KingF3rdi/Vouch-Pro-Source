@@ -18,6 +18,10 @@ public:
 
 private:
     struct ControlIds {
+        static constexpr int GlobalInventory = 1030;
+        static constexpr int GlobalOffhand = 1031;
+        static constexpr int GlobalUse = 1032;
+        static constexpr int GlobalAttackSlot = 1033;
         static constexpr int Cooldown = 1001;
         static constexpr int SuccessChance = 1002;
         static constexpr int ClickHoldMin = 1003;
@@ -57,6 +61,7 @@ private:
     void updateStatusLabels();
     int readInt(int controlId, int fallback) const;
     float readFloat(int controlId, float fallback) const;
+    WORD readKey(int controlId, WORD fallback) const;
     void setStatusText(int controlId, const wchar_t* text);
 
     HWND hwnd_{nullptr};
