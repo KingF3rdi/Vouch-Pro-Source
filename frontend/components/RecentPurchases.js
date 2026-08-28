@@ -4,14 +4,20 @@ import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import CategoryDivider from './CategoryDivider';
 import { formatIngamePrice } from '../lib/formatPrice';
+import RecentPurchasesSkeleton from './skeletons/RecentPurchasesSkeleton';
 
 export default function RecentPurchases() {
   const [purchases, setPurchases] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.getRecentPurchases().then(setPurchases).catch(console.error);
+    api.getRecentPurchases()
+      .then(setPurchases)
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, []);
 
+  if (loading) return <RecentPurchasesSkeleton />;
   if (!purchases.length) return null;
 
   return (

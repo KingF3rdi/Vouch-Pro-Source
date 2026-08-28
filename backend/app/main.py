@@ -68,7 +68,7 @@ async def startup():
             db.add(Category(name="Texture Packs", slug="texture-packs"))
             db.add(Category(name="Mods", slug="mods"))
 
-        await services.deactivate_shader_products(db)
+        await services.remove_shader_content(db)
         await db.commit()
 
 

@@ -8,6 +8,8 @@ import CategoryBadge from '../../../components/CategoryBadge';
 import CategoryDivider from '../../../components/CategoryDivider';
 import { api } from '../../../lib/api';
 import AddToCartButton from '../../../components/AddToCartButton';
+import BuyNowButton from '../../../components/BuyNowButton';
+import ProductDetailSkeleton from '../../../components/skeletons/ProductDetailSkeleton';
 import { formatIngamePrice } from '../../../lib/formatPrice';
 
 export default function ProductPage() {
@@ -16,19 +18,21 @@ export default function ProductPage() {
   const [product, setProduct] = useState(null);
   const [similar, setSimilar] = useState([]);
   const [activeMedia, setActiveMedia] = useState(0);
-  const [discountCode, setDiscountCode] = useState('');
-  const [discountResult, setDiscountResult] = useState(null);
-  const [ign, setIgn] = useState('');
   const [user, setUser] = useState(null);
   const [orderMsg, setOrderMsg] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.getProduct(slug).then(setProduct).catch(console.error);
-    api.getSimilar(slug).then(setSimilar).catch(console.error);
-    api.getMe().then((u) => {
-      setUser(u);
-      if (u?.ign) setIgn(u.ign);
-    }).catch(() => {});
+    setLoading(true);
+    setProduct(null);
+    setSimilar([]);
+    setActiveMedia(0);
+
+    Promise.all([
+      api.getProduct(slug).then(setProduct).catch(console.error),
+      api.getSimilar(slug).then(setSimilar).catch(console.error),
+      api.getMe().then(setUser).catch(() => setUser(null)),
+    ]).finally(() => setLoading(false));
   }, [slug]);
 
   const allMedia = product
@@ -38,59 +42,33 @@ export default function ProductPage() {
       ].slice(0, 5)
     : [];
 
-  async function validateDiscount() {
-    const result = await api.validateDiscount(discountCode);
-    setDiscountResult(result);
-  }
-
-  function getFinalPrice() {
-    if (!product) return 0;
-    if (discountResult?.valid) {
-      return product.price * (1 - discountResult.discount_percent / 100);
-    }
-    return product.price;
-  }
-
-  async function handleOrder() {
-    if (!user?.discord_id) {
-      setOrderMsg('Bitte zuerst Discord verbinden (Profil), um zu kaufen. Der Bezahlvorgang läuft über ein Discord-Ticket.');
-      return;
-    }
-    if (!ign) {
-      setOrderMsg('Bitte IGN eingeben oder im Profil verknüpfen.');
-      return;
-    }
-    try {
-      const order = await api.createOrder(product.id, ign, discountResult?.valid ? discountCode : null);
-      if (order.ticket_url) {
-        setOrderMsg(
-          `Ticket geöffnet! Bestellung #${order.id} — ${formatIngamePrice(getFinalPrice())}. Öffne dein Discord-Ticket zur Zahlung.`
-        );
-        window.open(order.ticket_url, '_blank');
-      } else {
-        setOrderMsg(order.message || `Bestellung #${order.id} erstellt.`);
-      }
-    } catch (e) {
-      setOrderMsg(e.message);
-    }
-  }
-
   async function toggleWishlist() {
     if (!user) {
-      setOrderMsg('Bitte zuerst Discord/IGN verknüpfen.');
+      setOrderMsg('Bitte zuerst Discord verknüpfen (Profil).');
       return;
     }
     await api.toggleWishlist(product.id);
     setOrderMsg('Wunschliste aktualisiert!');
   }
 
+  if (loading) {
+    return (
+      <>
+        <Header />
+        <ProductDetailSkeleton />
+      </>
+    );
+  }
+
   if (!product) {
     return (
       <>
         <Header />
-        <div className="container" style={{ padding: '3rem', textAlign: 'center' }}>
-          Lade Produkt...
-        </div>
+        <main className="container main-content main-content--offset">
+          <div className="glass-panel cart-empty-panel">
+            <p>Produkt nicht gefunden.</p>
+          </div>
+        </main>
       </>
     );
   }
@@ -111,7 +89,7 @@ export default function ProductPage() {
                   <img src={allMedia[activeMedia]?.url} alt={product.name} />
                 )
               ) : (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: '4rem' }}>📦</div>
+                <div className="preview-placeholder">📦</div>
               )}
             </div>
             {allMedia.length > 1 && (
@@ -138,14 +116,7 @@ export default function ProductPage() {
             {product.category && (
               <CategoryBadge className="tag--category">{product.category.name}</CategoryBadge>
             )}
-            <div className="price-large">
-              {formatIngamePrice(getFinalPrice())}
-              {discountResult?.valid && (
-                <span className="price-strikethrough">
-                  {formatIngamePrice(product.price)}
-                </span>
-              )}
-            </div>
+            <div className="price-large">{formatIngamePrice(product.price)}</div>
             <p style={{ color: 'var(--muted)' }}>{product.description}</p>
 
             {tags.length > 0 && (
@@ -156,41 +127,16 @@ export default function ProductPage() {
               </div>
             )}
 
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>Creator / Rabatt Code (10%)</label>
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.35rem' }}>
-                <input
-                  className="form-input"
-                  style={{ flex: 1, marginBottom: 0 }}
-                  value={discountCode}
-                  onChange={(e) => setDiscountCode(e.target.value)}
-                  placeholder="CREATOR10"
-                />
-                <button className="btn btn-outline-glass" onClick={validateDiscount}>Prüfen</button>
-              </div>
-              {discountResult && (
-                <p style={{ color: discountResult.valid ? 'var(--accent)' : 'var(--danger)', fontSize: '0.85rem', marginTop: '0.35rem' }}>
-                  {discountResult.message}
-                </p>
-              )}
-            </div>
+            <p style={{ fontSize: '0.85rem', color: 'var(--muted)', marginBottom: '1rem' }}>
+              IGN und Rabattcode werden an der Kasse abgefragt.
+            </p>
 
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>Minecraft IGN</label>
-              <input
-                className="form-input"
-                value={ign}
-                onChange={(e) => setIgn(e.target.value)}
-                placeholder="DeinIngameName"
-              />
-            </div>
-
-            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-              <button className="btn" onClick={handleOrder}>
-                {user?.discord_id ? 'Bezahlen (Discord Ticket)' : 'Discord verbinden zum Kaufen'}
+            <div className="product-detail-actions">
+              <AddToCartButton product={product} className="btn" label="In den Warenkorb" />
+              <BuyNowButton product={product} label="Jetzt kaufen" />
+              <button type="button" className="btn btn-outline-glass" onClick={toggleWishlist}>
+                ♥ Wunschliste
               </button>
-              <AddToCartButton product={product} />
-              <button className="btn btn-outline-glass" onClick={toggleWishlist}>♥ Wunschliste</button>
             </div>
 
             {orderMsg && (
@@ -199,6 +145,7 @@ export default function ProductPage() {
 
             <p style={{ marginTop: '1rem', fontSize: '0.85rem', color: 'var(--muted)' }}>
               {product.sales_count} Verkäufe · Discord Rolle wird nach Kauf vergeben
+              {!user?.discord_id && ' · Discord-Verknüpfung im Profil erforderlich'}
             </p>
           </div>
         </div>

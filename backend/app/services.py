@@ -2,7 +2,7 @@ import secrets
 import string
 from datetime import datetime, timedelta
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -22,20 +22,58 @@ from app.models import (
     WishlistItem,
 )
 
-EXCLUDED_CATEGORY_SLUGS = frozenset({"shader"})
+SHADER_MARKERS = ("shader", "shaders")
 
 
-def _shader_category_ids_subquery():
-    return select(Category.id).where(Category.slug.in_(EXCLUDED_CATEGORY_SLUGS))
+def _contains_shader_marker(value: str | None) -> bool:
+    if not value:
+        return False
+    normalized = value.lower().replace("_", "-")
+    return any(marker in normalized for marker in SHADER_MARKERS)
+
+
+def _is_shader_slug(slug: str | None) -> bool:
+    if not slug:
+        return False
+    normalized = slug.lower().strip()
+    return normalized in SHADER_MARKERS or _contains_shader_marker(normalized)
+
+
+def _is_shader_category(category: Category | None) -> bool:
+    if not category:
+        return False
+    return _is_shader_slug(category.slug) or _contains_shader_marker(category.name)
+
+
+def _is_shader_product(product: Product) -> bool:
+    return (
+        _contains_shader_marker(product.name)
+        or _contains_shader_marker(product.slug)
+        or _contains_shader_marker(product.tags)
+        or _is_shader_category(product.category)
+    )
+
+
+def _shader_category_filter():
+    return or_(
+        func.lower(Category.slug).like("%shader%"),
+        func.lower(Category.name).like("%shader%"),
+    )
+
+
+def _shader_product_filter():
+    return or_(
+        func.lower(Product.name).like("%shader%"),
+        func.lower(Product.slug).like("%shader%"),
+        func.lower(Product.tags).like("%shader%"),
+        Product.category_id.in_(select(Category.id).where(_shader_category_filter())),
+    )
 
 
 def _active_product_filters():
     return (
         Product.is_active == True,
-        or_(
-            Product.category_id.is_(None),
-            Product.category_id.not_in(_shader_category_ids_subquery()),
-        ),
+        ~_shader_product_filter(),
     )
 
 
@@ -129,7 +167,7 @@ async def search_products(
         )
 
     if category_slug:
-        if category_slug in EXCLUDED_CATEGORY_SLUGS:
+        if _is_shader_slug(category_slug):
             return []
         query = query.join(Category).where(Category.slug == category_slug)
 
@@ -195,23 +233,54 @@ async def get_similar_products(db: AsyncSession, product: Product, limit: int = 
 async def get_categories(db: AsyncSession):
     result = await db.execute(
         select(Category)
-        .where(Category.slug.not_in(EXCLUDED_CATEGORY_SLUGS))
+        .where(~_shader_category_filter())
         .order_by(Category.name)
     )
     return result.scalars().all()
 
 
-async def deactivate_shader_products(db: AsyncSession):
-    shader_ids = (
-        await db.scalars(select(Category.id).where(Category.slug.in_(EXCLUDED_CATEGORY_SLUGS)))
+async def remove_shader_content(db: AsyncSession) -> dict:
+    """Shader-Kategorien und Shader-Produkte vollständig aus dem Shop entfernen."""
+    shader_categories = (
+        await db.scalars(select(Category).where(_shader_category_filter()))
     ).all()
-    if not shader_ids:
-        return
-    result = await db.execute(
-        select(Product).where(Product.category_id.in_(shader_ids), Product.is_active == True)
-    )
-    for product in result.scalars().all():
-        product.is_active = False
+    shader_category_ids = [category.id for category in shader_categories]
+
+    shader_conditions = [_shader_product_filter()]
+    if shader_category_ids:
+        shader_conditions.append(Product.category_id.in_(shader_category_ids))
+
+    shader_products = (
+        await db.execute(
+            select(Product)
+            .options(selectinload(Product.category))
+            .where(or_(*shader_conditions))
+        )
+    ).scalars().all()
+
+    shader_product_ids = list({product.id for product in shader_products})
+    removed_products = 0
+    removed_categories = 0
+
+    if shader_product_ids:
+        await db.execute(
+            delete(WishlistItem).where(WishlistItem.product_id.in_(shader_product_ids))
+        )
+        await db.execute(
+            delete(UnlockedProduct).where(UnlockedProduct.product_id.in_(shader_product_ids))
+        )
+        await db.execute(
+            delete(ProductMedia).where(ProductMedia.product_id.in_(shader_product_ids))
+        )
+        await db.execute(delete(Order).where(Order.product_id.in_(shader_product_ids)))
+        await db.execute(delete(Product).where(Product.id.in_(shader_product_ids)))
+        removed_products = len(shader_product_ids)
+
+    if shader_category_ids:
+        await db.execute(delete(Category).where(Category.id.in_(shader_category_ids)))
+        removed_categories = len(shader_category_ids)
+
+    return {"removed_products": removed_products, "removed_categories": removed_categories}
 
 
 async def create_link_code(
@@ -315,6 +384,8 @@ async def create_order(
     product = result.scalar_one_or_none()
     if not product:
         raise ValueError("Produkt nicht gefunden")
+    if _is_shader_product(product):
+        raise ValueError("Shader-Produkte sind nicht verfügbar")
 
     amount = product.price
     if discount_code:
@@ -387,13 +458,19 @@ async def sync_sale_from_bot(
 ) -> Order:
     product: Product | None = None
     if product_id:
-        result = await db.execute(select(Product).where(Product.id == product_id))
+        result = await db.execute(
+            select(Product)
+            .options(selectinload(Product.category))
+            .where(Product.id == product_id)
+        )
         product = result.scalar_one_or_none()
     elif product_slug:
         product = await get_product_by_slug(db, product_slug)
 
     if not product:
         raise ValueError("Produkt nicht gefunden")
+    if _is_shader_product(product):
+        raise ValueError("Shader-Produkte sind nicht verfügbar")
 
     user_id = None
     if discord_id:
@@ -412,6 +489,11 @@ async def sync_sale_from_bot(
 
 
 async def create_product_from_bot(db: AsyncSession, data: dict) -> Product:
+    if _contains_shader_marker(data.get("name")) or _contains_shader_marker(data.get("tags")):
+        raise ValueError("Shader-Produkte werden nicht unterstützt")
+    if data.get("category_slug") and _is_shader_slug(data["category_slug"]):
+        raise ValueError("Shader-Kategorien werden nicht unterstützt")
+
     slug = slugify(data["name"])
     existing = await get_product_by_slug(db, slug)
     if existing:
@@ -421,6 +503,8 @@ async def create_product_from_bot(db: AsyncSession, data: dict) -> Product:
     if data.get("category_slug"):
         result = await db.execute(select(Category).where(Category.slug == data["category_slug"]))
         cat = result.scalar_one_or_none()
+        if cat and _is_shader_category(cat):
+            raise ValueError("Shader-Kategorien werden nicht unterstützt")
         if not cat:
             cat = Category(name=data["category_slug"].title(), slug=data["category_slug"])
             db.add(cat)
@@ -485,6 +569,8 @@ async def toggle_wishlist(db: AsyncSession, user_id: int, product_id: int) -> bo
     product = result.scalar_one_or_none()
     if not product:
         raise ValueError("Produkt nicht gefunden")
+    if _is_shader_product(product):
+        raise ValueError("Shader-Produkte sind nicht verfügbar")
 
     db.add(WishlistItem(user_id=user_id, product_id=product_id, price_at_add=product.price))
     await db.commit()
@@ -610,6 +696,8 @@ async def create_purchase_with_ticket(
     product = result.scalar_one_or_none()
     if not product:
         raise ValueError("Produkt nicht gefunden")
+    if _is_shader_product(product):
+        raise ValueError("Shader-Produkte sind nicht verfügbar")
 
     amount = product.price
     discount_percent = 0
@@ -799,6 +887,8 @@ async def update_product_price(db: AsyncSession, product_id: int, new_price: flo
     product = result.scalar_one_or_none()
     if not product:
         raise ValueError("Produkt nicht gefunden")
+    if _is_shader_product(product):
+        raise ValueError("Shader-Produkte sind nicht verfügbar")
 
     old_price = product.price
     product.price = new_price
@@ -812,6 +902,7 @@ async def list_products_admin(db: AsyncSession):
     result = await db.execute(
         select(Product)
         .options(selectinload(Product.category), selectinload(Product.media))
+        .where(~_shader_product_filter())
         .order_by(Product.created_at.desc())
     )
     return result.scalars().all()
@@ -826,8 +917,12 @@ async def update_product_admin(db: AsyncSession, product_id: int, data: dict) ->
     product = result.scalar_one_or_none()
     if not product:
         raise ValueError("Produkt nicht gefunden")
+    if _is_shader_product(product):
+        raise ValueError("Shader-Produkte sind nicht verfügbar")
 
     if data.get("name"):
+        if _contains_shader_marker(data["name"]):
+            raise ValueError("Shader-Produkte werden nicht unterstützt")
         product.name = data["name"]
     if data.get("description") is not None:
         product.description = data["description"]
@@ -838,6 +933,8 @@ async def update_product_admin(db: AsyncSession, product_id: int, data: dict) ->
     if data.get("discord_role_id") is not None:
         product.discord_role_id = data["discord_role_id"]
     if data.get("tags") is not None:
+        if _contains_shader_marker(data["tags"]):
+            raise ValueError("Shader-Produkte werden nicht unterstützt")
         product.tags = data["tags"]
     if data.get("is_new") is not None:
         product.is_new = data["is_new"]
@@ -847,6 +944,8 @@ async def update_product_admin(db: AsyncSession, product_id: int, data: dict) ->
     if data.get("category_slug") is not None:
         slug = data["category_slug"]
         if slug:
+            if _is_shader_slug(slug):
+                raise ValueError("Shader-Kategorien werden nicht unterstützt")
             cat_result = await db.execute(select(Category).where(Category.slug == slug))
             cat = cat_result.scalar_one_or_none()
             if not cat:
@@ -869,6 +968,8 @@ async def deactivate_product_admin(db: AsyncSession, product_id: int) -> Product
 
 async def create_category_admin(db: AsyncSession, name: str, slug: str | None = None) -> Category:
     slug_value = slug or slugify(name)
+    if _is_shader_slug(slug_value) or _contains_shader_marker(name):
+        raise ValueError("Shader-Kategorien werden nicht unterstützt")
     existing = await db.execute(select(Category).where(Category.slug == slug_value))
     if existing.scalar_one_or_none():
         raise ValueError("Kategorie existiert bereits")
