@@ -202,9 +202,12 @@ export default function ProductPage() {
           <section className="section category-suggestions">
             <div className="section-header glass-panel section-header-panel">
               <div>
-                <h2>Mehr aus derselben Kategorie</h2>
+                <h2>Ähnliche Produkte</h2>
                 {product.category && (
-                  <p className="section-subtitle">{product.category.name}</p>
+                  <p className="section-subtitle">
+                    {product.category.name}
+                    {product.tags ? ' · auch passende Tags' : ''}
+                  </p>
                 )}
               </div>
             </div>
