@@ -21,14 +21,29 @@ void InputSimulator::sendMouse(DWORD flags) {
     SendInput(1, &input, sizeof(INPUT));
 }
 
+void InputSimulator::keyDown(WORD virtualKey) { sendKey(virtualKey, 0); }
+
+void InputSimulator::keyUp(WORD virtualKey) { sendKey(virtualKey, KEYEVENTF_KEYUP); }
+
 void InputSimulator::pressKey(WORD virtualKey) {
-    sendKey(virtualKey, 0);
-    sendKey(virtualKey, KEYEVENTF_KEYUP);
+    keyDown(virtualKey);
+    keyUp(virtualKey);
+}
+
+void InputSimulator::holdKeys(const std::initializer_list<WORD>& keys) {
+    for (WORD key : keys) {
+        keyDown(key);
+    }
+}
+
+void InputSimulator::releaseKeys(const std::initializer_list<WORD>& keys) {
+    for (WORD key : keys) {
+        keyUp(key);
+    }
 }
 
 void InputSimulator::leftClick(int holdMinMs, int holdMaxMs) {
     sendMouse(MOUSEEVENTF_LEFTDOWN);
-    // Zufallsberechnung: variable Klickdauer wirkt menschlicher
     std::this_thread::sleep_for(
         std::chrono::milliseconds(rng_.uniformInt(holdMinMs, holdMaxMs)));
     sendMouse(MOUSEEVENTF_LEFTUP);
@@ -41,9 +56,30 @@ void InputSimulator::rightClick(int holdMinMs, int holdMaxMs) {
     sendMouse(MOUSEEVENTF_RIGHTUP);
 }
 
+void InputSimulator::doubleRightClick(int holdMinMs, int holdMaxMs, int gapMinMs, int gapMaxMs) {
+    rightClick(holdMinMs, holdMaxMs);
+    sleepMs(gapMinMs, gapMaxMs);
+    rightClick(holdMinMs, holdMaxMs);
+}
+
+void InputSimulator::shiftLeftClick() {
+    // Offhand-/Inventar-Wechsel: Shift-Klick via SendInput
+    keyDown(VK_SHIFT);
+    microDelay(1, 3);
+    sendMouse(MOUSEEVENTF_LEFTDOWN);
+    microDelay(1, 3);
+    sendMouse(MOUSEEVENTF_LEFTUP);
+    keyUp(VK_SHIFT);
+}
+
+void InputSimulator::moveCursor(int x, int y) { SetCursorPos(x, y); }
+
+void InputSimulator::microDelay(int minMs, int maxMs) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(rng_.uniformInt(minMs, maxMs)));
+}
+
 void InputSimulator::sleepMs(int minMs, int maxMs) {
-    std::this_thread::sleep_for(
-        std::chrono::milliseconds(rng_.uniformInt(minMs, maxMs)));
+    std::this_thread::sleep_for(std::chrono::milliseconds(rng_.uniformInt(minMs, maxMs)));
 }
 
 }  // namespace macro

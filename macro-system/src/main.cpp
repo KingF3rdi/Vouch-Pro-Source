@@ -3,43 +3,40 @@
 #endif
 #include <windows.h>
 
-#include "sequence_macro.hpp"
-#include "trigger_bot.hpp"
+#include "macro_manager.hpp"
 
 #include <iostream>
 
 namespace {
 
-macro::TriggerBotConfig defaultTriggerConfig() {
-    macro::TriggerBotConfig cfg;
-    cfg.cooldownMs = 1000;
-    cfg.successChance = 85;
-    cfg.isAlwaysActive = false;
-    cfg.clickHoldMinMs = 25;
-    cfg.clickHoldMaxMs = 60;
-    cfg.fall.motionSampleIntervalMs = 15;
-    cfg.fall.fallDetectionWindowMs = 300;
-    cfg.fall.upwardVelocityThreshold = 28.0f;
-    return cfg;
-}
+macro::AppConfig defaultConfig() {
+    macro::AppConfig cfg;
 
-macro::SequenceMacroConfig defaultSequenceConfig() {
-    macro::SequenceMacroConfig cfg;
-    cfg.hotkey = VK_F6;
-    cfg.slotAKey = '4';
-    cfg.slotBKey = '5';
-    cfg.preThrowDelayMinMs = 10;
-    cfg.preThrowDelayMaxMs = 20;
-    cfg.betweenSlotsDelayMinMs = 40;
-    cfg.betweenSlotsDelayMaxMs = 60;
+    cfg.stunslam.cooldownMs = 1000;
+    cfg.stunslam.successChance = 85;
+    cfg.stunslam.activationKey = VK_XBUTTON1;
+    cfg.stunslam.axeSlotKey = '2';
+    cfg.stunslam.fall.motionSampleIntervalMs = 10;
+    cfg.stunslam.fall.fallDetectionWindowMs = 220;
+    cfg.stunslam.fall.upwardVelocityThreshold = 32.0f;
+
+    cfg.pearlcatch.hotkeyStandard = VK_F6;
+    cfg.pearlcatch.hotkeyDiagonalLeft = VK_F7;
+    cfg.pearlcatch.hotkeyDiagonalRight = VK_F8;
+    cfg.pearlcatch.hotkeyOffhand = VK_F9;
+    cfg.pearlcatch.hotkeyLunge = VK_F10;
+
+    cfg.elytra.chestplateSlotX = 0;
+    cfg.elytra.chestplateSlotY = 0;
+
     return cfg;
 }
 
 void printBanner() {
-    std::cout << "=== Macro System (Stunslam + Pearlcatch) ===\n"
-              << "TriggerBot: XButton1 halten + Fall erkannt + Schild aktiv\n"
-              << "SequenceMacro: F6 druecken\n"
-              << "Beenden: ESC\n";
+    std::cout << "=== Externes Automatisierungs-System ===\n"
+              << "Stunslam: XButton1 | Pearlcatch: F6 | Diagonal: F7/F8\n"
+              << "Offhand: F9 | Lunge Swap: F10 | Beenden: ESC\n"
+              << "Hinweis: Elytra-Slot-Koordinaten in AppConfig setzen.\n";
 }
 
 }  // namespace
@@ -47,21 +44,15 @@ void printBanner() {
 int main() {
     printBanner();
 
+    macro::MacroManager manager(defaultConfig());
+    manager.startAll();
+
     macro::RandomEngine rng;
-    macro::TriggerBot triggerBot(defaultTriggerConfig(), rng);
-    macro::SequenceMacro sequenceMacro(defaultSequenceConfig(), rng);
-
-    triggerBot.start();
-    sequenceMacro.start();
-
-    // Hauptschleife: auf ESC warten und Module sauber stoppen
     while ((GetAsyncKeyState(VK_ESCAPE) & 0x8000) == 0) {
         macro::cpuRelief(rng);
     }
 
-    triggerBot.stop();
-    sequenceMacro.stop();
-
+    manager.stopAll();
     std::cout << "Beendet.\n";
     return 0;
 }

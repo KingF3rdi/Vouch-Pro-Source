@@ -2,8 +2,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <cstdint>
-#include <vector>
 #include <windows.h>
 
 namespace macro {
@@ -12,10 +10,7 @@ FallDetector::FallDetector(FallDetectorConfig config) : config_(config) {}
 
 void FallDetector::setConfig(const FallDetectorConfig& config) { config_ = config; }
 
-FallDetectorConfig FallDetector::config() const { return config_; }
-
 bool FallDetector::captureMotionRegion(std::vector<std::uint8_t>& bgraPixels) const {
-    // --- GDI Bitgrabbing: mittlerer Bildschirmbereich fuer Bewegungserkennung ---
     const int screenWidth = GetSystemMetrics(SM_CXSCREEN);
     const int screenHeight = GetSystemMetrics(SM_CYSCREEN);
     const int originX = (screenWidth - kRegionWidth) / 2;
@@ -59,80 +54,72 @@ bool FallDetector::captureMotionRegion(std::vector<std::uint8_t>& bgraPixels) co
     DeleteObject(bitmap);
     DeleteDC(memoryDc);
     ReleaseDC(nullptr, screenDc);
-
     return bltOk && lines == kRegionHeight;
 }
 
-float FallDetector::computeSalientCenterY(const std::vector<std::uint8_t>& bgraPixels) const {
-    const int width = kRegionWidth;
-    const int height = kRegionHeight;
+FallDetector::Grid FallDetector::buildContrastGrid(const std::vector<std::uint8_t>& pixels) const {
+    Grid grid{};
+    const int cellW = kRegionWidth / kGridCols;
+    const int cellH = kRegionHeight / kGridRows;
 
-    auto luminanceAt = [&](int x, int y) -> float {
-        const std::size_t idx = (static_cast<std::size_t>(y) * width + x) * 4;
-        const float b = bgraPixels[idx + 0];
-        const float g = bgraPixels[idx + 1];
-        const float r = bgraPixels[idx + 2];
+    auto lumAt = [&](int x, int y) {
+        const std::size_t idx = (static_cast<std::size_t>(y) * kRegionWidth + x) * 4;
+        const float r = pixels[idx + 2];
+        const float g = pixels[idx + 1];
+        const float b = pixels[idx + 0];
         return 0.299f * r + 0.587f * g + 0.114f * b;
     };
 
-    float gradientSum = 0.0f;
-    int gradientCount = 0;
+    for (int gy = 0; gy < kGridRows; ++gy) {
+        for (int gx = 0; gx < kGridCols; ++gx) {
+            float edgeSum = 0.0f;
+            int count = 0;
+            const int startX = gx * cellW;
+            const int startY = gy * cellH;
 
-    // Erste Pass: mittlere Kantenstaerke bestimmen (markante Pixelstrukturen)
-    for (int y = 1; y < height - 1; ++y) {
-        for (int x = 1; x < width - 1; ++x) {
-            const float lum = luminanceAt(x, y);
-            const float gradX = std::abs(lum - luminanceAt(x - 1, y));
-            const float gradY = std::abs(lum - luminanceAt(x, y - 1));
-            gradientSum += gradX + gradY;
-            ++gradientCount;
+            for (int y = startY + 1; y < startY + cellH - 1 && y < kRegionHeight - 1; ++y) {
+                for (int x = startX + 1; x < startX + cellW - 1 && x < kRegionWidth - 1; ++x) {
+                    const float lum = lumAt(x, y);
+                    const float grad = std::abs(lum - lumAt(x, y - 1)) + std::abs(lum - lumAt(x - 1, y));
+                    edgeSum += grad;
+                    ++count;
+                }
+            }
+            grid[gy][gx] = count > 0 ? edgeSum / static_cast<float>(count) : 0.0f;
         }
     }
+    return grid;
+}
 
-    if (gradientCount == 0) {
-        return static_cast<float>(height) * 0.5f;
-    }
+float FallDetector::estimateUpwardShiftRows(const Grid& previous, const Grid& current) const {
+    // Mathematische Bewegungsberechnung: Zeilen-Korrelation fuer vertikalen Shift
+    float bestShift = 0.0f;
+    float bestScore = -1.0f;
 
-    const float meanGradient = gradientSum / static_cast<float>(gradientCount);
-    const float salientThreshold = meanGradient * 1.35f + 4.0f;
-
-    float weightedY = 0.0f;
-    float weightSum = 0.0f;
-
-    // Zweite Pass: Y-Koordinaten markanter Strukturen gewichten
-    for (int y = 1; y < height - 1; ++y) {
-        for (int x = 1; x < width - 1; ++x) {
-            const float lum = luminanceAt(x, y);
-            const float gradX = std::abs(lum - luminanceAt(x - 1, y));
-            const float gradY = std::abs(lum - luminanceAt(x, y - 1));
-            const float gradient = gradX + gradY;
-
-            if (gradient >= salientThreshold) {
-                weightedY += static_cast<float>(y) * gradient;
-                weightSum += gradient;
+    for (int shift = 1; shift <= 4; ++shift) {
+        float correlation = 0.0f;
+        int pairs = 0;
+        for (int row = shift; row < kGridRows; ++row) {
+            for (int col = 0; col < kGridCols; ++col) {
+                correlation += previous[row - shift][col] * current[row][col];
+                ++pairs;
+            }
+        }
+        if (pairs > 0) {
+            correlation /= static_cast<float>(pairs);
+            if (correlation > bestScore) {
+                bestScore = correlation;
+                bestShift = static_cast<float>(shift);
             }
         }
     }
-
-    if (weightSum <= 0.0f) {
-        return static_cast<float>(height) * 0.5f;
-    }
-
-    return weightedY / weightSum;
-}
-
-void FallDetector::pruneOldSamples(long long nowMs) {
-    const long long window = config_.fallDetectionWindowMs;
-    while (!samples_.empty() && nowMs - samples_.front().timestampMs > window) {
-        samples_.pop_front();
-    }
+    return bestShift;
 }
 
 void FallDetector::update() {
     if (elapsedMs(lastSampleTime_) < config_.motionSampleIntervalMs) {
         return;
     }
-
     lastSampleTime_ = now();
 
     std::vector<std::uint8_t> pixels;
@@ -140,36 +127,26 @@ void FallDetector::update() {
         return;
     }
 
-    const float centerY = computeSalientCenterY(pixels);
-    const long long timestampMs =
-        std::chrono::duration_cast<std::chrono::milliseconds>(now().time_since_epoch()).count();
+    const Grid currentGrid = buildContrastGrid(pixels);
 
-    samples_.push_back({timestampMs, centerY});
-    pruneOldSamples(timestampMs);
+    if (hasPreviousGrid_) {
+        const float upwardRows = estimateUpwardShiftRows(previousGrid_, currentGrid);
+        const float deltaSeconds = static_cast<float>(config_.motionSampleIntervalMs) / 1000.0f;
+        const float cellHeightPx = static_cast<float>(kRegionHeight) / static_cast<float>(kGridRows);
+        const float upwardVelocity = (upwardRows * cellHeightPx) / deltaSeconds;
 
-    if (hasLastSample_) {
-        const float deltaY = centerY - lastSalientCenterY_;
-        const float deltaSeconds =
-            static_cast<float>(config_.motionSampleIntervalMs) / 1000.0f;
-
-        // Negative deltaY: Strukturen wandern nach oben (Fall-Indikator)
-        const float upwardVelocity = -deltaY / deltaSeconds;
-
-        if (upwardVelocity >= config_.upwardVelocityThreshold && deltaY < -0.35f) {
+        if (upwardVelocity >= config_.upwardVelocityThreshold && upwardRows >= 1.0f) {
             sustainedUpwardMs_ += config_.motionSampleIntervalMs;
         } else {
-            sustainedUpwardMs_ =
-                std::max(0, sustainedUpwardMs_ - config_.motionSampleIntervalMs * 2);
+            sustainedUpwardMs_ = std::max(0, sustainedUpwardMs_ - config_.motionSampleIntervalMs * 2);
         }
     }
 
-    // Kontinuierliche Aufwaertsbewegung ueber Zeitraum X
-    isFalling_ = sustainedUpwardMs_ >= config_.fallDetectionWindowMs;
-
-    lastSalientCenterY_ = centerY;
-    hasLastSample_ = true;
+    inFreeFall_ = sustainedUpwardMs_ >= config_.fallDetectionWindowMs;
+    previousGrid_ = currentGrid;
+    hasPreviousGrid_ = true;
 }
 
-bool FallDetector::isFalling() const { return isFalling_; }
+bool FallDetector::isInFreeFall() const { return inFreeFall_; }
 
 }  // namespace macro

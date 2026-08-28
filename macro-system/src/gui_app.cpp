@@ -11,13 +11,11 @@
 
 namespace {
 
-constexpr int kWindowWidth = 460;
-constexpr int kWindowHeight = 660;
+constexpr int kWindowWidth = 480;
+constexpr int kWindowHeight = 700;
 constexpr int kCornerRadius = 26;
 constexpr int kTitleBarHeight = 58;
-
 COLORREF kWhite = RGB(245, 248, 255);
-
 ULONG_PTR gdiplusToken = 0;
 
 HWND createLabel(HWND parent, HFONT font, const wchar_t* text, int x, int y, int w, int h) {
@@ -27,8 +25,7 @@ HWND createLabel(HWND parent, HFONT font, const wchar_t* text, int x, int y, int
     return label;
 }
 
-HWND createEdit(HWND parent, HFONT font, int id, int x, int y, int w, int h,
-                const wchar_t* text) {
+HWND createEdit(HWND parent, HFONT font, int id, int x, int y, int w, int h, const wchar_t* text) {
     HWND edit = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", text,
                                 WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL, x, y, w, h, parent,
                                 reinterpret_cast<HMENU>(static_cast<intptr_t>(id)), nullptr,
@@ -37,8 +34,7 @@ HWND createEdit(HWND parent, HFONT font, int id, int x, int y, int w, int h,
     return edit;
 }
 
-HWND createButton(HWND parent, HFONT font, int id, const wchar_t* text, int x, int y, int w,
-                  int h) {
+HWND createButton(HWND parent, HFONT font, int id, const wchar_t* text, int x, int y, int w, int h) {
     HWND button = CreateWindowExW(0, L"BUTTON", text, WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, x, y,
                                   w, h, parent, reinterpret_cast<HMENU>(static_cast<intptr_t>(id)),
                                   nullptr, nullptr);
@@ -62,8 +58,8 @@ namespace macro {
 int GuiApp::run(HINSTANCE instance) {
     instance_ = instance;
 
-    Gdiplus::GdiplusStartupInput gdiplusStartupInput;
-    if (Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, nullptr) != Gdiplus::Ok) {
+    Gdiplus::GdiplusStartupInput startupInput;
+    if (Gdiplus::GdiplusStartup(&gdiplusToken, &startupInput, nullptr) != Gdiplus::Ok) {
         return 1;
     }
 
@@ -78,6 +74,7 @@ int GuiApp::run(HINSTANCE instance) {
     }
 
     writeConfigToUi(AppConfig{});
+    manager_ = std::make_unique<MacroManager>(AppConfig{});
 
     MSG msg{};
     while (GetMessageW(&msg, nullptr, 0, 0) > 0) {
@@ -97,14 +94,13 @@ bool GuiApp::createWindow(HINSTANCE instance) {
     wc.lpfnWndProc = WndProc;
     wc.hInstance = instance;
     wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
-    wc.hbrBackground = nullptr;
     wc.lpszClassName = L"MacroSystemGuiWindow";
     RegisterClassExW(&wc);
 
-    hwnd_ = CreateWindowExW(
-        WS_EX_APPWINDOW, wc.lpszClassName, L"Macro System",
-        WS_POPUP | WS_VISIBLE | WS_SYSMENU | WS_MINIMIZEBOX | WS_CLIPCHILDREN, CW_USEDEFAULT,
-        CW_USEDEFAULT, kWindowWidth, kWindowHeight, nullptr, nullptr, instance, this);
+    hwnd_ = CreateWindowExW(WS_EX_APPWINDOW, wc.lpszClassName, L"Macro System",
+                            WS_POPUP | WS_VISIBLE | WS_SYSMENU | WS_MINIMIZEBOX | WS_CLIPCHILDREN,
+                            CW_USEDEFAULT, CW_USEDEFAULT, kWindowWidth, kWindowHeight, nullptr,
+                            nullptr, instance, this);
 
     if (!hwnd_) {
         return false;
@@ -113,7 +109,6 @@ bool GuiApp::createWindow(HINSTANCE instance) {
     HRGN roundRegion = CreateRoundRectRgn(0, 0, kWindowWidth + 1, kWindowHeight + 1,
                                           kCornerRadius, kCornerRadius);
     SetWindowRgn(hwnd_, roundRegion, TRUE);
-
     ShowWindow(hwnd_, SW_SHOW);
     UpdateWindow(hwnd_);
     return true;
@@ -126,7 +121,6 @@ void GuiApp::createControls(HWND hwnd) {
     bodyFont_ = CreateFontW(16, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
                             OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
                             DEFAULT_PITCH | FF_SWISS, L"Segoe UI");
-    panelBrush_ = CreateSolidBrush(RGB(48, 110, 220));
     editBrush_ = CreateSolidBrush(kWhite);
 
     const struct FieldSpec {
@@ -134,45 +128,48 @@ void GuiApp::createControls(HWND hwnd) {
         const wchar_t* label;
         const wchar_t* value;
     } fields[] = {
-        {ControlIds::Cooldown, L"Cooldown (ms)", L"1000"},
+        {ControlIds::Cooldown, L"Stunslam Cooldown (ms)", L"1000"},
         {ControlIds::SuccessChance, L"Erfolgschance (%)", L"85"},
-        {ControlIds::ClickHoldMin, L"Klick Min (ms)", L"25"},
-        {ControlIds::ClickHoldMax, L"Klick Max (ms)", L"60"},
-        {ControlIds::MotionInterval, L"Motion Intervall (ms)", L"15"},
-        {ControlIds::FallWindow, L"Fall Fenster (ms)", L"300"},
-        {ControlIds::UpwardVelocity, L"Aufwaerts px/s", L"28.0"},
-        {ControlIds::PreThrowMin, L"Pre-Throw Min (ms)", L"10"},
-        {ControlIds::PreThrowMax, L"Pre-Throw Max (ms)", L"20"},
-        {ControlIds::BetweenSlotsMin, L"Zwischen Slots Min (ms)", L"40"},
-        {ControlIds::BetweenSlotsMax, L"Zwischen Slots Max (ms)", L"60"},
-        {ControlIds::LoopReliefMin, L"Loop Pause Min (ms)", L"2"},
-        {ControlIds::LoopReliefMax, L"Loop Pause Max (ms)", L"5"},
+        {ControlIds::ClickHoldMin, L"Klick Min (ms)", L"15"},
+        {ControlIds::ClickHoldMax, L"Klick Max (ms)", L"35"},
+        {ControlIds::MotionInterval, L"Motion Intervall (ms)", L"10"},
+        {ControlIds::FallWindow, L"Fall Fenster (ms)", L"220"},
+        {ControlIds::UpwardVelocity, L"Aufwaerts px/s", L"32.0"},
+        {ControlIds::PearlDelayMin, L"Pearl Delay Min (ms)", L"5"},
+        {ControlIds::PearlDelayMax, L"Pearl Delay Max (ms)", L"15"},
+        {ControlIds::ChestX, L"Elytra Slot X", L"0"},
+        {ControlIds::ChestY, L"Elytra Slot Y", L"0"},
+        {ControlIds::LoopReliefMin, L"Loop Pause Min (ms)", L"1"},
+        {ControlIds::LoopReliefMax, L"Loop Pause Max (ms)", L"3"},
     };
 
     int y = 88;
     for (const auto& field : fields) {
-        createLabel(hwnd, bodyFont_, field.label, 28, y, 220, 22);
-        createEdit(hwnd, bodyFont_, field.id, 250, y - 2, 170, 26, field.value);
+        createLabel(hwnd, bodyFont_, field.label, 28, y, 230, 22);
+        createEdit(hwnd, bodyFont_, field.id, 270, y - 2, 170, 26, field.value);
         y += 38;
     }
 
-    createLabel(hwnd, bodyFont_, L"Status Fall:", 28, y + 8, 120, 22);
-    CreateWindowExW(0, L"STATIC", L"Inaktiv", WS_CHILD | WS_VISIBLE | SS_CENTER, 150, y + 4, 120,
-                    28, hwnd, reinterpret_cast<HMENU>(ControlIds::StatusFall), instance_, nullptr);
-    createLabel(hwnd, bodyFont_, L"Status Schild:", 28, y + 44, 120, 22);
-    CreateWindowExW(0, L"STATIC", L"Inaktiv", WS_CHILD | WS_VISIBLE | SS_CENTER, 150, y + 40, 120,
-                    28, hwnd, reinterpret_cast<HMENU>(ControlIds::StatusShield), instance_, nullptr);
+    createLabel(hwnd, bodyFont_, L"Status Fall:", 28, y + 4, 120, 22);
+    CreateWindowExW(0, L"STATIC", L"Inaktiv", WS_CHILD | WS_VISIBLE | SS_CENTER, 150, y, 90, 24,
+                    hwnd, reinterpret_cast<HMENU>(ControlIds::StatusFall), instance_, nullptr);
+    createLabel(hwnd, bodyFont_, L"Schild:", 250, y + 4, 70, 22);
+    CreateWindowExW(0, L"STATIC", L"Inaktiv", WS_CHILD | WS_VISIBLE | SS_CENTER, 320, y, 90, 24,
+                    hwnd, reinterpret_cast<HMENU>(ControlIds::StatusShield), instance_, nullptr);
+    createLabel(hwnd, bodyFont_, L"Gegner:", 28, y + 36, 70, 22);
+    CreateWindowExW(0, L"STATIC", L"Inaktiv", WS_CHILD | WS_VISIBLE | SS_CENTER, 150, y + 32, 90,
+                    24, hwnd, reinterpret_cast<HMENU>(ControlIds::StatusEnemy), instance_, nullptr);
 
     const int buttonY = kWindowHeight - 74;
     createButton(hwnd, bodyFont_, ControlIds::BtnStart, L"Start", 36, buttonY, 120, 38);
     createButton(hwnd, bodyFont_, ControlIds::BtnStop, L"Stop", 170, buttonY, 120, 38);
-    createButton(hwnd, bodyFont_, ControlIds::BtnApply, L"Uebernehmen", 304, buttonY, 120, 38);
+    createButton(hwnd, bodyFont_, ControlIds::BtnApply, L"Uebernehmen", 304, buttonY, 140, 38);
 
     for (HWND child = GetWindow(hwnd, GW_CHILD); child; child = GetWindow(child, GW_HWNDNEXT)) {
         SendMessageW(child, WM_SETFONT, reinterpret_cast<WPARAM>(bodyFont_), TRUE);
     }
 
-    SetTimer(hwnd, ControlIds::TimerStatus, 120, nullptr);
+    SetTimer(hwnd, ControlIds::TimerStatus, 100, nullptr);
 }
 
 void GuiApp::paintBackground(HDC hdc, const RECT& clientRect) {
@@ -205,7 +202,7 @@ void GuiApp::paintBackground(HDC hdc, const RECT& clientRect) {
     RECT titleRect{24, 18, clientRect.right - 24, 58};
     DrawTextW(hdc, L"Macro System", -1, &titleRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
     SelectObject(hdc, bodyFont_);
-    DrawTextW(hdc, L"Stunslam + Pearlcatch", -1, &titleRect, DT_RIGHT | DT_VCENTER | DT_SINGLELINE);
+    DrawTextW(hdc, L"Extern | No Memory Read", -1, &titleRect, DT_RIGHT | DT_VCENTER | DT_SINGLELINE);
 }
 
 int GuiApp::readInt(int controlId, int fallback) const {
@@ -230,120 +227,90 @@ float GuiApp::readFloat(int controlId, float fallback) const {
 
 AppConfig GuiApp::readConfigFromUi() const {
     AppConfig config{};
-    config.trigger.cooldownMs = readInt(ControlIds::Cooldown, config.trigger.cooldownMs);
-    config.trigger.successChance =
-        std::clamp(readInt(ControlIds::SuccessChance, config.trigger.successChance), 0, 100);
-    config.trigger.clickHoldMinMs =
-        readInt(ControlIds::ClickHoldMin, config.trigger.clickHoldMinMs);
-    config.trigger.clickHoldMaxMs =
-        readInt(ControlIds::ClickHoldMax, config.trigger.clickHoldMaxMs);
-    config.trigger.fall.motionSampleIntervalMs =
-        readInt(ControlIds::MotionInterval, config.trigger.fall.motionSampleIntervalMs);
-    config.trigger.fall.fallDetectionWindowMs =
-        readInt(ControlIds::FallWindow, config.trigger.fall.fallDetectionWindowMs);
-    config.trigger.fall.upwardVelocityThreshold =
-        readFloat(ControlIds::UpwardVelocity, config.trigger.fall.upwardVelocityThreshold);
+    config.stunslam.cooldownMs = readInt(ControlIds::Cooldown, config.stunslam.cooldownMs);
+    config.stunslam.successChance =
+        std::clamp(readInt(ControlIds::SuccessChance, config.stunslam.successChance), 0, 100);
+    config.stunslam.clickHoldMinMs = readInt(ControlIds::ClickHoldMin, config.stunslam.clickHoldMinMs);
+    config.stunslam.clickHoldMaxMs = readInt(ControlIds::ClickHoldMax, config.stunslam.clickHoldMaxMs);
+    config.stunslam.fall.motionSampleIntervalMs =
+        readInt(ControlIds::MotionInterval, config.stunslam.fall.motionSampleIntervalMs);
+    config.stunslam.fall.fallDetectionWindowMs =
+        readInt(ControlIds::FallWindow, config.stunslam.fall.fallDetectionWindowMs);
+    config.stunslam.fall.upwardVelocityThreshold =
+        readFloat(ControlIds::UpwardVelocity, config.stunslam.fall.upwardVelocityThreshold);
 
-    config.sequence.preThrowDelayMinMs =
-        readInt(ControlIds::PreThrowMin, config.sequence.preThrowDelayMinMs);
-    config.sequence.preThrowDelayMaxMs =
-        readInt(ControlIds::PreThrowMax, config.sequence.preThrowDelayMaxMs);
-    config.sequence.betweenSlotsDelayMinMs =
-        readInt(ControlIds::BetweenSlotsMin, config.sequence.betweenSlotsDelayMinMs);
-    config.sequence.betweenSlotsDelayMaxMs =
-        readInt(ControlIds::BetweenSlotsMax, config.sequence.betweenSlotsDelayMaxMs);
+    config.pearlcatch.delayMinMs = readInt(ControlIds::PearlDelayMin, config.pearlcatch.delayMinMs);
+    config.pearlcatch.delayMaxMs = readInt(ControlIds::PearlDelayMax, config.pearlcatch.delayMaxMs);
 
-    config.loopReliefMinMs = readInt(ControlIds::LoopReliefMin, config.loopReliefMinMs);
-    config.loopReliefMaxMs = readInt(ControlIds::LoopReliefMax, config.loopReliefMaxMs);
+    config.elytra.chestplateSlotX = readInt(ControlIds::ChestX, config.elytra.chestplateSlotX);
+    config.elytra.chestplateSlotY = readInt(ControlIds::ChestY, config.elytra.chestplateSlotY);
 
-    config.trigger.loopReliefMinMs = config.loopReliefMinMs;
-    config.trigger.loopReliefMaxMs = config.loopReliefMaxMs;
-    config.sequence.loopReliefMinMs = config.loopReliefMinMs;
-    config.sequence.loopReliefMaxMs = config.loopReliefMaxMs;
+    const int loopMin = readInt(ControlIds::LoopReliefMin, 1);
+    const int loopMax = readInt(ControlIds::LoopReliefMax, 3);
+    config.stunslam.loopReliefMinMs = loopMin;
+    config.stunslam.loopReliefMaxMs = loopMax;
+    config.pearlcatch.loopReliefMinMs = loopMin;
+    config.pearlcatch.loopReliefMaxMs = loopMax;
+    config.elytra.loopReliefMinMs = loopMin;
+    config.elytra.loopReliefMaxMs = loopMax;
+
     return config;
 }
 
 void GuiApp::writeConfigToUi(const AppConfig& config) {
-    SetDlgItemTextW(hwnd_, ControlIds::Cooldown, toWide(config.trigger.cooldownMs).c_str());
-    SetDlgItemTextW(hwnd_, ControlIds::SuccessChance,
-                    toWide(config.trigger.successChance).c_str());
-    SetDlgItemTextW(hwnd_, ControlIds::ClickHoldMin,
-                    toWide(config.trigger.clickHoldMinMs).c_str());
-    SetDlgItemTextW(hwnd_, ControlIds::ClickHoldMax,
-                    toWide(config.trigger.clickHoldMaxMs).c_str());
+    SetDlgItemTextW(hwnd_, ControlIds::Cooldown, toWide(config.stunslam.cooldownMs).c_str());
+    SetDlgItemTextW(hwnd_, ControlIds::SuccessChance, toWide(config.stunslam.successChance).c_str());
+    SetDlgItemTextW(hwnd_, ControlIds::ClickHoldMin, toWide(config.stunslam.clickHoldMinMs).c_str());
+    SetDlgItemTextW(hwnd_, ControlIds::ClickHoldMax, toWide(config.stunslam.clickHoldMaxMs).c_str());
     SetDlgItemTextW(hwnd_, ControlIds::MotionInterval,
-                    toWide(config.trigger.fall.motionSampleIntervalMs).c_str());
+                    toWide(config.stunslam.fall.motionSampleIntervalMs).c_str());
     SetDlgItemTextW(hwnd_, ControlIds::FallWindow,
-                    toWide(config.trigger.fall.fallDetectionWindowMs).c_str());
+                    toWide(config.stunslam.fall.fallDetectionWindowMs).c_str());
     SetDlgItemTextW(hwnd_, ControlIds::UpwardVelocity,
-                    toWide(config.trigger.fall.upwardVelocityThreshold).c_str());
-    SetDlgItemTextW(hwnd_, ControlIds::PreThrowMin,
-                    toWide(config.sequence.preThrowDelayMinMs).c_str());
-    SetDlgItemTextW(hwnd_, ControlIds::PreThrowMax,
-                    toWide(config.sequence.preThrowDelayMaxMs).c_str());
-    SetDlgItemTextW(hwnd_, ControlIds::BetweenSlotsMin,
-                    toWide(config.sequence.betweenSlotsDelayMinMs).c_str());
-    SetDlgItemTextW(hwnd_, ControlIds::BetweenSlotsMax,
-                    toWide(config.sequence.betweenSlotsDelayMaxMs).c_str());
-    SetDlgItemTextW(hwnd_, ControlIds::LoopReliefMin, toWide(config.loopReliefMinMs).c_str());
-    SetDlgItemTextW(hwnd_, ControlIds::LoopReliefMax, toWide(config.loopReliefMaxMs).c_str());
+                    toWide(config.stunslam.fall.upwardVelocityThreshold).c_str());
+    SetDlgItemTextW(hwnd_, ControlIds::PearlDelayMin, toWide(config.pearlcatch.delayMinMs).c_str());
+    SetDlgItemTextW(hwnd_, ControlIds::PearlDelayMax, toWide(config.pearlcatch.delayMaxMs).c_str());
+    SetDlgItemTextW(hwnd_, ControlIds::ChestX, toWide(config.elytra.chestplateSlotX).c_str());
+    SetDlgItemTextW(hwnd_, ControlIds::ChestY, toWide(config.elytra.chestplateSlotY).c_str());
+    SetDlgItemTextW(hwnd_, ControlIds::LoopReliefMin, toWide(config.stunslam.loopReliefMinMs).c_str());
+    SetDlgItemTextW(hwnd_, ControlIds::LoopReliefMax, toWide(config.stunslam.loopReliefMaxMs).c_str());
 }
 
-void GuiApp::setStatusText(int controlId, const wchar_t* text, bool /*active*/) {
+void GuiApp::setStatusText(int controlId, const wchar_t* text) {
     SetDlgItemTextW(hwnd_, controlId, text);
 }
 
 void GuiApp::updateStatusLabels() {
-    if (!modulesRunning_ || !triggerBot_) {
-        setStatusText(ControlIds::StatusFall, L"Inaktiv", false);
-        setStatusText(ControlIds::StatusShield, L"Inaktiv", false);
+    if (!manager_ || !manager_->isRunning()) {
+        setStatusText(ControlIds::StatusFall, L"Inaktiv");
+        setStatusText(ControlIds::StatusShield, L"Inaktiv");
+        setStatusText(ControlIds::StatusEnemy, L"Inaktiv");
         return;
     }
 
-    setStatusText(ControlIds::StatusFall, triggerBot_->isFalling() ? L"Aktiv" : L"Warten",
-                  triggerBot_->isFalling());
-    setStatusText(ControlIds::StatusShield, triggerBot_->isShieldActive() ? L"Aktiv" : L"Warten",
-                  triggerBot_->isShieldActive());
+    setStatusText(ControlIds::StatusFall, manager_->isInFreeFall() ? L"Aktiv" : L"Warten");
+    setStatusText(ControlIds::StatusShield, manager_->isShieldActive() ? L"Aktiv" : L"Warten");
+    setStatusText(ControlIds::StatusEnemy, manager_->isEnemyInRange() ? L"Aktiv" : L"Warten");
 }
 
 void GuiApp::startModules() {
-    if (modulesRunning_) {
-        return;
+    if (!manager_) {
+        manager_ = std::make_unique<MacroManager>(readConfigFromUi());
+    } else {
+        manager_->setConfig(readConfigFromUi());
     }
-
-    const AppConfig config = readConfigFromUi();
-    rng_ = std::make_unique<RandomEngine>();
-    triggerBot_ = std::make_unique<TriggerBot>(config.trigger, *rng_);
-    sequenceMacro_ = std::make_unique<SequenceMacro>(config.sequence, *rng_);
-    triggerBot_->start();
-    sequenceMacro_->start();
-    modulesRunning_ = true;
+    manager_->startAll();
 }
 
 void GuiApp::stopModules() {
-    if (!modulesRunning_) {
-        return;
+    if (manager_) {
+        manager_->stopAll();
     }
-    if (triggerBot_) {
-        triggerBot_->stop();
-    }
-    if (sequenceMacro_) {
-        sequenceMacro_->stop();
-    }
-    triggerBot_.reset();
-    sequenceMacro_.reset();
-    rng_.reset();
-    modulesRunning_ = false;
-    updateStatusLabels();
 }
 
 void GuiApp::applyConfigFromUi() {
-    const AppConfig config = readConfigFromUi();
-    if (triggerBot_) {
-        triggerBot_->setConfig(config.trigger);
-    }
-    if (sequenceMacro_) {
-        sequenceMacro_->setConfig(config.sequence);
+    if (manager_) {
+        manager_->setConfig(readConfigFromUi());
     }
 }
 
@@ -386,13 +353,6 @@ LRESULT CALLBACK GuiApp::WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpar
             SetTextColor(hdcEdit, RGB(20, 35, 75));
             SetBkColor(hdcEdit, kWhite);
             return reinterpret_cast<LRESULT>(app->editBrush_);
-        }
-
-        case WM_CTLCOLORBTN: {
-            HDC hdcButton = reinterpret_cast<HDC>(wparam);
-            SetTextColor(hdcButton, RGB(255, 255, 255));
-            SetBkMode(hdcButton, TRANSPARENT);
-            return reinterpret_cast<LRESULT>(app->panelBrush_);
         }
 
         case WM_COMMAND:
@@ -443,9 +403,6 @@ LRESULT CALLBACK GuiApp::WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpar
             }
             if (app->bodyFont_) {
                 DeleteObject(app->bodyFont_);
-            }
-            if (app->panelBrush_) {
-                DeleteObject(app->panelBrush_);
             }
             if (app->editBrush_) {
                 DeleteObject(app->editBrush_);

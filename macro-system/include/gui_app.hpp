@@ -5,9 +5,7 @@
 #endif
 #include <windows.h>
 
-#include "app_config.hpp"
-#include "sequence_macro.hpp"
-#include "trigger_bot.hpp"
+#include "macro_manager.hpp"
 
 #include <memory>
 #include <string>
@@ -27,10 +25,10 @@ private:
         static constexpr int MotionInterval = 1005;
         static constexpr int FallWindow = 1006;
         static constexpr int UpwardVelocity = 1007;
-        static constexpr int PreThrowMin = 1008;
-        static constexpr int PreThrowMax = 1009;
-        static constexpr int BetweenSlotsMin = 1010;
-        static constexpr int BetweenSlotsMax = 1011;
+        static constexpr int PearlDelayMin = 1008;
+        static constexpr int PearlDelayMax = 1009;
+        static constexpr int ChestX = 1010;
+        static constexpr int ChestY = 1011;
         static constexpr int LoopReliefMin = 1012;
         static constexpr int LoopReliefMax = 1013;
         static constexpr int BtnStart = 1014;
@@ -38,6 +36,7 @@ private:
         static constexpr int BtnApply = 1016;
         static constexpr int StatusFall = 1017;
         static constexpr int StatusShield = 1018;
+        static constexpr int StatusEnemy = 1019;
         static constexpr int TimerStatus = 1;
     };
 
@@ -54,19 +53,15 @@ private:
     void updateStatusLabels();
     int readInt(int controlId, int fallback) const;
     float readFloat(int controlId, float fallback) const;
-    void setStatusText(int controlId, const wchar_t* text, bool active);
+    void setStatusText(int controlId, const wchar_t* text);
 
     HWND hwnd_{nullptr};
     HINSTANCE instance_{nullptr};
     HFONT titleFont_{nullptr};
     HFONT bodyFont_{nullptr};
-    HBRUSH panelBrush_{nullptr};
     HBRUSH editBrush_{nullptr};
 
-    std::unique_ptr<RandomEngine> rng_;
-    std::unique_ptr<TriggerBot> triggerBot_;
-    std::unique_ptr<SequenceMacro> sequenceMacro_;
-    bool modulesRunning_{false};
+    std::unique_ptr<MacroManager> manager_;
 };
 
 }  // namespace macro

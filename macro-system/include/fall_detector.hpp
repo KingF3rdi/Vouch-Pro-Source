@@ -2,54 +2,46 @@
 
 #include "common.hpp"
 
+#include <array>
 #include <atomic>
 #include <cstdint>
-#include <deque>
 #include <vector>
 
 namespace macro {
 
-/// Konfiguration fuer die externe Fallhoehen-Erkennung via Bewegungserkennung.
 struct FallDetectorConfig {
-    int motionSampleIntervalMs{15};
-    int fallDetectionWindowMs{300};
-    float upwardVelocityThreshold{28.0f};
+    int motionSampleIntervalMs{10};
+    int fallDetectionWindowMs{220};
+    float upwardVelocityThreshold{32.0f};
 };
 
-/// Erkennt anhaltende Aufwaertsbewegung markanter Pixelstrukturen (Indikator fuer Fall).
+/// Rasterbasierte Bewegungserkennung: vertikale Kontrastverschiebung nach oben.
 class FallDetector {
 public:
-    static constexpr int kRegionWidth = 72;
-    static constexpr int kRegionHeight = 110;
+    static constexpr int kGridCols = 10;
+    static constexpr int kGridRows = 14;
+    static constexpr int kRegionWidth = 70;
+    static constexpr int kRegionHeight = 98;
 
     explicit FallDetector(FallDetectorConfig config = {});
 
     void setConfig(const FallDetectorConfig& config);
-    FallDetectorConfig config() const;
-
-    /// Aktualisiert die Bewegungserkennung (intern auf motionSampleIntervalMs gedrosselt).
     void update();
-
-    bool isFalling() const;
+    bool isInFreeFall() const;
 
 private:
-    struct MotionSample {
-        long long timestampMs{0};
-        float salientCenterY{0.0f};
-    };
+    using Grid = std::array<std::array<float, kGridCols>, kGridRows>;
 
     bool captureMotionRegion(std::vector<std::uint8_t>& bgraPixels) const;
-    float computeSalientCenterY(const std::vector<std::uint8_t>& bgraPixels) const;
-    void pruneOldSamples(long long nowMs);
+    Grid buildContrastGrid(const std::vector<std::uint8_t>& pixels) const;
+    float estimateUpwardShiftRows(const Grid& previous, const Grid& current) const;
 
     FallDetectorConfig config_;
-    std::deque<MotionSample> samples_;
+    Grid previousGrid_{};
+    bool hasPreviousGrid_{false};
     std::chrono::steady_clock::time_point lastSampleTime_{};
-    bool hasLastSample_{false};
-    float lastSalientCenterY_{0.0f};
     int sustainedUpwardMs_{0};
-
-    std::atomic<bool> isFalling_{false};
+    std::atomic<bool> inFreeFall_{false};
 };
 
 }  // namespace macro

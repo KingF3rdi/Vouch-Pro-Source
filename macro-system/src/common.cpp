@@ -1,5 +1,6 @@
 #include "common.hpp"
 
+#include <algorithm>
 #include <random>
 
 namespace macro {
@@ -9,13 +10,11 @@ RandomEngine::RandomEngine()
           std::chrono::steady_clock::now().time_since_epoch().count())) {}
 
 int RandomEngine::uniformInt(int min, int max) {
-    // Zufallsberechnung: gleichverteilte Verzoegerung fuer natuerliches Timing
     std::uniform_int_distribution<int> dist(min, max);
     return dist(rng_);
 }
 
 bool RandomEngine::rollPercent(int chancePercent) {
-    // Zufallsberechnung: Ausloesewahrscheinlichkeit in Prozent
     if (chancePercent <= 0) {
         return false;
     }

@@ -15,39 +15,44 @@
 
 namespace macro {
 
-/// Konfiguration fuer den automatischen Trigger (Stunslam-Logik).
-struct TriggerBotConfig {
+struct StunslamBotConfig {
     int cooldownMs{1000};
-    int successChance{100};
+    int successChance{85};
     bool isAlwaysActive{false};
     int activationKey{VK_XBUTTON1};
-    int clickHoldMinMs{25};
-    int clickHoldMaxMs{60};
-    int loopReliefMinMs{2};
-    int loopReliefMaxMs{5};
+    WORD axeSlotKey{'2'};
+    int preClickDelayMinMs{2};
+    int preClickDelayMaxMs{5};
+    int clickHoldMinMs{15};
+    int clickHoldMaxMs{35};
+    int microDelayMinMs{1};
+    int microDelayMaxMs{5};
+    int loopReliefMinMs{1};
+    int loopReliefMaxMs{3};
     FallDetectorConfig fall{};
 };
 
-/// Automatischer Trigger-Thread mit Bildschirmanalyse und Linksklick.
-class TriggerBot {
+/// Automatischer Stunslam mit Axt-Swap, Fall- und Schild-Erkennung.
+class StunslamBot {
 public:
-    TriggerBot(TriggerBotConfig config, RandomEngine& rng);
+    StunslamBot(StunslamBotConfig config, RandomEngine& rng);
 
     void start();
     void stop();
     bool isRunning() const;
 
-    void setConfig(const TriggerBotConfig& config);
-    TriggerBotConfig config() const;
+    void setConfig(const StunslamBotConfig& config);
+    StunslamBotConfig config() const;
 
-    bool isFalling() const;
+    bool isInFreeFall() const;
     bool isShieldActive() const;
 
 private:
     void runLoop();
     bool isActivationActive() const;
+    void executeStunslam();
 
-    TriggerBotConfig config_;
+    StunslamBotConfig config_;
     RandomEngine& rng_;
     InputSimulator input_;
     ScreenAnalyzer screen_;

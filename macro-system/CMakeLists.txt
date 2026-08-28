@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(MacroSystem VERSION 1.1.0 LANGUAGES CXX)
+project(MacroSystem VERSION 2.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -10,18 +10,10 @@ set(MACRO_CORE_SOURCES
     src/input_simulator.cpp
     src/screen_analyzer.cpp
     src/fall_detector.cpp
-    src/trigger_bot.cpp
-    src/sequence_macro.cpp
-)
-
-set(MACRO_CORE_HEADERS
-    include/common.hpp
-    include/input_simulator.hpp
-    include/screen_analyzer.hpp
-    include/fall_detector.hpp
-    include/trigger_bot.hpp
-    include/sequence_macro.hpp
-    include/app_config.hpp
+    src/stunslam_bot.cpp
+    src/pearlcatch_macros.cpp
+    src/elytra_unequip.cpp
+    src/macro_manager.cpp
 )
 
 add_executable(MacroSystem

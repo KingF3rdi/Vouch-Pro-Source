@@ -6,19 +6,25 @@
 
 namespace macro {
 
-/// Bildschirmanalyse via GDI-Bitgrabbing und Histogramm-Vergleich.
+/// Externe Bildschirmanalyse via GDI – kein Memory Reading.
 class ScreenAnalyzer {
 public:
-    static constexpr int kCaptureSize = 50;
+    static constexpr int kShieldCaptureSize = 56;
+    static constexpr int kCrosshairWidth = 88;
+    static constexpr int kCrosshairHeight = 64;
+    static constexpr int kMatrixSize = 8;
     static constexpr int kHistogramBins = 32;
 
     ScreenAnalyzer();
 
-    /// Erfasst Bildschirmmitte und prueft auf signifikante Kontrast-/Helligkeitsaenderung.
-    bool verifyScreenState();
+    /// Schild-Erkennung: relative Helligkeitsmatrix mit Block-Form im Zentrum.
+    bool isShieldRaised();
 
-    /// Schwellwert fuer Histogramm-Abweichung (0.0 - 1.0, Standard: 0.18).
-    void setChangeThreshold(float threshold);
+    /// Gegner in Nahkampf-Reichweite: Namensband, Ruestung oder roter Damage-Tick.
+    bool isEnemyInCrosshairRange();
+
+    void setShieldThreshold(float threshold);
+    void setEnemyThreshold(float threshold);
 
 private:
     struct LuminanceStats {
@@ -27,17 +33,26 @@ private:
         std::array<float, kHistogramBins> histogram{};
     };
 
-    bool captureCenterRegion(std::vector<std::uint8_t>& bgraPixels);
+    bool captureScreenRegion(int originX, int originY, int width, int height,
+                             std::vector<std::uint8_t>& bgraPixels) const;
+    bool captureCenterRegion(int size, std::vector<std::uint8_t>& bgraPixels) const;
+    bool captureCrosshairRegion(std::vector<std::uint8_t>& bgraPixels) const;
+
+    float luminanceAt(const std::vector<std::uint8_t>& pixels, int width, int x, int y) const;
+    std::array<std::array<float, kMatrixSize>, kMatrixSize> buildBrightnessMatrix(
+        const std::vector<std::uint8_t>& pixels, int width, int height) const;
+
     LuminanceStats computeStats(const std::vector<std::uint8_t>& bgraPixels) const;
     float histogramDistance(const std::array<float, kHistogramBins>& a,
                             const std::array<float, kHistogramBins>& b) const;
-    void updateBaseline(const LuminanceStats& stats);
 
-    bool baselineReady_{false};
-    float changeThreshold_{0.18f};
-    LuminanceStats baseline_{};
-    LuminanceStats previous_{};
-    bool hasPrevious_{false};
+    float detectShieldBlockScore(const std::array<std::array<float, kMatrixSize>, kMatrixSize>& matrix) const;
+    float detectRedDamageScore(const std::vector<std::uint8_t>& pixels, int width, int height) const;
+    float detectNameTagScore(const std::vector<std::uint8_t>& pixels, int width, int height) const;
+    float detectArmorContrastScore(const std::vector<std::uint8_t>& pixels, int width, int height) const;
+
+    float shieldThreshold_{0.42f};
+    float enemyThreshold_{0.35f};
 };
 
 }  // namespace macro

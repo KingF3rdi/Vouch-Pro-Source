@@ -12,5 +12,5 @@ if errorlevel 1 exit /b 1
 
 echo.
 echo Build erfolgreich:
-echo   build\Release\MacroSystemGUI.exe
-echo   build\Release\MacroSystem.exe
+echo   build\Release\MacroSystemGUI.exe  (GUI)
+echo   build\Release\MacroSystem.exe       (Konsole)
