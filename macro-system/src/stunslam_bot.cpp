@@ -52,12 +52,11 @@ bool StunslamBot::isActivationActive() const {
 }
 
 void StunslamBot::executeAirStunslam() {
-    // Optimiert: minimaler Tick-Gap zwischen Fall-Hit, Swap-Kette und Mace-Finisher
+    // Luft-Stunslam: Hit starten -> mid-hit Axt -> Mace -> Mace-Hit
     input_.microDelay(config_.microDelayMinMs, config_.microDelayMaxMs);
-    input_.leftClick(config_.clickHoldMinMs, config_.clickHoldMaxMs);
+    input_.leftClickWithMidSwap(config_.axeSlotKey, config_.clickHoldMinMs, config_.clickHoldMaxMs,
+                                config_.midSwapMinMs, config_.midSwapMaxMs);
 
-    input_.sleepMs(config_.preSwapDelayMinMs, config_.preSwapDelayMaxMs);
-    input_.pressKey(config_.axeSlotKey);
     input_.sleepMs(config_.preSwapDelayMinMs, config_.preSwapDelayMaxMs);
     input_.pressKey(config_.maceSlotKey);
     input_.sleepMs(config_.preSwapDelayMinMs, config_.preSwapDelayMaxMs);
