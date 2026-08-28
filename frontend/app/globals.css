@@ -686,6 +686,10 @@ a {
   padding: 1rem;
 }
 
+.product-info-panel {
+  padding: 1.75rem;
+}
+
 .product-info-panel h1 {
   font-size: 1.75rem;
   font-weight: 700;
