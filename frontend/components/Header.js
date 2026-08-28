@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import DiscordJoinButton from './DiscordJoinButton';
+import HeaderSearch from './HeaderSearch';
 import { api } from '../lib/api';
 
 export default function Header({ onHero = false }) {
@@ -18,12 +19,13 @@ export default function Header({ onHero = false }) {
         <Link href="/" className="logo">
           TxTEmpire
         </Link>
-        <nav className="nav">
-          <Link href="/">Shop</Link>
-          <Link href="/search">Suche</Link>
-          <Link href="/wishlist">Wunschliste</Link>
-          <Link href="/account">Profil</Link>
-          <DiscordJoinButton className="btn btn-sm btn-outline-glass" />
+
+        <HeaderSearch />
+
+        <nav className="nav nav--compact">
+          <Link href="/wishlist" className="nav-link">Wunschliste</Link>
+          <Link href="/account" className="nav-link">Profil</Link>
+          <DiscordJoinButton className="btn btn-sm btn-outline-glass nav-discord" />
           {user ? (
             <span className="user-badge">
               {user.connection_type === 'discord' || user.connection_type === 'both' ? (
@@ -31,10 +33,7 @@ export default function Header({ onHero = false }) {
               ) : (
                 <span>⛏️</span>
               )}
-              <span>{user.display_name}</span>
-              {user.connection_type === 'both' && user.ign && (
-                <span className="user-badge-sub">· {user.ign}</span>
-              )}
+              <span className="user-badge-name">{user.display_name}</span>
             </span>
           ) : (
             <Link href="/account" className="btn btn-sm btn-outline-glass">Anmelden</Link>

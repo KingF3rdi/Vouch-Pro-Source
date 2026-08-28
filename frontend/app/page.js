@@ -35,7 +35,7 @@ export default async function HomePage() {
       <main className="main-content">
         <section className="section">
           <div className="container">
-            <div className="section-header">
+            <div className="section-header glass-panel section-header-panel">
               <h2>🔥 Bestseller</h2>
             </div>
             <div className="product-grid">
@@ -52,7 +52,7 @@ export default async function HomePage() {
 
         <section className="section">
           <div className="container">
-            <div className="section-header">
+            <div className="section-header glass-panel section-header-panel">
               <h2>✨ Neue Produkte</h2>
             </div>
             <div className="product-grid">

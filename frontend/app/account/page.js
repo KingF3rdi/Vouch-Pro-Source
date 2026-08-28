@@ -66,7 +66,10 @@ export default function AccountPage() {
 
           {user?.unlocked_products?.length > 0 && (
             <div className="profile-section">
-              <h3>Freigeschaltete Produkte ({user.unlocked_products.length})</h3>
+              <h3>Freigeschaltete Produkte — Kaufbestätigungen ({user.unlocked_products.length})</h3>
+              <p style={{ color: 'var(--muted)', fontSize: '0.85rem', marginBottom: '1rem' }}>
+                Nach jedem Kauf erscheint eine Bestätigung hier und in Discord.
+              </p>
               <div className="unlocked-grid">
                 {user.unlocked_products.map((item) => (
                   <Link key={item.id} href={`/product/${item.product.slug}`} className="unlocked-item glass-card">

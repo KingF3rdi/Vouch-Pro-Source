@@ -96,9 +96,9 @@ export default function ProductPage() {
   return (
     <>
       <Header />
-      <main className="container">
+      <main className="container main-content">
         <div className="product-detail">
-          <div>
+          <div className="glass-panel product-gallery-panel">
             <div className="gallery-main">
               {allMedia.length > 0 ? (
                 allMedia[activeMedia]?.media_type === 'video' ? (
@@ -199,8 +199,15 @@ export default function ProductPage() {
         </div>
 
         {similar.length > 0 && (
-          <section className="section">
-            <h2 style={{ marginBottom: '1rem' }}>Ähnliche Produkte</h2>
+          <section className="section category-suggestions">
+            <div className="section-header glass-panel section-header-panel">
+              <div>
+                <h2>Mehr aus derselben Kategorie</h2>
+                {product.category && (
+                  <p className="section-subtitle">{product.category.name}</p>
+                )}
+              </div>
+            </div>
             <div className="product-grid">
               {similar.map((p) => (
                 <ProductCard key={p.id} product={p} />

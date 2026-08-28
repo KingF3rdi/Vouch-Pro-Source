@@ -132,41 +132,22 @@ async def get_product_by_slug(db: AsyncSession, slug: str) -> Product | None:
 
 
 async def get_similar_products(db: AsyncSession, product: Product, limit: int = 4):
-    conditions = [Product.id != product.id, Product.is_active == True]
-    if product.category_id:
-        conditions.append(Product.category_id == product.category_id)
+    """Nur Produkte aus derselben Kategorie vorschlagen."""
+    if not product.category_id:
+        return []
 
     result = await db.execute(
         select(Product)
         .options(selectinload(Product.category))
-        .where(*conditions)
-        .order_by(Product.sales_count.desc())
+        .where(
+            Product.id != product.id,
+            Product.is_active == True,
+            Product.category_id == product.category_id,
+        )
+        .order_by(Product.sales_count.desc(), Product.created_at.desc())
         .limit(limit)
     )
-    similar = list(result.scalars().all())
-
-    if len(similar) < limit and product.tags:
-        tags = [t.strip() for t in product.tags.split(",") if t.strip()]
-        for tag in tags:
-            tag_result = await db.execute(
-                select(Product)
-                .options(selectinload(Product.category))
-                .where(
-                    Product.id != product.id,
-                    Product.is_active == True,
-                    func.lower(Product.tags).like(f"%{tag.lower()}%"),
-                )
-                .limit(limit)
-            )
-            for p in tag_result.scalars().all():
-                if p not in similar:
-                    similar.append(p)
-                if len(similar) >= limit:
-                    break
-            if len(similar) >= limit:
-                break
-
-    return similar[:limit]
+    return list(result.scalars().all())
 
 
 async def get_categories(db: AsyncSession):

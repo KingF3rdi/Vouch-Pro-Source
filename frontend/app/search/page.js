@@ -1,27 +1,35 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Header from '../../components/Header';
 import ProductCard from '../../components/ProductCard';
 import { api } from '../../lib/api';
 
-export default function SearchPage() {
+function SearchContent() {
+  const searchParams = useSearchParams();
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('');
-  const [tag, setTag] = useState('');
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     api.getCategories().then(setCategories).catch(console.error);
-    search('', '', '');
   }, []);
 
-  async function search(q, cat, t) {
+  useEffect(() => {
+    const q = searchParams.get('q') || '';
+    const cat = searchParams.get('category') || '';
+    setQuery(q);
+    setCategory(cat);
+    runSearch(q, cat);
+  }, [searchParams]);
+
+  async function runSearch(q, cat) {
     setLoading(true);
     try {
-      const results = await api.searchProducts(q, cat || undefined, t || undefined);
+      const results = await api.searchProducts(q, cat || undefined);
       setProducts(results);
     } catch (e) {
       console.error(e);
@@ -31,52 +39,70 @@ export default function SearchPage() {
 
   function handleSubmit(e) {
     e.preventDefault();
-    search(query, category, tag);
+    const params = new URLSearchParams();
+    if (query.trim()) params.set('q', query.trim());
+    if (category) params.set('category', category);
+    window.location.href = params.toString() ? `/search?${params.toString()}` : '/search';
   }
 
-  return (
-    <>
-      <Header />
-      <main className="container main-content">
-        <div className="page-header">
-          <h1>Produktsuche</h1>
-        </div>
-        <form className="search-box" onSubmit={handleSubmit}>
-          <input
-            placeholder="Suche nach Name, Tag..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          <select value={category} onChange={(e) => setCategory(e.target.value)}>
-            <option value="">Alle Kategorien</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.slug}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          <input placeholder="Tag filtern" value={tag} onChange={(e) => setTag(e.target.value)} />
-          <button type="submit" className="btn">
-            Suchen
-          </button>
-        </form>
+  const activeCategory = categories.find((c) => c.slug === category);
 
-        <div style={{ marginTop: '2rem' }}>
-          {loading ? (
-            <p style={{ color: 'var(--muted)' }}>Lade...</p>
-          ) : products.length > 0 ? (
+  return (
+    <main className="container main-content">
+      <div className="page-header glass-panel page-header-panel">
+        <h1>Suche</h1>
+        <p className="page-subtitle">
+          {activeCategory
+            ? `Kategorie: ${activeCategory.name}`
+            : 'Finde Texture Packs, Shader und mehr'}
+        </p>
+      </div>
+
+      <form className="search-box glass-panel search-panel" onSubmit={handleSubmit}>
+        <input
+          placeholder="Name, Tag oder Beschreibung…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        <select value={category} onChange={(e) => setCategory(e.target.value)}>
+          <option value="">Alle Kategorien</option>
+          {categories.map((c) => (
+            <option key={c.id} value={c.slug}>{c.name}</option>
+          ))}
+        </select>
+        <button type="submit" className="btn">Suchen</button>
+      </form>
+
+      <div className="search-results">
+        {loading ? (
+          <p className="search-empty">Lade Ergebnisse…</p>
+        ) : products.length > 0 ? (
+          <>
+            <p className="search-result-count">{products.length} Ergebnis{products.length !== 1 ? 'se' : ''}</p>
             <div className="product-grid">
               {products.map((p) => (
                 <ProductCard key={p.id} product={p} />
               ))}
             </div>
-          ) : (
-            <p style={{ color: 'var(--muted)', textAlign: 'center', padding: '2rem' }}>
-              Keine Produkte gefunden.
-            </p>
-          )}
-        </div>
-      </main>
+          </>
+        ) : (
+          <div className="glass-panel search-empty-panel">
+            <p>Keine Produkte gefunden.</p>
+            <p className="search-empty-hint">Probiere eine andere Kategorie oder einen anderen Suchbegriff.</p>
+          </div>
+        )}
+      </div>
+    </main>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <>
+      <Header />
+      <Suspense fallback={<div className="container main-content"><p>Lade…</p></div>}>
+        <SearchContent />
+      </Suspense>
     </>
   );
 }
