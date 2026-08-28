@@ -20,7 +20,10 @@ router = APIRouter(prefix="/api/bot", tags=["bot-integration"], dependencies=[De
 
 @router.post("/products", response_model=ProductOut)
 async def bot_create_product(body: BotProductCreate, db: AsyncSession = Depends(get_db)):
-    product = await services.create_product_from_bot(db, body.model_dump())
+    try:
+        product = await services.create_product_from_bot(db, body.model_dump())
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return product
 
 
