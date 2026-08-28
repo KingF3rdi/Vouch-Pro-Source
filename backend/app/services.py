@@ -1,0 +1,496 @@
+import secrets
+import string
+from datetime import datetime, timedelta
+
+from sqlalchemy import func, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from app.models import (
+    Category,
+    DiscountCode,
+    LinkCode,
+    LinkCodeType,
+    Order,
+    OrderStatus,
+    Product,
+    ProductMedia,
+    ShopStats,
+    User,
+    Vouch,
+    WishlistItem,
+)
+
+
+def generate_code(length: int = 8) -> str:
+    alphabet = string.ascii_uppercase + string.digits
+    return "".join(secrets.choice(alphabet) for _ in range(length))
+
+
+def slugify(name: str) -> str:
+    slug = name.lower().strip()
+    for ch in " /\\&":
+        slug = slug.replace(ch, "-")
+    while "--" in slug:
+        slug = slug.replace("--", "-")
+    return slug.strip("-")[:200]
+
+
+async def get_or_create_stats(db: AsyncSession) -> ShopStats:
+    result = await db.execute(select(ShopStats))
+    stats = result.scalar_one_or_none()
+    if not stats:
+        stats = ShopStats(total_revenue=0.0, total_sales=0)
+        db.add(stats)
+        await db.commit()
+        await db.refresh(stats)
+    return stats
+
+
+async def get_stats(db: AsyncSession) -> dict:
+    stats = await get_or_create_stats(db)
+    vouch_count = await db.scalar(select(func.count()).select_from(Vouch))
+    return {
+        "total_revenue": stats.total_revenue,
+        "total_sales": stats.total_sales,
+        "total_vouches": vouch_count or 0,
+    }
+
+
+async def get_vouch_summary(db: AsyncSession, limit: int = 3) -> dict:
+    total = await db.scalar(select(func.count()).select_from(Vouch)) or 0
+    result = await db.execute(
+        select(Vouch).where(Vouch.is_positive == True).order_by(Vouch.created_at.desc()).limit(limit)
+    )
+    examples = result.scalars().all()
+    return {"total": total, "examples": examples}
+
+
+async def get_bestsellers(db: AsyncSession, limit: int = 8):
+    result = await db.execute(
+        select(Product)
+        .options(selectinload(Product.category))
+        .where(Product.is_active == True)
+        .order_by(Product.sales_count.desc(), Product.created_at.desc())
+        .limit(limit)
+    )
+    return result.scalars().all()
+
+
+async def get_new_products(db: AsyncSession, limit: int = 8):
+    result = await db.execute(
+        select(Product)
+        .options(selectinload(Product.category))
+        .where(Product.is_active == True, Product.is_new == True)
+        .order_by(Product.created_at.desc())
+        .limit(limit)
+    )
+    return result.scalars().all()
+
+
+async def search_products(
+    db: AsyncSession,
+    q: str = "",
+    category_slug: str | None = None,
+    tag: str | None = None,
+    limit: int = 50,
+):
+    query = (
+        select(Product)
+        .options(selectinload(Product.category))
+        .where(Product.is_active == True)
+    )
+
+    if q:
+        like = f"%{q.lower()}%"
+        query = query.where(
+            or_(
+                func.lower(Product.name).like(like),
+                func.lower(Product.description).like(like),
+                func.lower(Product.tags).like(like),
+            )
+        )
+
+    if category_slug:
+        query = query.join(Category).where(Category.slug == category_slug)
+
+    if tag:
+        query = query.where(func.lower(Product.tags).like(f"%{tag.lower()}%"))
+
+    result = await db.execute(query.order_by(Product.sales_count.desc()).limit(limit))
+    return result.scalars().all()
+
+
+async def get_product_by_slug(db: AsyncSession, slug: str) -> Product | None:
+    result = await db.execute(
+        select(Product)
+        .options(selectinload(Product.category), selectinload(Product.media))
+        .where(Product.slug == slug, Product.is_active == True)
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_similar_products(db: AsyncSession, product: Product, limit: int = 4):
+    conditions = [Product.id != product.id, Product.is_active == True]
+    if product.category_id:
+        conditions.append(Product.category_id == product.category_id)
+
+    result = await db.execute(
+        select(Product)
+        .options(selectinload(Product.category))
+        .where(*conditions)
+        .order_by(Product.sales_count.desc())
+        .limit(limit)
+    )
+    similar = list(result.scalars().all())
+
+    if len(similar) < limit and product.tags:
+        tags = [t.strip() for t in product.tags.split(",") if t.strip()]
+        for tag in tags:
+            tag_result = await db.execute(
+                select(Product)
+                .options(selectinload(Product.category))
+                .where(
+                    Product.id != product.id,
+                    Product.is_active == True,
+                    func.lower(Product.tags).like(f"%{tag.lower()}%"),
+                )
+                .limit(limit)
+            )
+            for p in tag_result.scalars().all():
+                if p not in similar:
+                    similar.append(p)
+                if len(similar) >= limit:
+                    break
+            if len(similar) >= limit:
+                break
+
+    return similar[:limit]
+
+
+async def get_categories(db: AsyncSession):
+    result = await db.execute(select(Category).order_by(Category.name))
+    return result.scalars().all()
+
+
+async def create_link_code(
+    db: AsyncSession,
+    code_type: LinkCodeType,
+    discord_id: str | None = None,
+    ign: str | None = None,
+) -> LinkCode:
+    code = generate_code()
+    link = LinkCode(
+        code=code,
+        code_type=code_type,
+        discord_id=discord_id,
+        ign=ign,
+        expires_at=datetime.utcnow() + timedelta(minutes=15),
+    )
+    db.add(link)
+    await db.commit()
+    await db.refresh(link)
+    return link
+
+
+async def redeem_link_code(
+    db: AsyncSession,
+    code: str,
+    ign: str | None = None,
+    discord_id: str | None = None,
+) -> User:
+    result = await db.execute(select(LinkCode).where(LinkCode.code == code.upper()))
+    link = result.scalar_one_or_none()
+    if not link or link.used or link.expires_at < datetime.utcnow():
+        raise ValueError("Ungültiger oder abgelaufener Code")
+
+    user: User | None = None
+
+    if link.code_type == LinkCodeType.discord:
+        if not ign:
+            raise ValueError("IGN erforderlich zum Verknüpfen")
+        if not link.discord_id and not discord_id:
+            raise ValueError("Discord-ID fehlt")
+        target_discord = link.discord_id or discord_id
+        result = await db.execute(select(User).where(User.discord_id == target_discord))
+        user = result.scalar_one_or_none()
+        if not user:
+            user = User(discord_id=target_discord)
+            db.add(user)
+        user.ign = ign
+        link.used = True
+
+    elif link.code_type == LinkCodeType.ign:
+        if not discord_id:
+            raise ValueError("Discord-ID erforderlich zum Verknüpfen")
+        if not link.ign:
+            raise ValueError("IGN im Code fehlt")
+        result = await db.execute(select(User).where(User.discord_id == discord_id))
+        user = result.scalar_one_or_none()
+        if not user:
+            user = User(discord_id=discord_id)
+            db.add(user)
+        user.ign = link.ign
+        link.used = True
+
+    await db.commit()
+    if user:
+        await db.refresh(user)
+    return user
+
+
+async def get_user_by_session(db: AsyncSession, token: str | None) -> User | None:
+    if not token:
+        return None
+    result = await db.execute(select(User).where(User.session_token == token))
+    return result.scalar_one_or_none()
+
+
+async def create_session_for_user(db: AsyncSession, user: User) -> str:
+    token = secrets.token_urlsafe(32)
+    user.session_token = token
+    await db.commit()
+    return token
+
+
+async def validate_discount(db: AsyncSession, code: str) -> DiscountCode | None:
+    result = await db.execute(
+        select(DiscountCode).where(
+            func.lower(DiscountCode.code) == code.lower(),
+            DiscountCode.is_active == True,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def create_order(
+    db: AsyncSession,
+    product_id: int,
+    ign: str,
+    user_id: int | None = None,
+    discount_code: str | None = None,
+) -> Order:
+    result = await db.execute(select(Product).where(Product.id == product_id))
+    product = result.scalar_one_or_none()
+    if not product:
+        raise ValueError("Produkt nicht gefunden")
+
+    amount = product.price
+    if discount_code:
+        dc = await validate_discount(db, discount_code)
+        if dc:
+            amount = round(product.price * (1 - dc.discount_percent / 100), 2)
+            dc.uses += 1
+
+    order = Order(
+        product_id=product.id,
+        user_id=user_id,
+        ign=ign,
+        amount=amount,
+        discount_code=discount_code,
+        status=OrderStatus.pending,
+    )
+    db.add(order)
+    await db.commit()
+    await db.refresh(order)
+    return order
+
+
+async def confirm_payment(
+    db: AsyncSession,
+    ign: str,
+    amount: float,
+    order_id: int | None = None,
+    payment_reference: str | None = None,
+) -> Order | None:
+    if order_id:
+        result = await db.execute(
+            select(Order)
+            .options(selectinload(Order.product))
+            .where(Order.id == order_id, Order.status == OrderStatus.pending)
+        )
+        order = result.scalar_one_or_none()
+    else:
+        result = await db.execute(
+            select(Order)
+            .options(selectinload(Order.product))
+            .where(
+                Order.ign.ilike(ign),
+                Order.amount == amount,
+                Order.status == OrderStatus.pending,
+            )
+            .order_by(Order.created_at.desc())
+        )
+        order = result.scalar_one_or_none()
+
+    if not order:
+        return None
+
+    order.status = OrderStatus.confirmed
+    order.mc_confirmed = True
+    order.paid_at = datetime.utcnow()
+    order.payment_reference = payment_reference
+
+    product = order.product
+    product.sales_count += 1
+
+    stats = await get_or_create_stats(db)
+    stats.total_sales += 1
+    stats.total_revenue += order.amount
+
+    await db.commit()
+    await db.refresh(order)
+    return order
+
+
+async def sync_sale_from_bot(
+    db: AsyncSession,
+    ign: str,
+    amount: float,
+    product_id: int | None = None,
+    product_slug: str | None = None,
+    discord_id: str | None = None,
+    discount_code: str | None = None,
+) -> Order:
+    product: Product | None = None
+    if product_id:
+        result = await db.execute(select(Product).where(Product.id == product_id))
+        product = result.scalar_one_or_none()
+    elif product_slug:
+        product = await get_product_by_slug(db, product_slug)
+
+    if not product:
+        raise ValueError("Produkt nicht gefunden")
+
+    user_id = None
+    if discord_id:
+        result = await db.execute(select(User).where(User.discord_id == discord_id))
+        user = result.scalar_one_or_none()
+        if user:
+            user_id = user.id
+
+    order = await create_order(db, product.id, ign, user_id, discount_code)
+    order.status = OrderStatus.paid
+    order.discord_confirmed = True
+    order.paid_at = datetime.utcnow()
+
+    product.sales_count += 1
+    stats = await get_or_create_stats(db)
+    stats.total_sales += 1
+    stats.total_revenue += order.amount
+
+    await db.commit()
+    await db.refresh(order)
+    return order
+
+
+async def create_product_from_bot(db: AsyncSession, data: dict) -> Product:
+    slug = slugify(data["name"])
+    existing = await get_product_by_slug(db, slug)
+    if existing:
+        slug = f"{slug}-{secrets.token_hex(3)}"
+
+    category_id = None
+    if data.get("category_slug"):
+        result = await db.execute(select(Category).where(Category.slug == data["category_slug"]))
+        cat = result.scalar_one_or_none()
+        if not cat:
+            cat = Category(name=data["category_slug"].title(), slug=data["category_slug"])
+            db.add(cat)
+            await db.flush()
+        category_id = cat.id
+
+    product = Product(
+        name=data["name"],
+        slug=slug,
+        description=data.get("description", ""),
+        price=data["price"],
+        preview_url=data.get("preview_url"),
+        discord_role_id=data.get("discord_role_id"),
+        category_id=category_id,
+        tags=data.get("tags", ""),
+        is_new=data.get("is_new", True),
+    )
+    db.add(product)
+    await db.flush()
+
+    for i, url in enumerate(data.get("media_urls", [])[:5]):
+        db.add(ProductMedia(product_id=product.id, url=url, sort_order=i))
+
+    await db.commit()
+    await db.refresh(product)
+    return product
+
+
+async def sync_vouch(db: AsyncSession, data: dict) -> Vouch:
+    if data.get("external_id"):
+        result = await db.execute(select(Vouch).where(Vouch.external_id == data["external_id"]))
+        existing = result.scalar_one_or_none()
+        if existing:
+            return existing
+
+    vouch = Vouch(
+        external_id=data.get("external_id"),
+        giver_name=data["giver_name"],
+        message=data["message"],
+        is_positive=data.get("is_positive", True),
+    )
+    db.add(vouch)
+    await db.commit()
+    await db.refresh(vouch)
+    return vouch
+
+
+async def toggle_wishlist(db: AsyncSession, user_id: int, product_id: int) -> bool:
+    result = await db.execute(
+        select(WishlistItem).where(
+            WishlistItem.user_id == user_id,
+            WishlistItem.product_id == product_id,
+        )
+    )
+    item = result.scalar_one_or_none()
+    if item:
+        await db.delete(item)
+        await db.commit()
+        return False
+
+    result = await db.execute(select(Product).where(Product.id == product_id))
+    product = result.scalar_one_or_none()
+    if not product:
+        raise ValueError("Produkt nicht gefunden")
+
+    db.add(WishlistItem(user_id=user_id, product_id=product_id, price_at_add=product.price))
+    await db.commit()
+    return True
+
+
+async def get_wishlist(db: AsyncSession, user_id: int):
+    result = await db.execute(
+        select(WishlistItem)
+        .options(selectinload(WishlistItem.product).selectinload(Product.category))
+        .where(WishlistItem.user_id == user_id)
+    )
+    items = result.scalars().all()
+    output = []
+    for item in items:
+        output.append(
+            {
+                "item": item,
+                "price_changed": item.product.price != item.price_at_add,
+            }
+        )
+    return output
+
+
+async def update_product_price(db: AsyncSession, product_id: int, new_price: float) -> Product:
+    result = await db.execute(select(Product).where(Product.id == product_id))
+    product = result.scalar_one_or_none()
+    if not product:
+        raise ValueError("Produkt nicht gefunden")
+
+    old_price = product.price
+    product.price = new_price
+    product.updated_at = datetime.utcnow()
+    await db.commit()
+    await db.refresh(product)
+    return product, old_price

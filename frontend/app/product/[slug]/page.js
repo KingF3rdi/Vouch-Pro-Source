@@ -1,0 +1,200 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
+import Header from '../../../components/Header';
+import ProductCard from '../../../components/ProductCard';
+import { api } from '../../../lib/api';
+
+export default function ProductPage() {
+  const params = useParams();
+  const slug = params.slug;
+  const [product, setProduct] = useState(null);
+  const [similar, setSimilar] = useState([]);
+  const [activeMedia, setActiveMedia] = useState(0);
+  const [discountCode, setDiscountCode] = useState('');
+  const [discountResult, setDiscountResult] = useState(null);
+  const [ign, setIgn] = useState('');
+  const [user, setUser] = useState(null);
+  const [orderMsg, setOrderMsg] = useState('');
+
+  useEffect(() => {
+    api.getProduct(slug).then(setProduct).catch(console.error);
+    api.getSimilar(slug).then(setSimilar).catch(console.error);
+    api.getMe().then((u) => {
+      setUser(u);
+      if (u?.ign) setIgn(u.ign);
+    }).catch(() => {});
+  }, [slug]);
+
+  const allMedia = product
+    ? [
+        ...(product.preview_url ? [{ url: product.preview_url, media_type: 'image' }] : []),
+        ...product.media,
+      ].slice(0, 5)
+    : [];
+
+  async function validateDiscount() {
+    const result = await api.validateDiscount(discountCode);
+    setDiscountResult(result);
+  }
+
+  function getFinalPrice() {
+    if (!product) return 0;
+    if (discountResult?.valid) {
+      return product.price * (1 - discountResult.discount_percent / 100);
+    }
+    return product.price;
+  }
+
+  async function handleOrder() {
+    if (!ign) {
+      setOrderMsg('Bitte IGN eingeben oder Account verknüpfen.');
+      return;
+    }
+    try {
+      const order = await api.createOrder(product.id, ign, discountResult?.valid ? discountCode : null);
+      setOrderMsg(`Bestellung #${order.id} erstellt! Zahle ${getFinalPrice().toFixed(2)} ingame — der Bot erkennt die Zahlung automatisch.`);
+    } catch (e) {
+      setOrderMsg(e.message);
+    }
+  }
+
+  async function toggleWishlist() {
+    if (!user) {
+      setOrderMsg('Bitte zuerst Discord/IGN verknüpfen.');
+      return;
+    }
+    await api.toggleWishlist(product.id);
+    setOrderMsg('Wunschliste aktualisiert!');
+  }
+
+  if (!product) {
+    return (
+      <>
+        <Header />
+        <div className="container" style={{ padding: '3rem', textAlign: 'center' }}>
+          Lade Produkt...
+        </div>
+      </>
+    );
+  }
+
+  const tags = product.tags.split(',').map((t) => t.trim()).filter(Boolean);
+
+  return (
+    <>
+      <Header />
+      <main className="container">
+        <div className="product-detail">
+          <div>
+            <div className="gallery-main">
+              {allMedia.length > 0 ? (
+                allMedia[activeMedia]?.media_type === 'video' ? (
+                  <video src={allMedia[activeMedia].url} controls autoPlay muted loop />
+                ) : (
+                  <img src={allMedia[activeMedia]?.url} alt={product.name} />
+                )
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: '4rem' }}>📦</div>
+              )}
+            </div>
+            {allMedia.length > 1 && (
+              <div className="gallery-thumbs">
+                {allMedia.map((m, i) => (
+                  <div
+                    key={i}
+                    className={`gallery-thumb ${i === activeMedia ? 'active' : ''}`}
+                    onClick={() => setActiveMedia(i)}
+                  >
+                    {m.media_type === 'video' ? (
+                      <div style={{ background: '#333', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>▶</div>
+                    ) : (
+                      <img src={m.url} alt="" />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="product-info">
+            <h1>{product.name}</h1>
+            {product.category && (
+              <span className="tag">{product.category.name}</span>
+            )}
+            <div className="price-large">
+              {getFinalPrice().toFixed(2)} €
+              {discountResult?.valid && (
+                <span style={{ fontSize: '1rem', color: 'var(--muted)', textDecoration: 'line-through', marginLeft: '0.5rem' }}>
+                  {product.price.toFixed(2)} €
+                </span>
+              )}
+            </div>
+            <p style={{ color: 'var(--muted)' }}>{product.description}</p>
+
+            {tags.length > 0 && (
+              <div className="tags" style={{ marginBottom: '1rem' }}>
+                {tags.map((t) => (
+                  <span key={t} className="tag">{t}</span>
+                ))}
+              </div>
+            )}
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>Creator / Rabatt Code (10%)</label>
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.35rem' }}>
+                <input
+                  style={{ flex: 1, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '0.75rem', color: 'var(--text)' }}
+                  value={discountCode}
+                  onChange={(e) => setDiscountCode(e.target.value)}
+                  placeholder="CREATOR10"
+                />
+                <button className="btn btn-outline" onClick={validateDiscount}>Prüfen</button>
+              </div>
+              {discountResult && (
+                <p style={{ color: discountResult.valid ? 'var(--accent)' : 'var(--danger)', fontSize: '0.85rem', marginTop: '0.35rem' }}>
+                  {discountResult.message}
+                </p>
+              )}
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>Minecraft IGN</label>
+              <input
+                style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '0.75rem', color: 'var(--text)', marginTop: '0.35rem' }}
+                value={ign}
+                onChange={(e) => setIgn(e.target.value)}
+                placeholder="DeinIngameName"
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <button className="btn" onClick={handleOrder}>Jetzt kaufen</button>
+              <button className="btn btn-outline" onClick={toggleWishlist}>♥ Wunschliste</button>
+            </div>
+
+            {orderMsg && (
+              <p style={{ marginTop: '1rem', color: 'var(--accent)', fontSize: '0.9rem' }}>{orderMsg}</p>
+            )}
+
+            <p style={{ marginTop: '1rem', fontSize: '0.85rem', color: 'var(--muted)' }}>
+              {product.sales_count} Verkäufe · Discord Rolle wird nach Kauf vergeben
+            </p>
+          </div>
+        </div>
+
+        {similar.length > 0 && (
+          <section className="section">
+            <h2 style={{ marginBottom: '1rem' }}>Ähnliche Produkte</h2>
+            <div className="product-grid">
+              {similar.map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+          </section>
+        )}
+      </main>
+    </>
+  );
+}
