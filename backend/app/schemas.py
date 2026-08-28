@@ -158,6 +158,12 @@ class OrderCreate(BaseModel):
     discount_code: str | None = None
 
 
+class CartOrderCreate(BaseModel):
+    product_ids: list[int] = Field(min_length=1, max_length=20)
+    ign: str
+    discount_code: str | None = None
+
+
 class OrderOut(BaseModel):
     id: int
     product_id: int
@@ -171,6 +177,13 @@ class OrderOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class CartOrderOut(BaseModel):
+    orders: list[OrderOut]
+    ticket_url: str | None = None
+    total_amount: float
+    message: str | None = None
 
 
 class SearchParams(BaseModel):

@@ -26,6 +26,23 @@ import string
 from datetime import datetime
 
 
+def format_ingame_price(value: float) -> str:
+    n = float(value)
+    if n >= 1e9:
+        return f"{_trim(n / 1e9)}b"
+    if n >= 1e6:
+        return f"{_trim(n / 1e6)}m"
+    if n >= 1e3:
+        return f"{_trim(n / 1e3)}k"
+    if n == int(n):
+        return str(int(n))
+    return _trim(n)
+
+
+def _trim(num: float) -> str:
+    return f"{num:.2f}".rstrip("0").rstrip(".")
+
+
 class ShopIntegration:
     PREFIX = "!shop"
 
@@ -138,7 +155,7 @@ class ShopIntegration:
             if "error" in result:
                 await message.channel.send(f"Fehler: {result['error']}")
             else:
-                await message.channel.send(f"Produkt **{result['name']}** gepostet! ({result['price']}€)")
+                await message.channel.send(f"Produkt **{result['name']}** gepostet! ({format_ingame_price(result['price'])})")
             return True
 
         elif cmd == "stats":
@@ -146,7 +163,7 @@ class ShopIntegration:
             await message.channel.send(
                 f"📊 **Shop Stats**\n"
                 f"Verkäufe: **{stats['total_sales']}**\n"
-                f"Umsatz: **{stats['total_revenue']:.2f}€**\n"
+                f"Umsatz: **{format_ingame_price(stats['total_revenue'])}**\n"
                 f"Vouches: **{stats['total_vouches']}**"
             )
             return True
@@ -203,12 +220,12 @@ class ShopIntegration:
                     user = await message.guild.fetch_member(int(discord_id))
                     await user.send(
                         f"🔔 Preisänderung bei einem Wunschlisten-Item!\n"
-                        f"Neuer Preis: **{new_price:.2f}€** (vorher {result['old_price']:.2f}€)"
+                        f"Neuer Preis: **{format_ingame_price(new_price)}** (vorher {format_ingame_price(result['old_price'])})"
                     )
                 except Exception:
                     pass
 
-            await message.channel.send(f"Preis auf **{new_price:.2f}€** geändert. {len(notify_ids)} DMs gesendet.")
+            await message.channel.send(f"Preis auf **{format_ingame_price(new_price)}** geändert. {len(notify_ids)} DMs gesendet.")
             return True
 
         elif cmd == "complete" and message.author.guild_permissions.administrator:

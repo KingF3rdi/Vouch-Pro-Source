@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import Header from '../../../components/Header';
 import ProductCard from '../../../components/ProductCard';
 import { api } from '../../../lib/api';
+import AddToCartButton from '../../../components/AddToCartButton';
 import { formatIngamePrice } from '../../../lib/formatPrice';
 
 export default function ProductPage() {
@@ -97,7 +98,7 @@ export default function ProductPage() {
   return (
     <>
       <Header />
-      <main className="container main-content">
+      <main className="container main-content main-content--offset">
         <div className="product-detail">
           <div className="glass-panel product-gallery-panel">
             <div className="gallery-main">
@@ -186,6 +187,7 @@ export default function ProductPage() {
               <button className="btn" onClick={handleOrder}>
                 {user?.discord_id ? 'Bezahlen (Discord Ticket)' : 'Discord verbinden zum Kaufen'}
               </button>
+              <AddToCartButton product={product} />
               <button className="btn btn-outline-glass" onClick={toggleWishlist}>♥ Wunschliste</button>
             </div>
 

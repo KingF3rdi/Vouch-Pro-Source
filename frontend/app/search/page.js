@@ -48,7 +48,7 @@ function SearchContent() {
   const activeCategory = categories.find((c) => c.slug === category);
 
   return (
-    <main className="container main-content">
+      <main className="container main-content main-content--offset">
       <div className="page-header glass-panel page-header-panel">
         <h1>Suche</h1>
         <p className="page-subtitle">

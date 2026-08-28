@@ -656,6 +656,100 @@ async def create_purchase_with_ticket(
     return order
 
 
+async def create_cart_purchase_with_ticket(
+    db: AsyncSession,
+    product_ids: list[int],
+    user: User,
+    ign: str,
+    discount_code: str | None = None,
+) -> tuple[list[Order], str | None, float]:
+    from app.discord_tickets import create_cart_ticket
+
+    if not user.discord_id:
+        raise ValueError("Discord-Verbindung erforderlich für den Kauf. Bitte zuerst Discord verbinden.")
+
+    unique_ids = list(dict.fromkeys(product_ids))
+    if not unique_ids:
+        raise ValueError("Warenkorb ist leer")
+
+    result = await db.execute(
+        select(Product).where(Product.id.in_(unique_ids), *_active_product_filters())
+    )
+    products = list(result.scalars().all())
+    if len(products) != len(unique_ids):
+        raise ValueError("Ein oder mehrere Produkte sind nicht verfügbar")
+
+    discount_percent = 0
+    dc = None
+    if discount_code:
+        dc = await validate_discount(db, discount_code)
+        if dc:
+            discount_percent = dc.discount_percent
+
+    orders: list[Order] = []
+    line_items: list[dict] = []
+    total_amount = 0.0
+
+    for product in products:
+        amount = product.price
+        if discount_percent:
+            amount = round(product.price * (1 - discount_percent / 100), 2)
+
+        order = Order(
+            product_id=product.id,
+            user_id=user.id,
+            ign=ign or user.ign or "unknown",
+            amount=amount,
+            discount_code=discount_code if discount_percent else None,
+            status=OrderStatus.pending,
+        )
+        db.add(order)
+        orders.append(order)
+        line_items.append(
+            {
+                "name": product.name,
+                "original_price": product.price,
+                "final_amount": amount,
+            }
+        )
+        total_amount += amount
+
+    await db.flush()
+
+    if dc and discount_percent:
+        dc.uses += 1
+
+    primary_order_id = orders[0].id
+    ticket = await create_cart_ticket(
+        order_id=primary_order_id,
+        discord_user_id=user.discord_id,
+        discord_username=user.discord_username or user.discord_id,
+        ign=ign or user.ign or "—",
+        line_items=line_items,
+        total_amount=total_amount,
+        discount_code=discount_code,
+        discount_percent=discount_percent,
+    )
+
+    ticket_url = ticket.get("ticket_url")
+    channel_id = ticket.get("channel_id")
+
+    for order in orders:
+        order.product = next(p for p in products if p.id == order.product_id)
+        if ticket.get("success"):
+            order.status = OrderStatus.ticket_open
+            order.ticket_channel_id = channel_id
+            order.ticket_url = ticket_url
+        else:
+            order.status = OrderStatus.pending
+
+    await db.commit()
+    for order in orders:
+        await db.refresh(order)
+
+    return orders, ticket_url if ticket.get("success") else None, total_amount
+
+
 async def get_user_profile(db: AsyncSession, user_id: int):
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()

@@ -38,7 +38,7 @@ export default function AccountPage() {
   return (
     <>
       <Header />
-      <main className="container">
+      <main className="container main-content--offset">
         <div className="account-card glass-panel">
           <h2>TxTEmpire Profil</h2>
 

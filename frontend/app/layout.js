@@ -1,4 +1,5 @@
 import './globals.css';
+import Providers from '../components/Providers';
 
 export default function RootLayout({ children }) {
   return (
@@ -8,7 +9,9 @@ export default function RootLayout({ children }) {
         <title>TxTEmpire Shop</title>
         <meta name="description" content="TxTEmpire — Premium Minecraft Texture Packs" />
       </head>
-      <body>{children}</body>
+      <body>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }

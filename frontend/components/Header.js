@@ -4,17 +4,30 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import DiscordJoinButton from './DiscordJoinButton';
 import HeaderSearch from './HeaderSearch';
+import CartLink from './CartLink';
 import { api } from '../lib/api';
+import { useScrollHeader } from '../hooks/useScrollHeader';
 
 export default function Header({ onHero = false }) {
   const [user, setUser] = useState(null);
+  const { visible, atTop } = useScrollHeader();
 
   useEffect(() => {
     api.getMe().then(setUser).catch(() => setUser(null));
   }, []);
 
+  const heroOverlay = onHero && atTop;
+  const classes = [
+    'header',
+    'header--fixed',
+    heroOverlay ? 'header--hero' : '',
+    visible ? 'header--visible' : 'header--hidden',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
-    <header className={`header${onHero ? ' header--hero' : ''}`}>
+    <header className={classes}>
       <div className="container header-inner">
         <Link href="/" className="logo">
           TxTEmpire
@@ -23,8 +36,10 @@ export default function Header({ onHero = false }) {
         <HeaderSearch />
 
         <nav className="nav nav--compact">
+          <CartLink />
           <Link href="/wishlist" className="nav-link">Wunschliste</Link>
           <Link href="/account" className="nav-link">Profil</Link>
+          <CartLink iconOnly />
           <Link href="/wishlist" className="nav-icon-link nav-icon-link--hide-desktop" aria-label="Wunschliste">
             ♡
           </Link>

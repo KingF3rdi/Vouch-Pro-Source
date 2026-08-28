@@ -5,6 +5,8 @@ from app.database import get_db
 from app.models import LinkCodeType
 from app.schemas import (
     CategoryOut,
+    CartOrderCreate,
+    CartOrderOut,
     DiscountValidateOut,
     DiscountValidateRequest,
     LinkCodeCreate,
@@ -155,5 +157,57 @@ async def create_order(
         status=order.status.value,
         ticket_url=order.ticket_url,
         created_at=order.created_at,
+        message=message,
+    )
+
+
+@router.post("/orders/cart", response_model=CartOrderOut)
+async def create_cart_order(
+    body: CartOrderCreate,
+    session_token: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    user = await services.get_user_by_session(db, session_token)
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="Bitte zuerst Discord verbinden, um zu kaufen.",
+        )
+
+    try:
+        orders, ticket_url, total_amount = await services.create_cart_purchase_with_ticket(
+            db,
+            body.product_ids,
+            user,
+            body.ign,
+            body.discount_code,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    order_outs = [
+        OrderOut(
+            id=o.id,
+            product_id=o.product_id,
+            product_name=o.product.name if o.product else None,
+            ign=o.ign,
+            amount=o.amount,
+            status=o.status.value,
+            ticket_url=o.ticket_url,
+            created_at=o.created_at,
+        )
+        for o in orders
+    ]
+
+    message = (
+        "Discord-Ticket geöffnet! Schließe die Zahlung im Ticket ab."
+        if ticket_url
+        else "Bestellung erstellt — Discord-Ticket konnte nicht automatisch geöffnet werden."
+    )
+
+    return CartOrderOut(
+        orders=order_outs,
+        ticket_url=ticket_url,
+        total_amount=total_amount,
         message=message,
     )

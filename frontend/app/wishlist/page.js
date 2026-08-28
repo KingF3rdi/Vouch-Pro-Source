@@ -20,7 +20,7 @@ export default function WishlistPage() {
   return (
     <>
       <Header />
-      <main className="container main-content">
+      <main className="container main-content main-content--offset">
         <div className="page-header">
           <h1>Wunschliste</h1>
         </div>
