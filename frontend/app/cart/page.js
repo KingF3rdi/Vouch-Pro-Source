@@ -17,10 +17,7 @@ export default function CartPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    api.getMe().then((u) => {
-      setUser(u);
-      if (u?.ign) setIgn(u.ign);
-    }).catch(() => setUser(null));
+    api.getMe().then(setUser).catch(() => setUser(null));
   }, []);
 
   async function validateDiscount() {
@@ -142,41 +139,42 @@ export default function CartPage() {
                 <span className="price-large">{formatIngamePrice(getDiscountedTotal())}</span>
               </div>
 
-              <div style={{ marginTop: '1rem' }}>
-                <label style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>Rabattcode</label>
-                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.35rem' }}>
+              <div className="checkout-field">
+                <label className="checkout-field-label">Minecraft IGN</label>
+                <input
+                  className="form-input checkout-field-input"
+                  value={ign}
+                  onChange={(e) => setIgn(e.target.value)}
+                  placeholder="DeinIngameName"
+                  autoComplete="off"
+                />
+                <p className="checkout-field-hint">
+                  Wird für die Zahlung und Pack-Freischaltung benötigt.
+                </p>
+              </div>
+
+              <div className="checkout-field">
+                <label className="checkout-field-label">Creator / Rabattcode</label>
+                <div className="checkout-field-row">
                   <input
-                    className="form-input"
-                    style={{ marginBottom: 0, flex: 1 }}
+                    className="form-input checkout-field-input"
                     value={discountCode}
                     onChange={(e) => setDiscountCode(e.target.value)}
                     placeholder="CREATOR10"
+                    autoComplete="off"
                   />
-                  <button className="btn btn-outline-glass btn-sm" onClick={validateDiscount}>
+                  <button type="button" className="btn btn-outline-glass btn-sm" onClick={validateDiscount}>
                     Prüfen
                   </button>
                 </div>
                 {discountResult && (
                   <p
-                    style={{
-                      color: discountResult.valid ? 'var(--accent)' : 'var(--danger)',
-                      fontSize: '0.85rem',
-                      marginTop: '0.35rem',
-                    }}
+                    className="checkout-field-feedback"
+                    style={{ color: discountResult.valid ? 'var(--accent)' : 'var(--danger)' }}
                   >
                     {discountResult.message}
                   </p>
                 )}
-              </div>
-
-              <div style={{ marginTop: '1rem' }}>
-                <label style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>Minecraft IGN</label>
-                <input
-                  className="form-input"
-                  value={ign}
-                  onChange={(e) => setIgn(e.target.value)}
-                  placeholder="DeinIngameName"
-                />
               </div>
 
               <button
