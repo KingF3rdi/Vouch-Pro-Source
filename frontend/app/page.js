@@ -39,14 +39,16 @@ export default async function HomePage() {
             <div className="section-header category-glass-panel section-header-panel">
               <h2>🔥 Bestseller</h2>
             </div>
-            <div className="product-grid">
-              {bestsellers.length > 0 ? (
-                bestsellers.map((p) => <ProductCard key={p.id} product={p} />)
-              ) : (
-                <p className="glass-card" style={{ padding: '1.5rem', color: 'var(--muted)', gridColumn: '1 / -1' }}>
-                  Noch keine Bestseller — Produkte werden vom Discord Bot synchronisiert.
-                </p>
-              )}
+            <div className="section-surface section-grid-surface">
+              <div className="product-grid">
+                {bestsellers.length > 0 ? (
+                  bestsellers.map((p) => <ProductCard key={p.id} product={p} />)
+                ) : (
+                  <p className="glass-card" style={{ padding: '1.5rem', color: 'var(--muted)', gridColumn: '1 / -1' }}>
+                    Noch keine Bestseller — Produkte werden vom Discord Bot synchronisiert.
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </section>
@@ -57,14 +59,16 @@ export default async function HomePage() {
             <div className="section-header category-glass-panel section-header-panel">
               <h2>✨ Neue Produkte</h2>
             </div>
-            <div className="product-grid">
-              {newProducts.length > 0 ? (
-                newProducts.map((p) => <ProductCard key={p.id} product={p} />)
-              ) : (
-                <p className="glass-card" style={{ padding: '1.5rem', color: 'var(--muted)', gridColumn: '1 / -1' }}>
-                  Keine neuen Produkte verfügbar.
-                </p>
-              )}
+            <div className="section-surface section-grid-surface">
+              <div className="product-grid">
+                {newProducts.length > 0 ? (
+                  newProducts.map((p) => <ProductCard key={p.id} product={p} />)
+                ) : (
+                  <p className="glass-card" style={{ padding: '1.5rem', color: 'var(--muted)', gridColumn: '1 / -1' }}>
+                    Keine neuen Produkte verfügbar.
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </section>

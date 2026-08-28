@@ -88,10 +88,12 @@ function SearchContent() {
         ) : products.length > 0 ? (
           <>
             <p className="search-result-count">{products.length} Ergebnis{products.length !== 1 ? 'se' : ''}</p>
-            <div className="product-grid">
-              {products.map((p) => (
-                <ProductCard key={p.id} product={p} />
-              ))}
+            <div className="section-surface section-grid-surface">
+              <div className="product-grid">
+                {products.map((p) => (
+                  <ProductCard key={p.id} product={p} />
+                ))}
+              </div>
             </div>
           </>
         ) : (
