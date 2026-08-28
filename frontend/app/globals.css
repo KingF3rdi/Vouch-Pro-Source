@@ -682,6 +682,18 @@ a {
   font-weight: 700;
 }
 
+.price-strikethrough {
+  font-size: 1rem;
+  color: var(--muted);
+  text-decoration: line-through;
+  margin-left: 0.5rem;
+}
+
+.price-changed-hint {
+  color: var(--gold);
+  font-size: 0.85rem;
+}
+
 .product-gallery-panel {
   padding: 1rem;
 }

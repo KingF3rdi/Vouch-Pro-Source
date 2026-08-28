@@ -3,6 +3,7 @@
 import httpx
 
 from app.config import settings
+from app.format_price import format_ingame_price
 
 DISCORD_API = "https://discord.com/api/v10"
 
@@ -69,7 +70,7 @@ def _confirmation_embed(
         "fields": [
             {"name": "Käufer", "value": buyer, "inline": True},
             {"name": "IGN", "value": ign or "—", "inline": True},
-            {"name": "Betrag", "value": f"{amount:.2f} €", "inline": True},
+            {"name": "Betrag", "value": format_ingame_price(amount), "inline": True},
             {"name": "Rabatt", "value": discount_line, "inline": True},
             {"name": "Profil", "value": "Produkt ist jetzt auf deinem TxTEmpire Profil verfügbar.", "inline": False},
         ],

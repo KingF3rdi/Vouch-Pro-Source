@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
+import { formatIngamePrice } from '../lib/formatPrice';
 
 export default function StatsBar() {
   const [stats, setStats] = useState(null);
@@ -16,7 +17,7 @@ export default function StatsBar() {
     <div className="stats-bar">
       <div className="container">
         Insgesamt verkauft: <strong>{stats.total_sales}</strong> Packs · Umsatz:{' '}
-        <strong>{stats.total_revenue.toFixed(2)} €</strong>
+        <strong>{formatIngamePrice(stats.total_revenue)}</strong>
       </div>
     </div>
   );

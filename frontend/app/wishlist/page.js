@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Header from '../../components/Header';
 import { api } from '../../lib/api';
+import { formatIngamePrice } from '../../lib/formatPrice';
 
 export default function WishlistPage() {
   const [items, setItems] = useState([]);
@@ -52,10 +53,10 @@ export default function WishlistPage() {
                 </div>
                 <div className="product-card-body">
                   <h3>{item.product.name}</h3>
-                  <div className="price">{item.product.price.toFixed(2)} €</div>
+                  <div className="price">{formatIngamePrice(item.product.price)}</div>
                   {item.price_changed && (
-                    <p style={{ color: 'var(--gold)', fontSize: '0.85rem' }}>
-                      Preis geändert! (war {item.price_at_add.toFixed(2)} €)
+                    <p className="price-changed-hint">
+                      Preis geändert! (war {formatIngamePrice(item.price_at_add)})
                     </p>
                   )}
                 </div>

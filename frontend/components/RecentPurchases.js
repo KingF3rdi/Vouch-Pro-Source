@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
+import { formatIngamePrice } from '../lib/formatPrice';
 
 export default function RecentPurchases() {
   const [purchases, setPurchases] = useState([]);
@@ -27,7 +28,7 @@ export default function RecentPurchases() {
                 <div>
                   <div className="purchase-feed-product">{p.product_name}</div>
                   <div className="purchase-feed-buyer">
-                    {p.buyer_display} · {p.amount.toFixed(2)} €
+                    {p.buyer_display} · {formatIngamePrice(p.amount)}
                   </div>
                 </div>
               </div>

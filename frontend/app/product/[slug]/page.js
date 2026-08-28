@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import Header from '../../../components/Header';
 import ProductCard from '../../../components/ProductCard';
 import { api } from '../../../lib/api';
+import { formatIngamePrice } from '../../../lib/formatPrice';
 
 export default function ProductPage() {
   const params = useParams();
@@ -60,7 +61,7 @@ export default function ProductPage() {
       const order = await api.createOrder(product.id, ign, discountResult?.valid ? discountCode : null);
       if (order.ticket_url) {
         setOrderMsg(
-          `Ticket geöffnet! Bestellung #${order.id} — ${getFinalPrice().toFixed(2)} €. Öffne dein Discord-Ticket zur Zahlung.`
+          `Ticket geöffnet! Bestellung #${order.id} — ${formatIngamePrice(getFinalPrice())}. Öffne dein Discord-Ticket zur Zahlung.`
         );
         window.open(order.ticket_url, '_blank');
       } else {
@@ -135,10 +136,10 @@ export default function ProductPage() {
               <span className="tag">{product.category.name}</span>
             )}
             <div className="price-large">
-              {getFinalPrice().toFixed(2)} €
+              {formatIngamePrice(getFinalPrice())}
               {discountResult?.valid && (
-                <span style={{ fontSize: '1rem', color: 'var(--muted)', textDecoration: 'line-through', marginLeft: '0.5rem' }}>
-                  {product.price.toFixed(2)} €
+                <span className="price-strikethrough">
+                  {formatIngamePrice(product.price)}
                 </span>
               )}
             </div>

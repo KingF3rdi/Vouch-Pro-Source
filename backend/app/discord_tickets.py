@@ -3,6 +3,7 @@
 import httpx
 
 from app.config import settings
+from app.format_price import format_ingame_price
 
 DISCORD_API = "https://discord.com/api/v10"
 
@@ -65,8 +66,8 @@ async def create_purchase_ticket(
             "color": 0xc026d3,
             "fields": [
                 {"name": "Produkt", "value": product_name, "inline": True},
-                {"name": "Originalpreis", "value": f"{product_price:.2f} €", "inline": True},
-                {"name": "Endpreis", "value": f"**{final_amount:.2f} €**", "inline": True},
+                {"name": "Originalpreis", "value": format_ingame_price(product_price), "inline": True},
+                {"name": "Endpreis", "value": f"**{format_ingame_price(final_amount)}**", "inline": True},
                 {"name": "Rabatt", "value": discount_line, "inline": True},
                 {"name": "Minecraft IGN", "value": ign or "—", "inline": True},
                 {"name": "Discord", "value": f"<@{discord_user_id}>", "inline": True},

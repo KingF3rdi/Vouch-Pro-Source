@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '../lib/api';
+import { formatIngamePrice } from '../lib/formatPrice';
 import DiscordJoinButton from './DiscordJoinButton';
 
 export default function HeroBanner() {
@@ -28,8 +29,8 @@ export default function HeroBanner() {
               <div className="hero-stat-divider" />
               <div className="hero-stat">
                 <span className="hero-stat__label">Umsatz</span>
-                <span className="hero-stat__value">{stats.total_revenue.toFixed(0)}</span>
-                <span className="hero-stat__unit">€</span>
+                <span className="hero-stat__value">{formatIngamePrice(stats.total_revenue)}</span>
+                <span className="hero-stat__unit">Coins</span>
               </div>
               <div className="hero-stat-divider" />
               <div className="hero-stat">

@@ -16,7 +16,7 @@ async def seed():
     async with AsyncSessionLocal() as db:
         stats = await db.get(ShopStats, 1)
         if not stats:
-            db.add(ShopStats(total_revenue=1250.0, total_sales=47))
+            db.add(ShopStats(total_revenue=1250000.0, total_sales=47))
 
         cat_tp = Category(name="Texture Packs", slug="texture-packs")
         cat_shader = Category(name="Shader", slug="shader")
@@ -28,7 +28,7 @@ async def seed():
                 name="TxTEmpire Realistic HD",
                 slug="txtempire-realistic-hd",
                 description="TxTEmpire Signature Pack — Ultra-realistisches 256x Texture Pack mit PBR Support.",
-                price=9.99,
+                price=10000,
                 preview_url="https://placehold.co/600x400/1a2332/4ade80?text=Realistic+HD",
                 discord_role_id="1234567890",
                 category_id=cat_tp.id,
@@ -40,7 +40,7 @@ async def seed():
                 name="TxTEmpire Neon Shader",
                 slug="txtempire-neon-shader",
                 description="TxTEmpire Neon Shader Pro — Leuchtende Shader mit Custom Lighting und Bloom.",
-                price=14.99,
+                price=15000,
                 preview_url="https://placehold.co/600x400/1a2332/fbbf24?text=Neon+Shader",
                 discord_role_id="1234567891",
                 category_id=cat_shader.id,
@@ -52,7 +52,7 @@ async def seed():
                 name="Medieval Pack Vol.2",
                 slug="medieval-pack-vol2",
                 description="Mittelalterliches Texture Pack mit 128x Auflösung.",
-                price=7.50,
+                price=7500,
                 preview_url="https://placehold.co/600x400/1a2332/8b9cb3?text=Medieval",
                 category_id=cat_tp.id,
                 tags="medieval,128x,rpg",

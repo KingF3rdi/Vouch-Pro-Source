@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { formatIngamePrice } from '../lib/formatPrice';
 
 export default function ProductCard({ product }) {
   const tags = product.tags
@@ -22,7 +23,7 @@ export default function ProductCard({ product }) {
           <h3>{product.name}</h3>
           {product.is_new && <span className="badge-new">Neu</span>}
         </div>
-        <div className="price">{product.price.toFixed(2)} €</div>
+        <div className="price">{formatIngamePrice(product.price)}</div>
         <div className="product-card-meta">{product.sales_count} Verkäufe</div>
         {tags.length > 0 && (
           <div className="tags">
