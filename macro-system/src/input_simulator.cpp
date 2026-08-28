@@ -53,7 +53,24 @@ void InputSimulator::leftClick(int holdMinMs, int holdMaxMs) {
 void InputSimulator::leftClickWithMidSwap(WORD slotKey, int holdMinMs, int holdMaxMs,
                                           int swapAtMinMs, int swapAtMaxMs) {
     const int totalHold = rng_.uniformInt(holdMinMs, holdMaxMs);
-    const int swapAt = std::clamp(rng_.uniformInt(swapAtMinMs, swapAtMaxMs), 1, totalHold - 1);
+    const int swapAt =
+        std::clamp(rng_.uniformInt(swapAtMinMs, swapAtMaxMs), 0, std::max(0, totalHold - 1));
+
+    if (swapAt == 0) {
+        // Sofort-Swap: Linksklick und Slotwechsel im selben SendInput-Tick (exakt im Hit)
+        INPUT inputs[3]{};
+        inputs[0].type = INPUT_MOUSE;
+        inputs[0].mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
+        inputs[1].type = INPUT_KEYBOARD;
+        inputs[1].ki.wVk = slotKey;
+        inputs[2].type = INPUT_KEYBOARD;
+        inputs[2].ki.wVk = slotKey;
+        inputs[2].ki.dwFlags = KEYEVENTF_KEYUP;
+        SendInput(3, inputs, sizeof(INPUT));
+        std::this_thread::sleep_for(std::chrono::milliseconds(totalHold));
+        sendMouse(MOUSEEVENTF_LEFTUP);
+        return;
+    }
 
     sendMouse(MOUSEEVENTF_LEFTDOWN);
     std::this_thread::sleep_for(std::chrono::milliseconds(swapAt));

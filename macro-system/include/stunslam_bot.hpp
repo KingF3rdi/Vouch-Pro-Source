@@ -28,6 +28,8 @@ struct StunslamBotConfig {
     int preSwapDelayMaxMs{2};
     int clickHoldMinMs{10};
     int clickHoldMaxMs{16};
+    int airMidSwapMinMs{0};
+    int airMidSwapMaxMs{0};
     int midSwapMinMs{3};
     int midSwapMaxMs{5};
     int betweenHitsMinMs{1};

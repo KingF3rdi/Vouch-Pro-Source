@@ -55,7 +55,7 @@ void StunslamBot::executeAirStunslam() {
     // Luft-Stunslam: Hit starten -> mid-hit Axt -> Mace -> Mace-Hit
     input_.microDelay(config_.microDelayMinMs, config_.microDelayMaxMs);
     input_.leftClickWithMidSwap(config_.axeSlotKey, config_.clickHoldMinMs, config_.clickHoldMaxMs,
-                                config_.midSwapMinMs, config_.midSwapMaxMs);
+                                config_.airMidSwapMinMs, config_.airMidSwapMaxMs);
 
     input_.sleepMs(config_.preSwapDelayMinMs, config_.preSwapDelayMaxMs);
     input_.pressKey(config_.maceSlotKey);
