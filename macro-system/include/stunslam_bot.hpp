@@ -7,6 +7,7 @@
 
 #include "common.hpp"
 #include "fall_detector.hpp"
+#include "game_state_guard.hpp"
 #include "input_simulator.hpp"
 #include "screen_analyzer.hpp"
 
@@ -35,7 +36,7 @@ struct StunslamBotConfig {
 /// Automatischer Stunslam mit Axt-Swap, Fall- und Schild-Erkennung.
 class StunslamBot {
 public:
-    StunslamBot(StunslamBotConfig config, RandomEngine& rng);
+    StunslamBot(StunslamBotConfig config, RandomEngine& rng, GameStateGuard& guard);
 
     void start();
     void stop();
@@ -54,6 +55,7 @@ private:
 
     StunslamBotConfig config_;
     RandomEngine& rng_;
+    GameStateGuard& guard_;
     InputSimulator input_;
     ScreenAnalyzer screen_;
     FallDetector fallDetector_;

@@ -2,8 +2,9 @@
 
 namespace macro {
 
-PearlcatchMacros::PearlcatchMacros(PearlcatchMacrosConfig config, RandomEngine& rng)
-    : config_(config), rng_(rng), input_(rng) {}
+PearlcatchMacros::PearlcatchMacros(PearlcatchMacrosConfig config, RandomEngine& rng,
+                                   GameStateGuard& guard)
+    : config_(config), rng_(rng), guard_(guard), input_(rng) {}
 
 void PearlcatchMacros::setConfig(const PearlcatchMacrosConfig& config) { config_ = config; }
 
@@ -65,7 +66,6 @@ void PearlcatchMacros::executeDiagonalPearlcatch(bool leftDiagonal) {
 }
 
 void PearlcatchMacros::executeOffhandPearlcatch() {
-    // Offhand-Wechsel: Windcharge-Slot -> Swap -> Doppel-Rechtsklick -> Swap zurueck
     input_.pressKey(config_.windchargeSlotKey);
     input_.sleepMs(config_.delayMinMs, config_.delayMaxMs);
     input_.pressKey(config_.offhandSwapKey);
@@ -84,9 +84,24 @@ void PearlcatchMacros::executeLungeSwap() {
     input_.pressKey(config_.lungeSlotA);
 }
 
+void PearlcatchMacros::executeHotbarTotemSwap() {
+    // Offhand Hotbar Totem: Totem-Slot -> Swap Offhand -> zurueck auf vorherigen Slot
+    const WORD returnSlot = guard_.lastActiveHotbarSlot() != 0 ? guard_.lastActiveHotbarSlot()
+                                                                 : config_.fallbackReturnSlotKey;
+
+    input_.pressKey(config_.totemHotbarSlotKey);
+    input_.sleepMs(config_.delayMinMs, config_.delayMaxMs);
+    input_.pressKey(config_.offhandSwapKey);
+    input_.sleepMs(config_.delayMinMs, config_.delayMaxMs);
+    input_.pressKey(returnSlot);
+}
+
 void PearlcatchMacros::runLoop() {
     while (!stopRequested_) {
-        if (!sequenceRunning_) {
+        guard_.update();
+
+        if (!sequenceRunning_ &&
+            guard_.isAllowed(GameStateGuard::MacroPolicy::Gameplay)) {
             if (consumeHotkeyEdge(config_.hotkeyStandard)) {
                 sequenceRunning_ = true;
                 executeStandardPearlcatch();
@@ -106,6 +121,10 @@ void PearlcatchMacros::runLoop() {
             } else if (consumeHotkeyEdge(config_.hotkeyLunge)) {
                 sequenceRunning_ = true;
                 executeLungeSwap();
+                sequenceRunning_ = false;
+            } else if (consumeHotkeyEdge(config_.hotkeyHotbarTotem)) {
+                sequenceRunning_ = true;
+                executeHotbarTotemSwap();
                 sequenceRunning_ = false;
             }
         }

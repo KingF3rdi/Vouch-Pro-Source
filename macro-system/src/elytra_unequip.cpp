@@ -2,8 +2,9 @@
 
 namespace macro {
 
-ElytraUnequipBot::ElytraUnequipBot(ElytraUnequipConfig config, RandomEngine& rng)
-    : config_(config), rng_(rng), input_(rng) {}
+ElytraUnequipBot::ElytraUnequipBot(ElytraUnequipConfig config, RandomEngine& rng,
+                                   GameStateGuard& guard)
+    : config_(config), rng_(rng), guard_(guard), input_(rng) {}
 
 void ElytraUnequipBot::setConfig(const ElytraUnequipConfig& config) { config_ = config; }
 
@@ -39,7 +40,6 @@ void ElytraUnequipBot::executeUnequipSequence() {
     input_.pressKey(config_.inventoryKey);
     input_.microDelay(config_.microDelayMinMs, config_.microDelayMaxMs);
 
-    // Cursor auf Brustplatten-Slot im Inventar setzen
     input_.moveCursor(config_.chestplateSlotX, config_.chestplateSlotY);
     input_.microDelay(config_.microDelayMinMs, config_.microDelayMaxMs);
 
@@ -52,13 +52,17 @@ void ElytraUnequipBot::executeUnequipSequence() {
 
 void ElytraUnequipBot::runLoop() {
     while (!stopRequested_) {
-        if (config_.enabled && elapsedMs(lastScanTime_) >= config_.scanIntervalMs) {
+        guard_.update();
+
+        if (config_.enabled && guard_.isAllowed(GameStateGuard::MacroPolicy::Gameplay) &&
+            elapsedMs(lastScanTime_) >= config_.scanIntervalMs) {
             lastScanTime_ = now();
             const bool enemy = screen_.isEnemyInCrosshairRange();
             enemyInRange_ = enemy;
 
             const bool cooldownReady = elapsedMs(lastActionTime_) >= config_.actionCooldownMs;
-            if (enemy && cooldownReady && config_.chestplateSlotX > 0 && config_.chestplateSlotY > 0) {
+            if (enemy && cooldownReady && config_.chestplateSlotX > 0 &&
+                config_.chestplateSlotY > 0) {
                 executeUnequipSequence();
             }
         }

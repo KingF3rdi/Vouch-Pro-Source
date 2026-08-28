@@ -284,4 +284,93 @@ bool ScreenAnalyzer::isEnemyInCrosshairRange() {
     return combined >= enemyThreshold_;
 }
 
+float ScreenAnalyzer::detectInventoryGridScore(const std::vector<std::uint8_t>& pixels, int width,
+                                               int height) const {
+    // Inventar: regelmaessiges Slot-Gitter in der Bildschirmmitte
+    const int gridCols = 9;
+    const int gridRows = 3;
+    const int cellW = width / gridCols;
+    const int cellH = height / gridRows;
+    float edgeScore = 0.0f;
+    int samples = 0;
+
+    for (int row = 0; row < gridRows; ++row) {
+        for (int col = 0; col < gridCols; ++col) {
+            const int cx = col * cellW + cellW / 2;
+            const int cy = row * cellH + cellH / 2;
+            if (cx <= 0 || cy <= 0 || cx >= width - 1 || cy >= height - 1) {
+                continue;
+            }
+            const float center = luminanceAt(pixels, width, cx, cy);
+            const float edge = std::abs(center - luminanceAt(pixels, width, cx - 1, cy)) +
+                               std::abs(center - luminanceAt(pixels, width, cx, cy - 1));
+            edgeScore += edge;
+            ++samples;
+        }
+    }
+
+    const float avgEdge = samples > 0 ? edgeScore / static_cast<float>(samples) : 0.0f;
+    return std::clamp(avgEdge / 38.0f, 0.0f, 1.0f);
+}
+
+float ScreenAnalyzer::detectChatBarScore(const std::vector<std::uint8_t>& pixels, int width,
+                                         int height) const {
+    // Chat: helle Eingabezeile und erhoehte Kontrastzone am unteren Rand
+    int brightPixels = 0;
+    int samples = 0;
+    float transitionScore = 0.0f;
+
+    for (int y = height / 2; y < height; ++y) {
+        float prev = luminanceAt(pixels, width, 1, y);
+        for (int x = 1; x < width - 1; ++x) {
+            const float lum = luminanceAt(pixels, width, x, y);
+            if (lum > 175.0f) {
+                ++brightPixels;
+            }
+            if (std::abs(lum - prev) > 18.0f) {
+                transitionScore += 1.0f;
+            }
+            prev = lum;
+            ++samples;
+        }
+    }
+
+    const float brightRatio =
+        samples > 0 ? static_cast<float>(brightPixels) / static_cast<float>(samples) : 0.0f;
+    const float transitionRatio =
+        samples > 0 ? transitionScore / static_cast<float>(samples) : 0.0f;
+    return std::clamp(brightRatio * 1.4f + transitionRatio * 2.8f, 0.0f, 1.0f);
+}
+
+bool ScreenAnalyzer::isChatOpen() {
+    const int screenWidth = GetSystemMetrics(SM_CXSCREEN);
+    const int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+    const int bandHeight = std::max(42, screenHeight / 14);
+
+    std::vector<std::uint8_t> pixels;
+    if (!captureScreenRegion(0, screenHeight - bandHeight, screenWidth, bandHeight, pixels)) {
+        return false;
+    }
+
+    const float score = detectChatBarScore(pixels, screenWidth, bandHeight);
+    return score >= 0.34f;
+}
+
+bool ScreenAnalyzer::isInventoryOpen() {
+    const int screenWidth = GetSystemMetrics(SM_CXSCREEN);
+    const int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+    const int invW = std::min(360, screenWidth * 2 / 5);
+    const int invH = std::min(220, screenHeight / 3);
+    const int originX = (screenWidth - invW) / 2;
+    const int originY = (screenHeight - invH) / 2;
+
+    std::vector<std::uint8_t> pixels;
+    if (!captureScreenRegion(originX, originY, invW, invH, pixels)) {
+        return false;
+    }
+
+    const float score = detectInventoryGridScore(pixels, invW, invH);
+    return score >= 0.36f;
+}
+
 }  // namespace macro

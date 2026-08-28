@@ -34,9 +34,9 @@ macro::AppConfig defaultConfig() {
 
 void printBanner() {
     std::cout << "=== Externes Automatisierungs-System ===\n"
-              << "Stunslam: XButton1 | Pearlcatch: F6 | Diagonal: F7/F8\n"
-              << "Offhand: F9 | Lunge Swap: F10 | Beenden: ESC\n"
-              << "Hinweis: Elytra-Slot-Koordinaten in AppConfig setzen.\n";
+              << "Stunslam: XButton1 | Pearlcatch: F6-F10 | Hotbar Totem: F5\n"
+              << "AutoTotem (nur Inventar): F11 | Beenden: ESC\n"
+              << "Hinweis: Makros sind im Chat und Inventar blockiert (ausser AutoTotem).\n";
 }
 
 }  // namespace

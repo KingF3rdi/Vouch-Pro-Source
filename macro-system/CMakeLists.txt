@@ -13,6 +13,8 @@ set(MACRO_CORE_SOURCES
     src/stunslam_bot.cpp
     src/pearlcatch_macros.cpp
     src/elytra_unequip.cpp
+    src/auto_totem_bot.cpp
+    src/game_state_guard.cpp
     src/macro_manager.cpp
 )
 

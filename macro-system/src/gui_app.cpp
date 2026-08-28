@@ -12,7 +12,7 @@
 namespace {
 
 constexpr int kWindowWidth = 480;
-constexpr int kWindowHeight = 700;
+constexpr int kWindowHeight = 760;
 constexpr int kCornerRadius = 26;
 constexpr int kTitleBarHeight = 58;
 COLORREF kWhite = RGB(245, 248, 255);
@@ -139,6 +139,8 @@ void GuiApp::createControls(HWND hwnd) {
         {ControlIds::PearlDelayMax, L"Pearl Delay Max (ms)", L"15"},
         {ControlIds::ChestX, L"Elytra Slot X", L"0"},
         {ControlIds::ChestY, L"Elytra Slot Y", L"0"},
+        {ControlIds::TotemX, L"AutoTotem Slot X", L"0"},
+        {ControlIds::TotemY, L"AutoTotem Slot Y", L"0"},
         {ControlIds::LoopReliefMin, L"Loop Pause Min (ms)", L"1"},
         {ControlIds::LoopReliefMax, L"Loop Pause Max (ms)", L"3"},
     };
@@ -159,6 +161,12 @@ void GuiApp::createControls(HWND hwnd) {
     createLabel(hwnd, bodyFont_, L"Gegner:", 28, y + 36, 70, 22);
     CreateWindowExW(0, L"STATIC", L"Inaktiv", WS_CHILD | WS_VISIBLE | SS_CENTER, 150, y + 32, 90,
                     24, hwnd, reinterpret_cast<HMENU>(ControlIds::StatusEnemy), instance_, nullptr);
+    createLabel(hwnd, bodyFont_, L"Chat:", 250, y + 36, 50, 22);
+    CreateWindowExW(0, L"STATIC", L"Zu", WS_CHILD | WS_VISIBLE | SS_CENTER, 300, y + 32, 50, 24,
+                    hwnd, reinterpret_cast<HMENU>(ControlIds::StatusChat), instance_, nullptr);
+    createLabel(hwnd, bodyFont_, L"Inventar:", 360, y + 36, 70, 22);
+    CreateWindowExW(0, L"STATIC", L"Zu", WS_CHILD | WS_VISIBLE | SS_CENTER, 430, y + 32, 50, 24,
+                    hwnd, reinterpret_cast<HMENU>(ControlIds::StatusInventory), instance_, nullptr);
 
     const int buttonY = kWindowHeight - 74;
     createButton(hwnd, bodyFont_, ControlIds::BtnStart, L"Start", 36, buttonY, 120, 38);
@@ -244,6 +252,10 @@ AppConfig GuiApp::readConfigFromUi() const {
 
     config.elytra.chestplateSlotX = readInt(ControlIds::ChestX, config.elytra.chestplateSlotX);
     config.elytra.chestplateSlotY = readInt(ControlIds::ChestY, config.elytra.chestplateSlotY);
+    config.autoTotem.totemInventorySlotX =
+        readInt(ControlIds::TotemX, config.autoTotem.totemInventorySlotX);
+    config.autoTotem.totemInventorySlotY =
+        readInt(ControlIds::TotemY, config.autoTotem.totemInventorySlotY);
 
     const int loopMin = readInt(ControlIds::LoopReliefMin, 1);
     const int loopMax = readInt(ControlIds::LoopReliefMax, 3);
@@ -272,6 +284,8 @@ void GuiApp::writeConfigToUi(const AppConfig& config) {
     SetDlgItemTextW(hwnd_, ControlIds::PearlDelayMax, toWide(config.pearlcatch.delayMaxMs).c_str());
     SetDlgItemTextW(hwnd_, ControlIds::ChestX, toWide(config.elytra.chestplateSlotX).c_str());
     SetDlgItemTextW(hwnd_, ControlIds::ChestY, toWide(config.elytra.chestplateSlotY).c_str());
+    SetDlgItemTextW(hwnd_, ControlIds::TotemX, toWide(config.autoTotem.totemInventorySlotX).c_str());
+    SetDlgItemTextW(hwnd_, ControlIds::TotemY, toWide(config.autoTotem.totemInventorySlotY).c_str());
     SetDlgItemTextW(hwnd_, ControlIds::LoopReliefMin, toWide(config.stunslam.loopReliefMinMs).c_str());
     SetDlgItemTextW(hwnd_, ControlIds::LoopReliefMax, toWide(config.stunslam.loopReliefMaxMs).c_str());
 }
@@ -285,12 +299,16 @@ void GuiApp::updateStatusLabels() {
         setStatusText(ControlIds::StatusFall, L"Inaktiv");
         setStatusText(ControlIds::StatusShield, L"Inaktiv");
         setStatusText(ControlIds::StatusEnemy, L"Inaktiv");
+        setStatusText(ControlIds::StatusChat, L"Zu");
+        setStatusText(ControlIds::StatusInventory, L"Zu");
         return;
     }
 
     setStatusText(ControlIds::StatusFall, manager_->isInFreeFall() ? L"Aktiv" : L"Warten");
     setStatusText(ControlIds::StatusShield, manager_->isShieldActive() ? L"Aktiv" : L"Warten");
     setStatusText(ControlIds::StatusEnemy, manager_->isEnemyInRange() ? L"Aktiv" : L"Warten");
+    setStatusText(ControlIds::StatusChat, manager_->isChatOpen() ? L"Offen" : L"Zu");
+    setStatusText(ControlIds::StatusInventory, manager_->isInventoryOpen() ? L"Offen" : L"Zu");
 }
 
 void GuiApp::startModules() {

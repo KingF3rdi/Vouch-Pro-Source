@@ -29,6 +29,8 @@ private:
         static constexpr int PearlDelayMax = 1009;
         static constexpr int ChestX = 1010;
         static constexpr int ChestY = 1011;
+        static constexpr int TotemX = 1020;
+        static constexpr int TotemY = 1021;
         static constexpr int LoopReliefMin = 1012;
         static constexpr int LoopReliefMax = 1013;
         static constexpr int BtnStart = 1014;
@@ -37,6 +39,8 @@ private:
         static constexpr int StatusFall = 1017;
         static constexpr int StatusShield = 1018;
         static constexpr int StatusEnemy = 1019;
+        static constexpr int StatusChat = 1022;
+        static constexpr int StatusInventory = 1023;
         static constexpr int TimerStatus = 1;
     };
 

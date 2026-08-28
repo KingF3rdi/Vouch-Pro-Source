@@ -2,8 +2,8 @@
 
 namespace macro {
 
-StunslamBot::StunslamBot(StunslamBotConfig config, RandomEngine& rng)
-    : config_(config), rng_(rng), input_(rng), fallDetector_(config.fall) {}
+StunslamBot::StunslamBot(StunslamBotConfig config, RandomEngine& rng, GameStateGuard& guard)
+    : config_(config), rng_(rng), guard_(guard), input_(rng), fallDetector_(config.fall) {}
 
 void StunslamBot::setConfig(const StunslamBotConfig& config) {
     config_ = config;
@@ -57,20 +57,23 @@ void StunslamBot::executeStunslam() {
 
 void StunslamBot::runLoop() {
     while (!stopRequested_) {
+        guard_.update();
         fallDetector_.update();
+
+        const bool gameplayAllowed =
+            guard_.isAllowed(GameStateGuard::MacroPolicy::Gameplay);
 
         const bool falling = fallDetector_.isInFreeFall();
         bool shieldDetected = false;
 
-        // Schild-Scan nur im freien Fall (CPU-effizient)
-        if (falling) {
+        if (gameplayAllowed && falling) {
             shieldDetected = screen_.isShieldRaised();
         }
         shieldActive_ = shieldDetected;
 
         const bool cooldownReady = elapsedMs(lastTriggerTime_) >= config_.cooldownMs;
-        if (cooldownReady && isActivationActive() && falling && shieldDetected &&
-            rng_.rollPercent(config_.successChance)) {
+        if (gameplayAllowed && cooldownReady && isActivationActive() && falling &&
+            shieldDetected && rng_.rollPercent(config_.successChance)) {
             executeStunslam();
         }
 

@@ -6,6 +6,7 @@
 #include <windows.h>
 
 #include "common.hpp"
+#include "game_state_guard.hpp"
 #include "input_simulator.hpp"
 #include "screen_analyzer.hpp"
 
@@ -30,7 +31,7 @@ struct ElytraUnequipConfig {
 /// Auto Unequip Elytra bei erkanntem Nahkampf-Gegner im Fadenkreuz.
 class ElytraUnequipBot {
 public:
-    ElytraUnequipBot(ElytraUnequipConfig config, RandomEngine& rng);
+    ElytraUnequipBot(ElytraUnequipConfig config, RandomEngine& rng, GameStateGuard& guard);
 
     void start();
     void stop();
@@ -47,6 +48,7 @@ private:
 
     ElytraUnequipConfig config_;
     RandomEngine& rng_;
+    GameStateGuard& guard_;
     InputSimulator input_;
     ScreenAnalyzer screen_;
 

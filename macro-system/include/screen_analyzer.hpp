@@ -23,6 +23,12 @@ public:
     /// Gegner in Nahkampf-Reichweite: Namensband, Ruestung oder roter Damage-Tick.
     bool isEnemyInCrosshairRange();
 
+    /// Chat geoeffnet (Eingabezeile unten sichtbar).
+    bool isChatOpen();
+
+    /// Inventar geoeffnet (Slot-Gitter in der Bildschirmmitte).
+    bool isInventoryOpen();
+
     void setShieldThreshold(float threshold);
     void setEnemyThreshold(float threshold);
 
@@ -50,6 +56,8 @@ private:
     float detectRedDamageScore(const std::vector<std::uint8_t>& pixels, int width, int height) const;
     float detectNameTagScore(const std::vector<std::uint8_t>& pixels, int width, int height) const;
     float detectArmorContrastScore(const std::vector<std::uint8_t>& pixels, int width, int height) const;
+    float detectInventoryGridScore(const std::vector<std::uint8_t>& pixels, int width, int height) const;
+    float detectChatBarScore(const std::vector<std::uint8_t>& pixels, int width, int height) const;
 
     float shieldThreshold_{0.42f};
     float enemyThreshold_{0.35f};

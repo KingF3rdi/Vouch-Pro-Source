@@ -4,15 +4,17 @@ namespace macro {
 
 MacroManager::MacroManager(AppConfig config)
     : config_(config),
-      stunslam_(config.stunslam, rng_),
-      pearlcatch_(config.pearlcatch, rng_),
-      elytra_(config.elytra, rng_) {}
+      stunslam_(config.stunslam, rng_, guard_),
+      pearlcatch_(config.pearlcatch, rng_, guard_),
+      elytra_(config.elytra, rng_, guard_),
+      autoTotem_(config.autoTotem, rng_, guard_) {}
 
 void MacroManager::setConfig(const AppConfig& config) {
     config_ = config;
     stunslam_.setConfig(config.stunslam);
     pearlcatch_.setConfig(config.pearlcatch);
     elytra_.setConfig(config.elytra);
+    autoTotem_.setConfig(config.autoTotem);
 }
 
 AppConfig MacroManager::config() const { return config_; }
@@ -24,6 +26,7 @@ void MacroManager::startAll() {
     stunslam_.start();
     pearlcatch_.start();
     elytra_.start();
+    autoTotem_.start();
     running_ = true;
 }
 
@@ -34,6 +37,7 @@ void MacroManager::stopAll() {
     stunslam_.stop();
     pearlcatch_.stop();
     elytra_.stop();
+    autoTotem_.stop();
     running_ = false;
 }
 
@@ -45,10 +49,18 @@ bool MacroManager::isShieldActive() const { return stunslam_.isShieldActive(); }
 
 bool MacroManager::isEnemyInRange() const { return elytra_.isEnemyInRange(); }
 
+bool MacroManager::isChatOpen() const { return guard_.isChatOpen(); }
+
+bool MacroManager::isInventoryOpen() const { return guard_.isInventoryOpen(); }
+
 StunslamBot& MacroManager::stunslam() { return stunslam_; }
 
 PearlcatchMacros& MacroManager::pearlcatch() { return pearlcatch_; }
 
 ElytraUnequipBot& MacroManager::elytra() { return elytra_; }
+
+AutoTotemBot& MacroManager::autoTotem() { return autoTotem_; }
+
+GameStateGuard& MacroManager::gameState() { return guard_; }
 
 }  // namespace macro

@@ -6,6 +6,7 @@
 #include <windows.h>
 
 #include "common.hpp"
+#include "game_state_guard.hpp"
 #include "input_simulator.hpp"
 
 #include <atomic>
@@ -21,11 +22,15 @@ struct PearlcatchMacrosConfig {
     WORD windchargeSlotKey{'5'};
     WORD offhandSwapKey{'F'};
 
+    WORD totemHotbarSlotKey{'9'};
+    WORD fallbackReturnSlotKey{'1'};
+
     int hotkeyStandard{VK_F6};
     int hotkeyDiagonalLeft{VK_F7};
     int hotkeyDiagonalRight{VK_F8};
     int hotkeyOffhand{VK_F9};
     int hotkeyLunge{VK_F10};
+    int hotkeyHotbarTotem{VK_F5};
 
     WORD lungeSlotA{'1'};
     WORD lungeSlotB{'2'};
@@ -35,10 +40,10 @@ struct PearlcatchMacrosConfig {
     int loopReliefMaxMs{3};
 };
 
-/// Pearlcatch- und Bewegungsmakros mit extrem kurzen Delays.
+/// Pearlcatch-, Bewegungs- und Hotbar-Totem-Makros.
 class PearlcatchMacros {
 public:
-    PearlcatchMacros(PearlcatchMacrosConfig config, RandomEngine& rng);
+    PearlcatchMacros(PearlcatchMacrosConfig config, RandomEngine& rng, GameStateGuard& guard);
 
     void start();
     void stop();
@@ -54,9 +59,11 @@ private:
     void executeDiagonalPearlcatch(bool leftDiagonal);
     void executeOffhandPearlcatch();
     void executeLungeSwap();
+    void executeHotbarTotemSwap();
 
     PearlcatchMacrosConfig config_;
     RandomEngine& rng_;
+    GameStateGuard& guard_;
     InputSimulator input_;
 
     std::atomic<bool> running_{false};
