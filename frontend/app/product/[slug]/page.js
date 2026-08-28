@@ -111,7 +111,7 @@ export default function ProductPage() {
                   <img src={allMedia[activeMedia]?.url} alt={product.name} />
                 )
               ) : (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: '4rem' }}>📦</div>
+                <div className="preview-placeholder">Pack</div>
               )}
             </div>
             {allMedia.length > 1 && (
@@ -190,7 +190,7 @@ export default function ProductPage() {
                 {user?.discord_id ? 'Bezahlen (Discord Ticket)' : 'Discord verbinden zum Kaufen'}
               </button>
               <AddToCartButton product={product} />
-              <button className="btn btn-outline-glass" onClick={toggleWishlist}>♥ Wunschliste</button>
+              <button className="btn btn-outline-glass" onClick={toggleWishlist}>Wunschliste</button>
             </div>
 
             {orderMsg && (

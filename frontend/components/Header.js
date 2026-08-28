@@ -44,19 +44,17 @@ export default function Header({ onHero = false }) {
           <Link href="/account" className="nav-link">Profil</Link>
           <CartLink iconOnly />
           <Link href="/wishlist" className="nav-icon-link nav-icon-link--hide-desktop" aria-label="Wunschliste">
-            ♡
+            <span className="nav-icon-label">Liste</span>
           </Link>
           <Link href="/account" className="nav-icon-link nav-icon-link--hide-desktop" aria-label="Profil">
-            👤
+            <span className="nav-icon-label">Profil</span>
           </Link>
           <DiscordJoinButton className="btn btn-sm btn-outline-glass nav-discord" />
           {user ? (
             <span className="user-badge">
-              {user.connection_type === 'discord' || user.connection_type === 'both' ? (
-                <span>💬</span>
-              ) : (
-                <span>⛏️</span>
-              )}
+              <span className="user-badge-type">
+                {user.connection_type === 'discord' || user.connection_type === 'both' ? 'DC' : 'MC'}
+              </span>
               <span className="user-badge-name">{user.display_name}</span>
             </span>
           ) : (

@@ -30,7 +30,7 @@ export default function HeaderSearch() {
       className={`header-search${focused ? ' header-search--focused' : ''}`}
       onSubmit={handleSubmit}
     >
-      <span className="header-search-icon" aria-hidden="true">⌕</span>
+      <span className="header-search-icon" aria-hidden="true" />
       <input
         type="search"
         className="header-search-input"
@@ -53,7 +53,7 @@ export default function HeaderSearch() {
         ))}
       </select>
       <button type="submit" className="header-search-btn" aria-label="Suchen">
-        →
+        Suchen
       </button>
     </form>
   );

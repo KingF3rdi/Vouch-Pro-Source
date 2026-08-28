@@ -37,7 +37,7 @@ export default async function HomePage() {
         <section className="section">
           <div className="container">
             <div className="section-header category-glass-panel section-header-panel">
-              <h2>🔥 Bestseller</h2>
+              <h2>Bestseller</h2>
             </div>
             <div className="product-grid">
               {bestsellers.length > 0 ? (
@@ -55,7 +55,7 @@ export default async function HomePage() {
           <div className="container">
             <CategoryDivider label="Texture Packs" />
             <div className="section-header category-glass-panel section-header-panel">
-              <h2>✨ Neue Produkte</h2>
+              <h2>Neue Produkte</h2>
             </div>
             <div className="product-grid">
               {newProducts.length > 0 ? (

@@ -48,7 +48,7 @@ export default function WishlistPage() {
                   {item.product.preview_url ? (
                     <img src={item.product.preview_url} alt={item.product.name} />
                   ) : (
-                    <span>📦</span>
+                    <span className="preview-placeholder">Pack</span>
                   )}
                 </div>
                 <div className="product-card-body">

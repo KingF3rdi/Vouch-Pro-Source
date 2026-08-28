@@ -16,7 +16,7 @@ export default function ProductCard({ product }) {
           {product.preview_url ? (
             <img src={product.preview_url} alt={product.name} />
           ) : (
-            <span className="product-card-placeholder">📦</span>
+            <span className="product-card-placeholder">Pack</span>
           )}
           {product.category && (
             <span className="product-card-category">{product.category.name}</span>

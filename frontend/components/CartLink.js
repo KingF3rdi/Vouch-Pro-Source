@@ -9,7 +9,7 @@ export default function CartLink({ className = 'nav-link', iconOnly = false }) {
   if (iconOnly) {
     return (
       <Link href="/cart" className="nav-icon-link nav-icon-link--hide-desktop" aria-label="Warenkorb">
-        🛒
+        <span className="nav-icon-label">Cart</span>
         {ready && count > 0 && <span className="cart-badge">{count}</span>}
       </Link>
     );

@@ -45,8 +45,8 @@ export default function AccountPage() {
           {user ? (
             <div className="profile-card-inner glass-card">
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <span style={{ fontSize: '2rem' }}>
-                  {user.connection_type === 'minecraft' ? '⛏️' : '💬'}
+                <span className="user-badge-type user-badge-type--large">
+                  {user.connection_type === 'minecraft' ? 'MC' : 'DC'}
                 </span>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--accent)' }}>
@@ -73,7 +73,7 @@ export default function AccountPage() {
               <div className="unlocked-grid">
                 {user.unlocked_products.map((item) => (
                   <Link key={item.id} href={`/product/${item.product.slug}`} className="unlocked-item glass-card">
-                    <div className="check">✓</div>
+                    <div className="check" aria-hidden="true" />
                     <div style={{ fontWeight: 600 }}>{item.product.name}</div>
                     <div style={{ color: 'var(--muted)', fontSize: '0.8rem', marginTop: '0.25rem' }}>
                       Freigeschaltet

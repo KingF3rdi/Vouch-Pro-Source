@@ -99,7 +99,7 @@ export default function CartPage() {
                     {item.preview_url ? (
                       <img src={item.preview_url} alt={item.name} />
                     ) : (
-                      <span>📦</span>
+                      <span className="preview-placeholder">Pack</span>
                     )}
                   </Link>
                   <div className="cart-item-info">
