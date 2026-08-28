@@ -806,3 +806,124 @@ async def update_product_price(db: AsyncSession, product_id: int, new_price: flo
     await db.commit()
     await db.refresh(product)
     return product, old_price
+
+
+async def list_products_admin(db: AsyncSession):
+    result = await db.execute(
+        select(Product)
+        .options(selectinload(Product.category), selectinload(Product.media))
+        .order_by(Product.created_at.desc())
+    )
+    return result.scalars().all()
+
+
+async def update_product_admin(db: AsyncSession, product_id: int, data: dict) -> Product:
+    result = await db.execute(
+        select(Product)
+        .options(selectinload(Product.category), selectinload(Product.media))
+        .where(Product.id == product_id)
+    )
+    product = result.scalar_one_or_none()
+    if not product:
+        raise ValueError("Produkt nicht gefunden")
+
+    if data.get("name"):
+        product.name = data["name"]
+    if data.get("description") is not None:
+        product.description = data["description"]
+    if data.get("price") is not None:
+        product.price = data["price"]
+    if data.get("preview_url") is not None:
+        product.preview_url = data["preview_url"]
+    if data.get("discord_role_id") is not None:
+        product.discord_role_id = data["discord_role_id"]
+    if data.get("tags") is not None:
+        product.tags = data["tags"]
+    if data.get("is_new") is not None:
+        product.is_new = data["is_new"]
+    if data.get("is_active") is not None:
+        product.is_active = data["is_active"]
+
+    if data.get("category_slug") is not None:
+        slug = data["category_slug"]
+        if slug:
+            cat_result = await db.execute(select(Category).where(Category.slug == slug))
+            cat = cat_result.scalar_one_or_none()
+            if not cat:
+                cat = Category(name=slug.replace("-", " ").title(), slug=slug)
+                db.add(cat)
+                await db.flush()
+            product.category_id = cat.id
+        else:
+            product.category_id = None
+
+    product.updated_at = datetime.utcnow()
+    await db.commit()
+    await db.refresh(product)
+    return product
+
+
+async def deactivate_product_admin(db: AsyncSession, product_id: int) -> Product:
+    return await update_product_admin(db, product_id, {"is_active": False})
+
+
+async def create_category_admin(db: AsyncSession, name: str, slug: str | None = None) -> Category:
+    slug_value = slug or slugify(name)
+    existing = await db.execute(select(Category).where(Category.slug == slug_value))
+    if existing.scalar_one_or_none():
+        raise ValueError("Kategorie existiert bereits")
+
+    category = Category(name=name.strip(), slug=slug_value)
+    db.add(category)
+    await db.commit()
+    await db.refresh(category)
+    return category
+
+
+async def list_discount_codes_admin(db: AsyncSession):
+    result = await db.execute(select(DiscountCode).order_by(DiscountCode.code))
+    return result.scalars().all()
+
+
+async def create_discount_code_admin(
+    db: AsyncSession,
+    code: str,
+    discount_percent: int,
+    creator_name: str | None = None,
+    creator_discord_id: str | None = None,
+) -> DiscountCode:
+    normalized = code.strip().upper()
+    existing = await db.execute(
+        select(DiscountCode).where(func.lower(DiscountCode.code) == normalized.lower())
+    )
+    if existing.scalar_one_or_none():
+        raise ValueError("Code existiert bereits")
+
+    dc = DiscountCode(
+        code=normalized,
+        discount_percent=discount_percent,
+        creator_name=creator_name,
+        creator_discord_id=creator_discord_id,
+    )
+    db.add(dc)
+    await db.commit()
+    await db.refresh(dc)
+    return dc
+
+
+async def update_discount_code_admin(db: AsyncSession, code_id: int, data: dict) -> DiscountCode:
+    result = await db.execute(select(DiscountCode).where(DiscountCode.id == code_id))
+    dc = result.scalar_one_or_none()
+    if not dc:
+        raise ValueError("Code nicht gefunden")
+
+    if data.get("is_active") is not None:
+        dc.is_active = data["is_active"]
+    if data.get("discount_percent") is not None:
+        dc.discount_percent = data["discount_percent"]
+    if data.get("creator_name") is not None:
+        dc.creator_name = data["creator_name"]
+
+    await db.commit()
+    await db.refresh(dc)
+    return dc

@@ -16,6 +16,17 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:3000"
     upload_dir: str = "./uploads"
     default_discount_percent: int = 10
+    admin_discord_ids: str = ""
+
+    def get_admin_discord_ids(self) -> list[str]:
+        if not self.admin_discord_ids.strip():
+            return []
+        return [part.strip() for part in self.admin_discord_ids.split(",") if part.strip()]
+
+    def is_admin_discord_id(self, discord_id: str | None) -> bool:
+        if not discord_id:
+            return False
+        return discord_id in self.get_admin_discord_ids()
 
     # Rate limits: (max_requests, window_seconds)
     rate_limit_default_max: int = 120

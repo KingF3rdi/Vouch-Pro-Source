@@ -37,6 +37,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     def _limit_for(self, path: str, method: str) -> tuple[int, int]:
         if path.startswith("/api/auth"):
             return settings.rate_limit_auth
+        if path.startswith("/api/admin"):
+            return settings.rate_limit_write
         if method in ("POST", "PUT", "PATCH", "DELETE"):
             if (
                 path.startswith("/api/orders")

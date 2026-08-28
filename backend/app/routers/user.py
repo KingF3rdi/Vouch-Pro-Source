@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.database import get_db
 from app.schemas import UserOut, UserProfileOut, UnlockedProductOut, WishlistItemOut
 from app import services
@@ -17,6 +18,7 @@ def build_user_out(user) -> UserOut:
         ign=user.ign,
         display_name=info["display_name"],
         connection_type=info["connection_type"],
+        is_admin=settings.is_admin_discord_id(user.discord_id),
     )
 
 

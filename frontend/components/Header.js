@@ -38,6 +38,9 @@ export default function Header({ onHero = false }) {
         <nav className="nav nav--compact">
           <CartLink />
           <Link href="/wishlist" className="nav-link">Wunschliste</Link>
+          {user?.is_admin && (
+            <Link href="/admin" className="nav-link">Admin</Link>
+          )}
           <Link href="/account" className="nav-link">Profil</Link>
           <CartLink iconOnly />
           <Link href="/wishlist" className="nav-icon-link nav-icon-link--hide-desktop" aria-label="Wunschliste">

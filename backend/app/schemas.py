@@ -104,6 +104,7 @@ class UserOut(BaseModel):
     ign: str | None
     display_name: str | None = None
     connection_type: str | None = None  # discord, minecraft, both
+    is_admin: bool = False
 
     class Config:
         from_attributes = True
@@ -244,3 +245,58 @@ class PurchaseConfirmationOut(BaseModel):
 
 class DiscordConfigOut(BaseModel):
     invite_url: str
+
+
+class AdminProductCreate(BaseModel):
+    name: str
+    description: str = ""
+    price: float = Field(gt=0)
+    preview_url: str | None = None
+    discord_role_id: str | None = None
+    category_slug: str | None = None
+    tags: str = ""
+    is_new: bool = True
+    media_urls: list[str] = Field(default_factory=list, max_length=5)
+
+
+class AdminProductUpdate(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    price: float | None = Field(default=None, gt=0)
+    preview_url: str | None = None
+    discord_role_id: str | None = None
+    category_slug: str | None = None
+    tags: str | None = None
+    is_new: bool | None = None
+    is_active: bool | None = None
+
+
+class AdminCategoryCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    slug: str | None = None
+
+
+class AdminDiscountCodeCreate(BaseModel):
+    code: str = Field(min_length=2, max_length=50)
+    discount_percent: int = Field(ge=1, le=100)
+    creator_name: str | None = None
+    creator_discord_id: str | None = None
+
+
+class AdminDiscountCodeOut(BaseModel):
+    id: int
+    code: str
+    discount_percent: int
+    creator_name: str | None
+    creator_discord_id: str | None
+    is_active: bool
+    uses: int
+
+    class Config:
+        from_attributes = True
+
+
+class AdminDiscountCodeUpdate(BaseModel):
+    is_active: bool | None = None
+    discount_percent: int | None = Field(default=None, ge=1, le=100)
+    creator_name: str | None = None

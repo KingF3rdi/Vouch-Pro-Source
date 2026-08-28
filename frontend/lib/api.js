@@ -63,4 +63,20 @@ export const api = {
   getWishlist: () => fetchApi('/api/user/wishlist'),
   getRecentPurchases: () => fetchApi('/api/purchases/recent'),
   getDiscordConfig: () => fetchApi('/api/config/discord'),
+
+  adminListProducts: () => fetchApi('/api/admin/products'),
+  adminCreateProduct: (data) =>
+    fetchApi('/api/admin/products', { method: 'POST', body: JSON.stringify(data) }),
+  adminUpdateProduct: (id, data) =>
+    fetchApi(`/api/admin/products/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  adminDeactivateProduct: (id) =>
+    fetchApi(`/api/admin/products/${id}`, { method: 'DELETE' }),
+  adminListCategories: () => fetchApi('/api/admin/categories'),
+  adminCreateCategory: (data) =>
+    fetchApi('/api/admin/categories', { method: 'POST', body: JSON.stringify(data) }),
+  adminListDiscountCodes: () => fetchApi('/api/admin/discount-codes'),
+  adminCreateDiscountCode: (data) =>
+    fetchApi('/api/admin/discount-codes', { method: 'POST', body: JSON.stringify(data) }),
+  adminUpdateDiscountCode: (id, data) =>
+    fetchApi(`/api/admin/discount-codes/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
 };
