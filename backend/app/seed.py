@@ -6,7 +6,7 @@ import asyncio
 
 from app.database import AsyncSessionLocal, Base, engine
 from app.models import Category, DiscountCode, Product, ProductMedia, ShopStats, Vouch
-from app.services import slugify
+from app.services import remove_shader_content, slugify
 
 
 async def seed():
@@ -76,6 +76,9 @@ async def seed():
         db.add(DiscountCode(code="CREATOR10", discount_percent=10, creator_name="Default"))
         db.add(DiscountCode(code="RABATT10", discount_percent=10, creator_name="Shop"))
 
+        await db.commit()
+
+        await remove_shader_content(db)
         await db.commit()
         print("Seed abgeschlossen!")
 
