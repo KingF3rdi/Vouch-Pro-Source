@@ -58,7 +58,40 @@ async def bot_confirm_payment(body: BotPaymentConfirm, db: AsyncSession = Depend
     )
     if not order:
         return {"success": False, "message": "Keine passende Bestellung gefunden"}
-    return {"success": True, "order_id": order.id, "status": order.status.value}
+    return {
+        "success": True,
+        "order_id": order.id,
+        "status": order.status.value,
+        "product_unlocked": order.user_id is not None,
+    }
+
+
+@router.post("/orders/{order_id}/complete")
+async def bot_complete_order(order_id: int, db: AsyncSession = Depends(get_db)):
+    """Bestellung manuell abschließen (z.B. nach Zahlung im Ticket) und Produkt freischalten."""
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+    from app.models import Order, OrderStatus
+
+    result = await db.execute(
+        select(Order)
+        .options(selectinload(Order.product))
+        .where(Order.id == order_id)
+    )
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Bestellung nicht gefunden")
+    if order.status == OrderStatus.confirmed:
+        return {"success": True, "order_id": order.id, "already_confirmed": True}
+
+    order.discord_confirmed = True
+    await services.finalize_order(db, order)
+    return {
+        "success": True,
+        "order_id": order.id,
+        "status": order.status.value,
+        "discord_role_id": order.product.discord_role_id if order.product else None,
+    }
 
 
 @router.get("/stats")

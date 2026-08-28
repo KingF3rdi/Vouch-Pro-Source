@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -14,12 +14,11 @@ from app.schemas import (
     OrderOut,
     ProductListItem,
     ProductOut,
-    SearchParams,
     StatsOut,
     UserOut,
     VouchSummaryOut,
-    WishlistItemOut,
 )
+from app.routers.user import build_user_out
 from app import services
 
 router = APIRouter(prefix="/api", tags=["shop"])
@@ -93,7 +92,7 @@ async def redeem_link_code(body: LinkRedeemRequest, response: Response, db: Asyn
 
     token = await services.create_session_for_user(db, user)
     response.set_cookie(key="session_token", value=token, httponly=True, samesite="lax", max_age=60 * 60 * 24 * 30)
-    return user
+    return build_user_out(user)
 
 
 @router.post("/discount/validate", response_model=DiscountValidateOut)
@@ -105,9 +104,43 @@ async def validate_discount(body: DiscountValidateRequest, db: AsyncSession = De
 
 
 @router.post("/orders", response_model=OrderOut)
-async def create_order(body: OrderCreate, db: AsyncSession = Depends(get_db)):
+async def create_order(
+    body: OrderCreate,
+    session_token: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    user = await services.get_user_by_session(db, session_token)
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="Bitte zuerst Discord verbinden, um zu kaufen.",
+        )
+
     try:
-        order = await services.create_order(db, body.product_id, body.ign, None, body.discount_code)
+        order = await services.create_purchase_with_ticket(
+            db,
+            body.product_id,
+            user,
+            body.ign,
+            body.discount_code,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    return order
+
+    message = (
+        "Discord-Ticket geöffnet! Schließe die Zahlung im Ticket ab."
+        if order.ticket_url
+        else "Bestellung erstellt — Discord-Ticket konnte nicht automatisch geöffnet werden."
+    )
+
+    return OrderOut(
+        id=order.id,
+        product_id=order.product_id,
+        product_name=order.product.name if order.product else None,
+        ign=order.ign,
+        amount=order.amount,
+        status=order.status.value,
+        ticket_url=order.ticket_url,
+        created_at=order.created_at,
+        message=message,
+    )

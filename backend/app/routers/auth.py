@@ -58,11 +58,15 @@ async def discord_callback(code: str, db: AsyncSession = Depends(get_db)):
         discord_user = user_resp.json()
 
     discord_id = str(discord_user["id"])
+    discord_username = discord_user.get("global_name") or discord_user.get("username", "")
+
     result = await db.execute(select(User).where(User.discord_id == discord_id))
     user = result.scalar_one_or_none()
     if not user:
-        user = User(discord_id=discord_id)
+        user = User(discord_id=discord_id, discord_username=discord_username)
         db.add(user)
+    else:
+        user.discord_username = discord_username
         await db.commit()
         await db.refresh(user)
 

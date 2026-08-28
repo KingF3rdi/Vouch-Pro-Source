@@ -24,6 +24,7 @@ class LinkCodeType(str, enum.Enum):
 
 class OrderStatus(str, enum.Enum):
     pending = "pending"
+    ticket_open = "ticket_open"
     paid = "paid"
     confirmed = "confirmed"
     cancelled = "cancelled"
@@ -34,12 +35,14 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     discord_id: Mapped[str | None] = mapped_column(String(32), unique=True, nullable=True)
+    discord_username: Mapped[str | None] = mapped_column(String(100), nullable=True)
     ign: Mapped[str | None] = mapped_column(String(32), unique=True, nullable=True)
     session_token: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     wishlist_items: Mapped[list["WishlistItem"]] = relationship(back_populates="user")
     orders: Mapped[list["Order"]] = relationship(back_populates="user")
+    unlocked_products: Mapped[list["UnlockedProduct"]] = relationship(back_populates="user")
 
 
 class LinkCode(Base):
@@ -116,6 +119,8 @@ class Order(Base):
     discount_code: Mapped[str | None] = mapped_column(String(50), nullable=True)
     status: Mapped[OrderStatus] = mapped_column(Enum(OrderStatus), default=OrderStatus.pending)
     payment_reference: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    ticket_channel_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    ticket_url: Mapped[str | None] = mapped_column(String(200), nullable=True)
     mc_confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
     discord_confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -168,3 +173,18 @@ class ShopStats(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     total_revenue: Mapped[float] = mapped_column(Float, default=0.0)
     total_sales: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class UnlockedProduct(Base):
+    __tablename__ = "unlocked_products"
+    __table_args__ = (UniqueConstraint("user_id", "product_id", name="uq_unlocked_user_product"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"))
+    order_id: Mapped[int | None] = mapped_column(ForeignKey("orders.id"), nullable=True)
+    unlocked_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    user: Mapped["User"] = relationship(back_populates="unlocked_products")
+    product: Mapped["Product"] = relationship()
+    order: Mapped["Order | None"] = relationship()

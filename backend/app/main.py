@@ -32,6 +32,17 @@ app.include_router(auth.router)
 async def startup():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # SQLite migration für neue Spalten
+        migrations = [
+            "ALTER TABLE users ADD COLUMN discord_username VARCHAR(100)",
+            "ALTER TABLE orders ADD COLUMN ticket_channel_id VARCHAR(32)",
+            "ALTER TABLE orders ADD COLUMN ticket_url VARCHAR(200)",
+        ]
+        for sql in migrations:
+            try:
+                await conn.execute(__import__("sqlalchemy").text(sql))
+            except Exception:
+                pass
 
     from sqlalchemy.ext.asyncio import AsyncSession
     from sqlalchemy import func, select

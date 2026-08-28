@@ -32,6 +32,7 @@ export const api = {
   getProduct: (slug) => fetchApi(`/api/products/${slug}`),
   getSimilar: (slug) => fetchApi(`/api/products/${slug}/similar`),
   getMe: () => fetchApi('/api/user/me'),
+  getProfile: () => fetchApi('/api/user/profile'),
   generateLinkCode: (codeType) =>
     fetchApi('/api/link/generate', {
       method: 'POST',

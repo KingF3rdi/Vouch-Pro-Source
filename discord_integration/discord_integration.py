@@ -211,6 +211,25 @@ class ShopIntegration:
             await message.channel.send(f"Preis auf **{new_price:.2f}€** geändert. {len(notify_ids)} DMs gesendet.")
             return True
 
+        elif cmd == "complete" and message.author.guild_permissions.administrator:
+            order_parts = args.split()
+            if not order_parts or not order_parts[0].isdigit():
+                await message.channel.send("Format: `!shop complete [order_id]`")
+                return True
+
+            order_id = int(order_parts[0])
+            result = await self._request("POST", f"/api/bot/orders/{order_id}/complete")
+            if "error" in result:
+                await message.channel.send(f"Fehler: {result['error']}")
+            else:
+                role_hint = ""
+                if result.get("discord_role_id"):
+                    role_hint = f" Rolle: `{result['discord_role_id']}`"
+                await message.channel.send(
+                    f"✅ Bestellung #{order_id} abgeschlossen — Produkt auf Profil freigeschaltet!{role_hint}"
+                )
+            return True
+
         elif cmd == "vouches":
             vouches = await self._request("GET", "/api/vouches")
             total = vouches.get("total", 0)

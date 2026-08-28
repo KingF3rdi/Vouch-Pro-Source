@@ -48,13 +48,24 @@ export default function ProductPage() {
   }
 
   async function handleOrder() {
+    if (!user?.discord_id) {
+      setOrderMsg('Bitte zuerst Discord verbinden (Profil), um zu kaufen. Der Bezahlvorgang läuft über ein Discord-Ticket.');
+      return;
+    }
     if (!ign) {
-      setOrderMsg('Bitte IGN eingeben oder Account verknüpfen.');
+      setOrderMsg('Bitte IGN eingeben oder im Profil verknüpfen.');
       return;
     }
     try {
       const order = await api.createOrder(product.id, ign, discountResult?.valid ? discountCode : null);
-      setOrderMsg(`Bestellung #${order.id} erstellt! Zahle ${getFinalPrice().toFixed(2)} ingame — der Bot erkennt die Zahlung automatisch.`);
+      if (order.ticket_url) {
+        setOrderMsg(
+          `Ticket geöffnet! Bestellung #${order.id} — ${getFinalPrice().toFixed(2)} €. Öffne dein Discord-Ticket zur Zahlung.`
+        );
+        window.open(order.ticket_url, '_blank');
+      } else {
+        setOrderMsg(order.message || `Bestellung #${order.id} erstellt.`);
+      }
     } catch (e) {
       setOrderMsg(e.message);
     }
@@ -170,7 +181,9 @@ export default function ProductPage() {
             </div>
 
             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-              <button className="btn" onClick={handleOrder}>Jetzt kaufen</button>
+              <button className="btn" onClick={handleOrder}>
+                {user?.discord_id ? 'Bezahlen (Discord Ticket)' : 'Discord verbinden zum Kaufen'}
+              </button>
               <button className="btn btn-outline" onClick={toggleWishlist}>♥ Wunschliste</button>
             </div>
 

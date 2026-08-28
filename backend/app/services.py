@@ -16,6 +16,7 @@ from app.models import (
     Product,
     ProductMedia,
     ShopStats,
+    UnlockedProduct,
     User,
     Vouch,
     WishlistItem,
@@ -307,7 +308,10 @@ async def confirm_payment(
         result = await db.execute(
             select(Order)
             .options(selectinload(Order.product))
-            .where(Order.id == order_id, Order.status == OrderStatus.pending)
+            .where(
+                Order.id == order_id,
+                Order.status.in_([OrderStatus.pending, OrderStatus.ticket_open]),
+            )
         )
         order = result.scalar_one_or_none()
     else:
@@ -317,7 +321,7 @@ async def confirm_payment(
             .where(
                 Order.ign.ilike(ign),
                 Order.amount == amount,
-                Order.status == OrderStatus.pending,
+                Order.status.in_([OrderStatus.pending, OrderStatus.ticket_open]),
             )
             .order_by(Order.created_at.desc())
         )
@@ -326,20 +330,9 @@ async def confirm_payment(
     if not order:
         return None
 
-    order.status = OrderStatus.confirmed
     order.mc_confirmed = True
-    order.paid_at = datetime.utcnow()
     order.payment_reference = payment_reference
-
-    product = order.product
-    product.sales_count += 1
-
-    stats = await get_or_create_stats(db)
-    stats.total_sales += 1
-    stats.total_revenue += order.amount
-
-    await db.commit()
-    await db.refresh(order)
+    await finalize_order(db, order)
     return order
 
 
@@ -373,14 +366,8 @@ async def sync_sale_from_bot(
     order.status = OrderStatus.paid
     order.discord_confirmed = True
     order.paid_at = datetime.utcnow()
-
-    product.sales_count += 1
-    stats = await get_or_create_stats(db)
-    stats.total_sales += 1
-    stats.total_revenue += order.amount
-
-    await db.commit()
-    await db.refresh(order)
+    await db.flush()
+    await finalize_order(db, order)
     return order
 
 
@@ -480,6 +467,148 @@ async def get_wishlist(db: AsyncSession, user_id: int):
             }
         )
     return output
+
+
+def user_display_info(user: User) -> dict:
+    has_discord = bool(user.discord_id)
+    has_ign = bool(user.ign)
+    if has_discord and has_ign:
+        connection_type = "both"
+        display_name = user.discord_username or user.ign
+    elif has_discord:
+        connection_type = "discord"
+        display_name = user.discord_username or f"User#{user.discord_id}"
+    elif has_ign:
+        connection_type = "minecraft"
+        display_name = user.ign
+    else:
+        connection_type = None
+        display_name = None
+    return {"display_name": display_name, "connection_type": connection_type}
+
+
+async def unlock_product_for_user(
+    db: AsyncSession, user_id: int, product_id: int, order_id: int | None = None
+) -> UnlockedProduct:
+    result = await db.execute(
+        select(UnlockedProduct).where(
+            UnlockedProduct.user_id == user_id,
+            UnlockedProduct.product_id == product_id,
+        )
+    )
+    existing = result.scalar_one_or_none()
+    if existing:
+        return existing
+
+    unlocked = UnlockedProduct(user_id=user_id, product_id=product_id, order_id=order_id)
+    db.add(unlocked)
+    await db.flush()
+    return unlocked
+
+
+async def finalize_order(db: AsyncSession, order: Order) -> Order:
+    """Bestellung abschließen: Stats updaten, Produkt freischalten."""
+    if order.status == OrderStatus.confirmed:
+        return order
+
+    if not order.product:
+        result = await db.execute(select(Product).where(Product.id == order.product_id))
+        order.product = result.scalar_one()
+
+    product = order.product
+    product.sales_count += 1
+
+    stats = await get_or_create_stats(db)
+    stats.total_sales += 1
+    stats.total_revenue += order.amount
+
+    order.status = OrderStatus.confirmed
+    order.paid_at = datetime.utcnow()
+
+    if order.user_id:
+        await unlock_product_for_user(db, order.user_id, order.product_id, order.id)
+
+    await db.commit()
+    await db.refresh(order)
+    return order
+
+
+async def create_purchase_with_ticket(
+    db: AsyncSession,
+    product_id: int,
+    user: User,
+    ign: str,
+    discount_code: str | None = None,
+) -> Order:
+    from app.discord_tickets import create_purchase_ticket
+
+    if not user.discord_id:
+        raise ValueError("Discord-Verbindung erforderlich für den Kauf. Bitte zuerst Discord verbinden.")
+
+    result = await db.execute(select(Product).where(Product.id == product_id))
+    product = result.scalar_one_or_none()
+    if not product:
+        raise ValueError("Produkt nicht gefunden")
+
+    amount = product.price
+    discount_percent = 0
+    if discount_code:
+        dc = await validate_discount(db, discount_code)
+        if dc:
+            discount_percent = dc.discount_percent
+            amount = round(product.price * (1 - dc.discount_percent / 100), 2)
+            dc.uses += 1
+
+    order = Order(
+        product_id=product.id,
+        user_id=user.id,
+        ign=ign or user.ign or "unknown",
+        amount=amount,
+        discount_code=discount_code if discount_percent else None,
+        status=OrderStatus.pending,
+    )
+    db.add(order)
+    await db.flush()
+
+    ticket = await create_purchase_ticket(
+        order_id=order.id,
+        discord_user_id=user.discord_id,
+        discord_username=user.discord_username or user.discord_id,
+        ign=ign or user.ign or "—",
+        product_name=product.name,
+        product_price=product.price,
+        final_amount=amount,
+        discount_code=discount_code,
+        discount_percent=discount_percent,
+    )
+
+    if ticket.get("success"):
+        order.status = OrderStatus.ticket_open
+        order.ticket_channel_id = ticket.get("channel_id")
+        order.ticket_url = ticket.get("ticket_url")
+    else:
+        order.status = OrderStatus.pending
+
+    await db.commit()
+    await db.refresh(order)
+    order.product = product
+    return order
+
+
+async def get_user_profile(db: AsyncSession, user_id: int):
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        return None
+
+    unlocked_result = await db.execute(
+        select(UnlockedProduct)
+        .options(selectinload(UnlockedProduct.product).selectinload(Product.category))
+        .where(UnlockedProduct.user_id == user_id)
+        .order_by(UnlockedProduct.unlocked_at.desc())
+    )
+    unlocked = unlocked_result.scalars().all()
+    return user, unlocked
 
 
 async def update_product_price(db: AsyncSession, product_id: int, new_price: float) -> Product:

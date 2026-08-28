@@ -1,18 +1,19 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import Header from '../../components/Header';
 import { api } from '../../lib/api';
 
 export default function AccountPage() {
-  const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [linkCode, setLinkCode] = useState(null);
   const [redeemCode, setRedeemCode] = useState('');
   const [redeemIgn, setRedeemIgn] = useState('');
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    api.getMe().then(setUser).catch(() => setUser(null));
+    api.getProfile().then(setProfile).catch(() => setProfile(null));
   }, []);
 
   async function generateIgnCode() {
@@ -22,30 +23,74 @@ export default function AccountPage() {
 
   async function redeemCodeHandler() {
     try {
-      const u = await api.redeemLinkCode(redeemCode, redeemIgn, user?.discord_id);
-      setUser(u);
+      await api.redeemLinkCode(redeemCode, redeemIgn, profile?.discord_id);
+      const p = await api.getProfile();
+      setProfile(p);
       setMessage('Account erfolgreich verknüpft!');
     } catch (e) {
       setMessage(e.message);
     }
   }
 
+  const user = profile;
+
   return (
     <>
       <Header />
       <main className="container">
-        <div className="account-card">
-          <h2>Account verknüpfen</h2>
+        <div className="account-card" style={{ maxWidth: '720px' }}>
+          <h2>TxTEmpire Profil</h2>
 
-          {user?.discord_id && (
-            <p style={{ color: 'var(--accent)', marginBottom: '1rem' }}>
-              ✓ Discord verbunden {user.ign && `· IGN: ${user.ign}`}
+          {user ? (
+            <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--bg)', borderRadius: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <span style={{ fontSize: '2rem' }}>
+                  {user.connection_type === 'minecraft' ? '⛏️' : '💬'}
+                </span>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--accent)' }}>
+                    {user.display_name}
+                  </div>
+                  <div style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>
+                    {user.connection_type === 'both' && `Discord + Minecraft (${user.ign})`}
+                    {user.connection_type === 'discord' && 'Verbunden mit Discord'}
+                    {user.connection_type === 'minecraft' && `Minecraft: ${user.ign}`}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p style={{ color: 'var(--muted)', marginBottom: '1rem' }}>Nicht angemeldet</p>
+          )}
+
+          {user?.unlocked_products?.length > 0 && (
+            <div className="profile-section">
+              <h3>Freigeschaltete Produkte ({user.unlocked_products.length})</h3>
+              <div className="unlocked-grid">
+                {user.unlocked_products.map((item) => (
+                  <Link key={item.id} href={`/product/${item.product.slug}`} className="unlocked-item">
+                    <div className="check">✓</div>
+                    <div style={{ fontWeight: 600 }}>{item.product.name}</div>
+                    <div style={{ color: 'var(--muted)', fontSize: '0.8rem', marginTop: '0.25rem' }}>
+                      Freigeschaltet
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {user && user.unlocked_products?.length === 0 && (
+            <p style={{ color: 'var(--muted)', marginTop: '1rem' }}>
+              Noch keine freigeschalteten Produkte. Kaufe ein Pack über Discord-Ticket!
             </p>
           )}
 
-          <h3 style={{ marginTop: '1.5rem', marginBottom: '0.5rem' }}>Discord verbinden</h3>
+          <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '1.5rem 0' }} />
+
+          <h3>Discord verbinden</h3>
           <p style={{ color: 'var(--muted)', fontSize: '0.9rem', marginBottom: '0.75rem' }}>
-            Verbinde Discord, um deinen IGN automatisch auf der Website zu haben und Wunschlisten-Benachrichtigungen per DM zu erhalten.
+            Für Käufe per Discord-Ticket und Wunschlisten-Benachrichtigungen.
           </p>
           <a href="/api/auth/discord/login" className="btn" style={{ width: '100%' }}>
             Mit Discord verbinden
@@ -53,12 +98,8 @@ export default function AccountPage() {
 
           <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '1.5rem 0' }} />
 
-          <h3 style={{ marginBottom: '0.5rem' }}>IGN per Code verknüpfen</h3>
-          <p style={{ color: 'var(--muted)', fontSize: '0.9rem', marginBottom: '0.75rem' }}>
-            Wie beim Discord Bot: Code generieren und ingame oder auf der Website einlösen.
-          </p>
-
-          <button className="btn btn-outline" onClick={generateIgnCode} style={{ width: '100%' }}>
+          <h3>IGN per Code verknüpfen</h3>
+          <button className="btn btn-outline" onClick={generateIgnCode} style={{ width: '100%', marginTop: '0.5rem' }}>
             IGN-Verknüpfungscode generieren
           </button>
 
@@ -68,34 +109,26 @@ export default function AccountPage() {
               <p style={{ color: 'var(--muted)', fontSize: '0.85rem', textAlign: 'center' }}>
                 Gültig bis {new Date(linkCode.expires_at).toLocaleTimeString('de-DE')}
               </p>
-              <p style={{ color: 'var(--muted)', fontSize: '0.85rem', marginTop: '0.5rem' }}>
-                Gib diesen Code auf der Website ein oder nutze ihn im Discord Bot: <code>+linkign [code] [ign]</code>
-              </p>
             </div>
           )}
 
-          <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '1.5rem 0' }} />
-
-          <h3 style={{ marginBottom: '0.5rem' }}>Code einlösen</h3>
-          <div style={{ marginBottom: '0.75rem' }}>
+          <div style={{ marginTop: '1rem' }}>
             <input
-              style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '12px', padding: '0.75rem', color: 'var(--text)' }}
+              style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '12px', padding: '0.75rem', color: 'var(--text)', marginBottom: '0.5rem' }}
               placeholder="Verknüpfungscode"
               value={redeemCode}
               onChange={(e) => setRedeemCode(e.target.value.toUpperCase())}
             />
-          </div>
-          <div style={{ marginBottom: '0.75rem' }}>
             <input
-              style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '12px', padding: '0.75rem', color: 'var(--text)' }}
-              placeholder="Dein Minecraft IGN"
+              style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '12px', padding: '0.75rem', color: 'var(--text)', marginBottom: '0.5rem' }}
+              placeholder="Minecraft IGN"
               value={redeemIgn}
               onChange={(e) => setRedeemIgn(e.target.value)}
             />
+            <button className="btn" onClick={redeemCodeHandler} style={{ width: '100%' }}>
+              Code einlösen
+            </button>
           </div>
-          <button className="btn" onClick={redeemCodeHandler} style={{ width: '100%' }}>
-            Code einlösen
-          </button>
 
           {message && (
             <p style={{ marginTop: '1rem', color: 'var(--accent)' }}>{message}</p>

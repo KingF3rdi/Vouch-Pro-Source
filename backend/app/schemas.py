@@ -100,7 +100,32 @@ class LinkRedeemRequest(BaseModel):
 class UserOut(BaseModel):
     id: int
     discord_id: str | None
+    discord_username: str | None = None
     ign: str | None
+    display_name: str | None = None
+    connection_type: str | None = None  # discord, minecraft, both
+
+    class Config:
+        from_attributes = True
+
+
+class UnlockedProductOut(BaseModel):
+    id: int
+    product: ProductListItem
+    unlocked_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class UserProfileOut(BaseModel):
+    id: int
+    discord_id: str | None
+    discord_username: str | None = None
+    ign: str | None
+    display_name: str | None = None
+    connection_type: str | None = None
+    unlocked_products: list[UnlockedProductOut] = []
 
     class Config:
         from_attributes = True
@@ -136,10 +161,13 @@ class OrderCreate(BaseModel):
 class OrderOut(BaseModel):
     id: int
     product_id: int
+    product_name: str | None = None
     ign: str
     amount: float
     status: str
+    ticket_url: str | None = None
     created_at: datetime
+    message: str | None = None
 
     class Config:
         from_attributes = True
