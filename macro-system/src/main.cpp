@@ -21,6 +21,8 @@ macro::AppConfig defaultConfig() {
     cfg.stunslam.fall.upwardVelocityThreshold = 32.0f;
 
     cfg.pearlcatch.hotkeyStandard = VK_F6;
+    cfg.pearlcatch.hotkeyHotbarTotem = VK_F5;
+    cfg.pearlcatch.totemHotbarSlotKey = '9';
     cfg.pearlcatch.hotkeyDiagonalLeft = VK_F7;
     cfg.pearlcatch.hotkeyDiagonalRight = VK_F8;
     cfg.pearlcatch.hotkeyOffhand = VK_F9;

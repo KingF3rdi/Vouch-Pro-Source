@@ -16,6 +16,10 @@ void ScreenAnalyzer::setEnemyThreshold(float threshold) {
     enemyThreshold_ = std::clamp(threshold, 0.05f, 1.0f);
 }
 
+void ScreenAnalyzer::setGroundShieldThreshold(float threshold) {
+    groundShieldThreshold_ = std::clamp(threshold, 0.05f, 1.0f);
+}
+
 bool ScreenAnalyzer::captureScreenRegion(int originX, int originY, int width, int height,
                                          std::vector<std::uint8_t>& bgraPixels) const {
     // --- GDI-Bitmap-Auslesung: definierter Bildschirmbereich ---
@@ -268,6 +272,93 @@ bool ScreenAnalyzer::isShieldRaised() {
     const auto matrix = buildBrightnessMatrix(pixels, kShieldCaptureSize, kShieldCaptureSize);
     const float score = detectShieldBlockScore(matrix);
     return score >= shieldThreshold_;
+}
+
+bool ScreenAnalyzer::isEnemyShieldInRange() {
+    std::vector<std::uint8_t> pixels;
+    if (!captureCrosshairRegion(pixels)) {
+        return false;
+    }
+
+    const auto matrix = buildBrightnessMatrix(pixels, kCrosshairWidth, kCrosshairHeight);
+    const float score = detectShieldBlockScore(matrix);
+    return score >= shieldThreshold_;
+}
+
+bool ScreenAnalyzer::captureGroundShieldRegion(std::vector<std::uint8_t>& bgraPixels) const {
+    const int screenWidth = GetSystemMetrics(SM_CXSCREEN);
+    const int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+    const int originX = (screenWidth - kGroundShieldWidth) / 2;
+    const int originY = (screenHeight / 2) + (screenHeight / 10);
+    return captureScreenRegion(originX, originY, kGroundShieldWidth, kGroundShieldHeight, bgraPixels);
+}
+
+float ScreenAnalyzer::detectGroundShieldScore(const std::vector<std::uint8_t>& pixels, int width,
+                                            int height) const {
+    // Liegendes Schild: kompakte Kontrast-Insel auf dem Boden (texturunabhaengig)
+    float weightedX = 0.0f;
+    float weightedY = 0.0f;
+    float weightSum = 0.0f;
+    float localContrastSum = 0.0f;
+    int samples = 0;
+
+    for (int y = 1; y < height - 1; ++y) {
+        for (int x = 1; x < width - 1; ++x) {
+            const float lum = luminanceAt(pixels, width, x, y);
+            const float grad = std::abs(lum - luminanceAt(pixels, width, x - 1, y)) +
+                               std::abs(lum - luminanceAt(pixels, width, x, y - 1));
+            localContrastSum += grad;
+            ++samples;
+
+            if (grad > 16.0f) {
+                weightedX += static_cast<float>(x) * grad;
+                weightedY += static_cast<float>(y) * grad;
+                weightSum += grad;
+            }
+        }
+    }
+
+    if (weightSum <= 0.0f || samples == 0) {
+        return 0.0f;
+    }
+
+    const float centerX = weightedX / weightSum;
+    const float centerY = weightedY / weightSum;
+    const float avgContrast = localContrastSum / static_cast<float>(samples);
+
+    float compactness = 0.0f;
+    int compactSamples = 0;
+    const float radius = static_cast<float>(std::min(width, height)) * 0.22f;
+
+    for (int y = 1; y < height - 1; ++y) {
+        for (int x = 1; x < width - 1; ++x) {
+            const float dx = static_cast<float>(x) - centerX;
+            const float dy = static_cast<float>(y) - centerY;
+            if ((dx * dx + dy * dy) <= radius * radius) {
+                const float lum = luminanceAt(pixels, width, x, y);
+                const float grad = std::abs(lum - luminanceAt(pixels, width, x - 1, y)) +
+                                   std::abs(lum - luminanceAt(pixels, width, x, y - 1));
+                compactness += grad;
+                ++compactSamples;
+            }
+        }
+    }
+
+    const float compactScore =
+        compactSamples > 0 ? compactness / static_cast<float>(compactSamples) : 0.0f;
+    const float lowerBias = centerY > static_cast<float>(height) * 0.35f ? 1.0f : 0.55f;
+    return std::clamp((compactScore / 42.0f) * 0.7f + (avgContrast / 50.0f) * 0.3f, 0.0f, 1.0f) *
+           lowerBias;
+}
+
+bool ScreenAnalyzer::isShieldOnGround() {
+    std::vector<std::uint8_t> pixels;
+    if (!captureGroundShieldRegion(pixels)) {
+        return false;
+    }
+
+    const float score = detectGroundShieldScore(pixels, kGroundShieldWidth, kGroundShieldHeight);
+    return score >= groundShieldThreshold_;
 }
 
 bool ScreenAnalyzer::isEnemyInCrosshairRange() {

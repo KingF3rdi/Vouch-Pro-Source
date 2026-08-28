@@ -1,5 +1,6 @@
 #include "input_simulator.hpp"
 
+#include <algorithm>
 #include <thread>
 
 namespace macro {
@@ -46,6 +47,18 @@ void InputSimulator::leftClick(int holdMinMs, int holdMaxMs) {
     sendMouse(MOUSEEVENTF_LEFTDOWN);
     std::this_thread::sleep_for(
         std::chrono::milliseconds(rng_.uniformInt(holdMinMs, holdMaxMs)));
+    sendMouse(MOUSEEVENTF_LEFTUP);
+}
+
+void InputSimulator::leftClickWithMidSwap(WORD slotKey, int holdMinMs, int holdMaxMs,
+                                          int swapAtMinMs, int swapAtMaxMs) {
+    const int totalHold = rng_.uniformInt(holdMinMs, holdMaxMs);
+    const int swapAt = std::clamp(rng_.uniformInt(swapAtMinMs, swapAtMaxMs), 1, totalHold - 1);
+
+    sendMouse(MOUSEEVENTF_LEFTDOWN);
+    std::this_thread::sleep_for(std::chrono::milliseconds(swapAt));
+    pressKey(slotKey);
+    std::this_thread::sleep_for(std::chrono::milliseconds(totalHold - swapAt));
     sendMouse(MOUSEEVENTF_LEFTUP);
 }
 

@@ -21,6 +21,8 @@ public:
     void releaseKeys(const std::initializer_list<WORD>& keys);
 
     void leftClick(int holdMinMs = 15, int holdMaxMs = 35);
+    void leftClickWithMidSwap(WORD slotKey, int holdMinMs = 15, int holdMaxMs = 35,
+                              int swapAtMinMs = 6, int swapAtMaxMs = 16);
     void rightClick(int holdMinMs = 5, int holdMaxMs = 15);
     void doubleRightClick(int holdMinMs = 5, int holdMaxMs = 15, int gapMinMs = 5,
                           int gapMaxMs = 12);

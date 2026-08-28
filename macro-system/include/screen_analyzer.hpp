@@ -17,8 +17,14 @@ public:
 
     ScreenAnalyzer();
 
-    /// Schild-Erkennung: relative Helligkeitsmatrix mit Block-Form im Zentrum.
+    /// Schild-Erkennung: eigenes erhobenes Schild (Bildschirmmitte).
     bool isShieldRaised();
+
+    /// Gegner-Schild in Reichweite (Block-Form im Fadenkreuz).
+    bool isEnemyShieldInRange();
+
+    /// Liegendes Schild auf dem Boden vor dem Spieler.
+    bool isShieldOnGround();
 
     /// Gegner in Nahkampf-Reichweite: Namensband, Ruestung oder roter Damage-Tick.
     bool isEnemyInCrosshairRange();
@@ -29,8 +35,12 @@ public:
     /// Inventar geoeffnet (Slot-Gitter in der Bildschirmmitte).
     bool isInventoryOpen();
 
+    static constexpr int kGroundShieldWidth = 96;
+    static constexpr int kGroundShieldHeight = 72;
+
     void setShieldThreshold(float threshold);
     void setEnemyThreshold(float threshold);
+    void setGroundShieldThreshold(float threshold);
 
 private:
     struct LuminanceStats {
@@ -58,9 +68,13 @@ private:
     float detectArmorContrastScore(const std::vector<std::uint8_t>& pixels, int width, int height) const;
     float detectInventoryGridScore(const std::vector<std::uint8_t>& pixels, int width, int height) const;
     float detectChatBarScore(const std::vector<std::uint8_t>& pixels, int width, int height) const;
+    float detectGroundShieldScore(const std::vector<std::uint8_t>& pixels, int width,
+                                  int height) const;
+    bool captureGroundShieldRegion(std::vector<std::uint8_t>& bgraPixels) const;
 
     float shieldThreshold_{0.42f};
     float enemyThreshold_{0.35f};
+    float groundShieldThreshold_{0.38f};
 };
 
 }  // namespace macro
