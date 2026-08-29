@@ -1,22 +1,18 @@
 /**
  * Ingame-Anmeldung / IGN-Verknüpfung per Code.
  *
- * Spieler-Befehle (öffentlicher Chat oder Whisper an den Bot):
+ * Der Bot ist ein normaler Minecraft-Spieleraccount (mineflayer).
+ * Spieler schreiben ihm per Whisper oder öffentlichem Chat:
+ *   /msg BotName link ABCD12
  *   !shop link ABCD12
- *   !link ABCD12
- *   link ABCD12
  */
+
+const { sendPrivateMessage } = require('./player-messages');
 
 const LINK_PATTERNS = [
   /^(?:!shop\s+)?link\s+([A-Z0-9]{4,12})$/i,
   /^verknüpf(?:en)?\s+([A-Z0-9]{4,12})$/i,
   /^anmelden\s+([A-Z0-9]{4,12})$/i,
-];
-
-const WHISPER_SENDER_PATTERNS = [
-  /^(\w+)\s+whispers(?:\s+to you)?:\s*(.+)$/i,
-  /^(\w+)\s*->\s*you:\s*(.+)$/i,
-  /^(\w+)\s+flüstert(?:\s+dir)?:\s*(.+)$/i,
 ];
 
 function stripColors(text) {
@@ -29,17 +25,6 @@ function parseLinkCommand(message) {
     const match = clean.match(pattern);
     if (match) {
       return match[1].toUpperCase();
-    }
-  }
-  return null;
-}
-
-function parseWhisper(message) {
-  const clean = stripColors(message);
-  for (const pattern of WHISPER_SENDER_PATTERNS) {
-    const match = clean.match(pattern);
-    if (match) {
-      return { username: match[1], text: match[2].trim() };
     }
   }
   return null;
@@ -77,31 +62,36 @@ function registerLinkAuth(bot, config) {
 
     if (result.success) {
       const label = result.connection_type === 'both' ? 'Discord + Minecraft' : 'Minecraft';
-      bot.chat(
-        `/tell ${username} Verknüpfung erfolgreich! ${label} (${result.ign}) ist jetzt mit dem Shop verbunden.`
+      sendPrivateMessage(
+        bot,
+        username,
+        `Verknüpfung erfolgreich! ${label} (${result.ign}) ist jetzt mit dem Shop verbunden.`,
+        config
       );
       console.log(`[LinkAuth] OK: ${username} -> ${result.display_name || result.ign}`);
       return;
     }
 
     const msg = typeof result.message === 'string' ? result.message : 'Ungültiger oder abgelaufener Code.';
-    bot.chat(`/tell ${username} ${msg}`);
+    sendPrivateMessage(bot, username, msg, config);
     console.log(`[LinkAuth] Fehler für ${username}: ${msg}`);
   }
 
+  // Öffentlicher Chat: <Spieler> !shop link CODE
   bot.on('chat', (username, message) => {
     const code = parseLinkCommand(message);
     if (code) handleLink(username, code);
   });
 
-  bot.on('messagestr', (message) => {
-    const whisper = parseWhisper(message);
-    if (!whisper) return;
-    const code = parseLinkCommand(whisper.text);
-    if (code) handleLink(whisper.username, code);
+  // Whisper an den Bot-Account: /msg BotName link CODE
+  bot.on('whisper', (username, message) => {
+    const code = parseLinkCommand(message);
+    if (code) handleLink(username, code);
   });
 
-  console.log('[LinkAuth] Bereit — Chat: !shop link CODE | Whisper: /msg ' + botName + ' link CODE');
+  console.log(
+    `[LinkAuth] Bereit (${botName}) — Whisper: /msg ${botName} link CODE | Chat: !shop link CODE`
+  );
 }
 
 module.exports = { registerLinkAuth, parseLinkCommand, redeemLinkCode };

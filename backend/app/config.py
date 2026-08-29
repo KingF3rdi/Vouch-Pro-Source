@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     default_discount_percent: int = 10
     admin_discord_ids: str = ""
     shop_owner_ign: str = "ShopOwner"
+    shop_bot_ign: str = "ShopBot"
 
     def get_admin_discord_ids(self) -> list[str]:
         if not self.admin_discord_ids.strip():

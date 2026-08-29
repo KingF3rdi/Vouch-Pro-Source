@@ -10,12 +10,16 @@ export default function AccountPage() {
   const [profile, setProfile] = useState(null);
   const [orders, setOrders] = useState([]);
   const [linkCode, setLinkCode] = useState(null);
+  const [botIgn, setBotIgn] = useState('ShopBot');
   const [redeemCode, setRedeemCode] = useState('');
   const [redeemIgn, setRedeemIgn] = useState('');
   const [message, setMessage] = useState('');
 
   useEffect(() => {
     loadProfile();
+    api.getPaymentConfig().then((cfg) => {
+      if (cfg?.shop_bot_ign) setBotIgn(cfg.shop_bot_ign);
+    }).catch(() => {});
   }, []);
 
   async function loadProfile() {
@@ -140,8 +144,8 @@ export default function AccountPage() {
           <h3>IGN per Code verknüpfen</h3>
           <p style={{ color: 'var(--muted)', fontSize: '0.9rem', marginBottom: '0.75rem' }}>
             {profile?.discord_id
-              ? 'Code generieren und ingame eingeben: !shop link CODE (oder /msg ShopBot link CODE)'
-              : 'Ohne Discord: Code generieren und ingame mit !shop link CODE anmelden.'}
+              ? `Code generieren und dem Bot-Account schreiben: /msg ${botIgn} link CODE`
+              : `Ohne Discord: Code generieren und ingame /msg ${botIgn} link CODE senden.`}
           </p>
           <button className="btn btn-outline-glass" onClick={generateIgnCode} style={{ width: '100%', marginTop: '0.5rem' }}>
             {profile?.discord_id ? 'IGN-Verknüpfungscode generieren' : 'Ingame-Anmeldecode generieren'}
@@ -154,7 +158,7 @@ export default function AccountPage() {
                 Gültig bis {new Date(linkCode.expires_at).toLocaleTimeString('de-DE')}
               </p>
               <p style={{ color: 'var(--muted)', fontSize: '0.85rem', textAlign: 'center', marginTop: '0.5rem' }}>
-                Ingame: <code>!shop link {linkCode.code}</code>
+                Ingame: <code>/msg {botIgn} link {linkCode.code}</code>
               </p>
             </div>
           )}

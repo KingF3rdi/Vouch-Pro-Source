@@ -1,16 +1,18 @@
 require('dotenv').config();
 const mineflayer = require('mineflayer');
 const { registerLinkAuth } = require('./link-auth');
+const { sendPrivateMessage } = require('./player-messages');
 
 const CONFIG = {
   host: process.env.MC_HOST || 'localhost',
   port: parseInt(process.env.MC_PORT || '25565', 10),
   username: process.env.MC_BOT_USERNAME || 'ShopBot',
-  auth: process.env.MC_AUTH || 'offline',
+  auth: process.env.MC_AUTH || 'microsoft',
   apiUrl: process.env.SHOP_API_URL || 'http://localhost:8000',
   apiKey: process.env.BOT_API_KEY || 'change-bot-api-key',
   paymentPrefix: process.env.PAYMENT_PREFIX || 'pay',
   shopOwnerIgn: process.env.SHOP_OWNER_IGN || 'ShopOwner',
+  msgCmd: process.env.MC_MSG_CMD || 'msg',
 };
 
 /**
@@ -101,7 +103,12 @@ bot.on('chat', async (username, message) => {
   const result = await confirmPayment(payment.ign, payment.amount, message);
 
   if (result.success) {
-    bot.chat(`/tell ${payment.ign} Zahlung bestätigt! Bestellung #${result.order_id} — Danke für deinen Kauf!`);
+    sendPrivateMessage(
+      bot,
+      payment.ign,
+      `Zahlung bestätigt! Bestellung #${result.order_id} — Danke für deinen Kauf!`,
+      CONFIG
+    );
     console.log(`[Payment] Bestätigt: Order #${result.order_id}`);
   } else {
     console.log(`[Payment] Keine passende Bestellung für ${payment.ign} (${payment.amount})`);

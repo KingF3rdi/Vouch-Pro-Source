@@ -211,6 +211,7 @@ class CartOrderOut(BaseModel):
 
 class PaymentConfigOut(BaseModel):
     shop_owner_ign: str
+    shop_bot_ign: str
 
 
 class SearchParams(BaseModel):

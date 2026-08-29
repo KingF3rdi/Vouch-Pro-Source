@@ -39,7 +39,7 @@ async def discord_config():
 @router.get("/config/payment", response_model=PaymentConfigOut)
 async def payment_config():
     from app.config import settings
-    return {"shop_owner_ign": settings.shop_owner_ign}
+    return {"shop_owner_ign": settings.shop_owner_ign, "shop_bot_ign": settings.shop_bot_ign}
 
 
 @router.get("/purchases/recent", response_model=list[PurchaseConfirmationOut])

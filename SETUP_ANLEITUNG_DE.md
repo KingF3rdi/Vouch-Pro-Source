@@ -300,12 +300,14 @@ pm2 start main.py --name discord-bot --interpreter python3
 
 ## C1. Was das Script macht
 
-- Verbindet sich mit deinem MC-Server (mineflayer).
-- Liest **öffentlichen Chat** und System-Nachrichten.
+Der Bot ist **kein Plugin**, sondern ein **eigener Minecraft-Spieleraccount**, der per mineflayer auf dem Server online bleibt.
+
+- Verbindet sich als normaler Spieler (`MC_BOT_USERNAME`).
+- Liest **öffentlichen Chat**, Whispers (`/msg BotName …`) und System-Nachrichten.
 - Erkennt Zahlungs-Muster (EssentialsX, Vault, etc.).
 - Sendet `POST /api/bot/payments/confirm` mit **IGN + Betrag**.
 - API findet offene Bestellung → schaltet Pack frei.
-- **Neu:** Ingame-Anmeldung per Code (`!shop link CODE`) → `POST /api/bot/link/redeem`.
+- Ingame-Anmeldung per Code (`/msg BotName link CODE`) → `POST /api/bot/link/redeem`.
 
 Details: `minecraft-bot/INGAME_ANMELDUNG.md`
 
