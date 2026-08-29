@@ -83,13 +83,18 @@ function registerPaymentHandler(bot, config) {
     const result = await confirmPayment(config, payerIgn, amount, reference);
 
     if (result.success) {
+      const count = result.orders_confirmed || 1;
+      const orderLabel =
+        count > 1
+          ? `${count} Bestellungen (#${(result.order_ids || [result.order_id]).join(', #')})`
+          : `Bestellung #${result.order_id}`;
       sendPrivateMessage(
         bot,
         payerIgn,
-        `Zahlung bestätigt! Bestellung #${result.order_id} — Danke für deinen Kauf!`,
+        `Zahlung bestätigt! ${orderLabel} — Danke für deinen Kauf!`,
         config
       );
-      console.log(`[Payment] Bestätigt: Order #${result.order_id}`);
+      console.log(`[Payment] Bestätigt: ${orderLabel}`);
     } else {
       console.log(`[Payment] Keine passende Bestellung für ${payerIgn} (${amount})`);
     }

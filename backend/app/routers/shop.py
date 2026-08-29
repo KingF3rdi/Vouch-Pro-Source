@@ -238,9 +238,9 @@ async def create_cart_order(
             total_amount=total_amount,
             shop_owner_ign=settings.payment_recipient_ign,
             message=(
-                f"Zahle ingame an {settings.payment_recipient_ign}: "
+                f"Zahle ingame den Gesamtbetrag an {settings.payment_recipient_ign}: "
                 f"{total_amount} mit IGN {ign}. "
-                "Nach Erkennung durch den Bot-Account wird der Download automatisch im Profil freigeschaltet."
+                "Eine Zahlung reicht — alle Packs werden danach automatisch freigeschaltet."
             ),
         )
 

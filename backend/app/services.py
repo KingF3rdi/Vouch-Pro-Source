@@ -25,6 +25,14 @@ from app.models import (
 SHADER_MARKERS = ("shader", "shaders")
 
 
+def _amounts_equal(a: float, b: float) -> bool:
+    return round(float(a), 2) == round(float(b), 2)
+
+
+def _new_cart_group_id() -> str:
+    return secrets.token_hex(8)
+
+
 def _contains_shader_marker(value: str | None) -> bool:
     if not value:
         return False
@@ -476,7 +484,8 @@ async def confirm_payment(
     amount: float,
     order_id: int | None = None,
     payment_reference: str | None = None,
-) -> Order | None:
+) -> list[Order]:
+    """Bestätigt Zahlung — einzelne Order oder ganze Warenkorb-Gruppe (Gesamtbetrag)."""
     if order_id:
         result = await db.execute(
             select(Order)
@@ -487,27 +496,88 @@ async def confirm_payment(
             )
         )
         order = result.scalar_one_or_none()
-    else:
-        result = await db.execute(
-            select(Order)
-            .options(selectinload(Order.product))
-            .where(
-                Order.ign.ilike(ign),
-                Order.amount == amount,
-                Order.status.in_([OrderStatus.pending, OrderStatus.ticket_open]),
-            )
-            .order_by(Order.created_at.desc())
-        )
-        order = result.scalar_one_or_none()
+        if not order:
+            return []
+        await _mark_order_paid(db, order, payment_reference)
+        return [order]
 
+    cart_orders = await _find_cart_orders_by_total(db, ign, amount)
+    if cart_orders:
+        confirmed: list[Order] = []
+        for order in cart_orders:
+            await _mark_order_paid(db, order, payment_reference)
+            confirmed.append(order)
+        return confirmed
+
+    result = await db.execute(
+        select(Order)
+        .options(selectinload(Order.product))
+        .where(
+            Order.ign.ilike(ign),
+            Order.amount == amount,
+            Order.status.in_([OrderStatus.pending, OrderStatus.ticket_open]),
+        )
+        .order_by(Order.created_at.desc())
+    )
+    order = result.scalar_one_or_none()
     if not order:
+        return []
+
+    await _mark_order_paid(db, order, payment_reference)
+    return [order]
+
+
+async def _find_cart_orders_by_total(
+    db: AsyncSession,
+    ign: str,
+    amount: float,
+) -> list[Order] | None:
+    result = await db.execute(
+        select(Order)
+        .options(selectinload(Order.product))
+        .where(
+            Order.ign.ilike(ign),
+            Order.cart_group_id.isnot(None),
+            Order.cart_total_amount.isnot(None),
+            Order.status.in_([OrderStatus.pending, OrderStatus.ticket_open]),
+        )
+        .order_by(Order.created_at.desc())
+    )
+    orders = list(result.scalars().all())
+    if not orders:
         return None
 
+    groups: dict[str, list[Order]] = {}
+    for order in orders:
+        groups.setdefault(order.cart_group_id, []).append(order)
+
+    sorted_groups = sorted(
+        groups.values(),
+        key=lambda group: max(o.created_at for o in group),
+        reverse=True,
+    )
+
+    for group_orders in sorted_groups:
+        total = group_orders[0].cart_total_amount
+        if total is None or not _amounts_equal(total, amount):
+            continue
+        line_sum = round(sum(o.amount for o in group_orders), 2)
+        if not _amounts_equal(line_sum, amount):
+            continue
+        return group_orders
+
+    return None
+
+
+async def _mark_order_paid(
+    db: AsyncSession,
+    order: Order,
+    payment_reference: str | None,
+) -> None:
     await attach_order_to_user(db, order)
     order.mc_confirmed = True
     order.payment_reference = payment_reference
     await finalize_order(db, order)
-    return order
 
 
 async def sync_sale_from_bot(
@@ -841,6 +911,7 @@ async def create_cart_purchase_with_ticket(
     orders: list[Order] = []
     line_items: list[dict] = []
     total_amount = 0.0
+    cart_group_id = _new_cart_group_id()
 
     for product in products:
         amount = product.price
@@ -854,6 +925,8 @@ async def create_cart_purchase_with_ticket(
             amount=amount,
             discount_code=discount_code if discount_percent else None,
             status=OrderStatus.pending,
+            cart_group_id=cart_group_id,
+            cart_total_amount=None,
         )
         db.add(order)
         orders.append(order)
@@ -865,6 +938,10 @@ async def create_cart_purchase_with_ticket(
             }
         )
         total_amount += amount
+
+    total_amount = round(total_amount, 2)
+    for order in orders:
+        order.cart_total_amount = total_amount
 
     await db.flush()
 
@@ -931,6 +1008,7 @@ async def create_cart_purchase_ingame(
 
     orders: list[Order] = []
     total_amount = 0.0
+    cart_group_id = _new_cart_group_id()
 
     for product in products:
         amount = product.price
@@ -944,10 +1022,16 @@ async def create_cart_purchase_ingame(
             amount=amount,
             discount_code=discount_code if discount_percent else None,
             status=OrderStatus.pending,
+            cart_group_id=cart_group_id,
+            cart_total_amount=None,
         )
         db.add(order)
         orders.append(order)
         total_amount += amount
+
+    total_amount = round(total_amount, 2)
+    for order in orders:
+        order.cart_total_amount = total_amount
 
     await db.flush()
 

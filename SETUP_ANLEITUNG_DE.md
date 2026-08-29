@@ -300,14 +300,11 @@ pm2 start main.py --name discord-bot --interpreter python3
 
 ## C1. Was das Script macht
 
-Der Bot ist **kein Plugin**, sondern ein **eigener Minecraft-Spieleraccount**, der per mineflayer auf dem Server online bleibt.
+Der Bot ist **ein Minecraft-Spieleraccount** für **Anmeldung per Code** und **Zahlungsempfang**:
 
-- Verbindet sich als normaler Spieler (`MC_BOT_USERNAME`).
-- Liest **öffentlichen Chat**, Whispers (`/msg BotName …`) und System-Nachrichten.
-- Erkennt Zahlungs-Muster (EssentialsX, Vault, etc.).
-- Sendet `POST /api/bot/payments/confirm` mit **IGN + Betrag**.
-- API findet offene Bestellung → schaltet Pack frei.
-- Ingame-Anmeldung per Code (`/msg BotName link CODE`) → `POST /api/bot/link/redeem`.
+- Spieler schreiben `/msg BotName link CODE` zur Verknüpfung.
+- Spieler zahlen `/pay BotName <betrag>` — der Bot erkennt EssentialsX-Nachrichten (`paid you`).
+- Bestätigt Bestellungen über `POST /api/bot/payments/confirm`.
 
 Details: `minecraft-bot/INGAME_ANMELDUNG.md`
 
@@ -330,18 +327,15 @@ MC_AUTH=microsoft
 MC_MSG_CMD=msg
 SHOP_API_URL=https://shop.deinedomain.de
 BOT_API_KEY=gleicher-key-wie-backend
-SHOP_OWNER_IGN=DeinShopOwnerIGN
 ```
 
-In `backend/.env` zusätzlich `SHOP_BOT_IGN=TxTEmpirePayBot` (gleicher Name wie `MC_BOT_USERNAME`).
+In `backend/.env`: `SHOP_BOT_IGN=TxTEmpirePayBot` (gleicher Name — Bot empfängt auch Zahlungen).
 
 | Variable | Erklärung |
 |----------|-----------|
-| `MC_BOT_USERNAME` | Echter Minecraft-Account des Bots (IGN) |
-| `MC_AUTH` | `microsoft` = Premium. `offline` = nur Cracked-Server |
-| `MC_MSG_CMD` | Whisper-Befehl auf dem Server (`msg`, `tell`, `w`) |
-| `SHOP_OWNER_IGN` | Account, **an den** Spieler `/pay` senden (oft ≠ Bot) |
-| `SHOP_BOT_IGN` | Bot-IGN für Anzeige auf der Website |
+| `MC_BOT_USERNAME` | Bot-Account: Link-Codes + `/pay`-Empfänger |
+| `SHOP_BOT_IGN` | Gleicher IGN in `backend/.env` für Website |
+| `MC_AUTH` | `microsoft` = Premium. `offline` = Cracked-Server |
 | `BOT_API_KEY` | **Identisch** mit `backend/.env` |
 
 ## C4. Script starten

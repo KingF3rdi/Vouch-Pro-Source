@@ -119,6 +119,8 @@ class Order(Base):
     discount_code: Mapped[str | None] = mapped_column(String(50), nullable=True)
     status: Mapped[OrderStatus] = mapped_column(Enum(OrderStatus), default=OrderStatus.pending)
     payment_reference: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    cart_group_id: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    cart_total_amount: Mapped[float | None] = mapped_column(Float, nullable=True)
     ticket_channel_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
     ticket_url: Mapped[str | None] = mapped_column(String(200), nullable=True)
     confirmation_posted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

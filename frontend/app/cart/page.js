@@ -239,14 +239,15 @@ export default function CartPage() {
                 <div className="payment-instructions glass-card">
                   <h3>Ingame-Zahlung</h3>
                   <p>
-                    Zahle <strong>{formatIngamePrice(paymentInfo.total_amount)}</strong> an{' '}
+                    Zahle den <strong>Gesamtbetrag</strong>{' '}
+                    <strong>{formatIngamePrice(paymentInfo.total_amount)}</strong> an{' '}
                     <strong>{paymentInfo.shop_owner_ign}</strong>
                   </p>
                   <p className="payment-cmd-hint">
                     Beispiel: <code>/pay {paymentInfo.shop_owner_ign} {paymentInfo.total_amount}</code>
                   </p>
                   <p style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>
-                    IGN: <strong>{paymentInfo.ign}</strong> — muss exakt mit deiner Zahlung übereinstimmen.
+                    Eine Zahlung für alle Packs im Warenkorb. IGN: <strong>{paymentInfo.ign}</strong>
                   </p>
                   <Link href="/account" className="btn btn-outline-glass" style={{ marginTop: '0.75rem', width: '100%' }}>
                     Zum Profil (Download nach Zahlung)

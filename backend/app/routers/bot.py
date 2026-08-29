@@ -70,20 +70,23 @@ async def bot_redeem_link_code(body: BotLinkRedeem, db: AsyncSession = Depends(g
 
 @router.post("/payments/confirm")
 async def bot_confirm_payment(body: BotPaymentConfirm, db: AsyncSession = Depends(get_db)):
-    order = await services.confirm_payment(
+    orders = await services.confirm_payment(
         db,
         ign=body.ign,
         amount=body.amount,
         order_id=body.order_id,
         payment_reference=body.payment_reference,
     )
-    if not order:
+    if not orders:
         return {"success": False, "message": "Keine passende Bestellung gefunden"}
+    primary = orders[0]
     return {
         "success": True,
-        "order_id": order.id,
-        "status": order.status.value,
-        "product_unlocked": order.user_id is not None,
+        "order_id": primary.id,
+        "order_ids": [o.id for o in orders],
+        "orders_confirmed": len(orders),
+        "status": primary.status.value,
+        "product_unlocked": primary.user_id is not None,
     }
 
 
