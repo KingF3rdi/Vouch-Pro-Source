@@ -17,6 +17,16 @@ class Settings(BaseSettings):
     upload_dir: str = "./uploads"
     default_discount_percent: int = 10
     admin_discord_ids: str = ""
+    shop_owner_ign: str = ""
+    shop_bot_ign: str = "ShopBot"
+
+    @property
+    def payment_recipient_ign(self) -> str:
+        """Zahlungsempfänger = Bot-Account, sofern kein eigener Shop-Owner gesetzt."""
+        override = self.shop_owner_ign.strip()
+        if override:
+            return override
+        return self.shop_bot_ign
 
     def get_admin_discord_ids(self) -> list[str]:
         if not self.admin_discord_ids.strip():

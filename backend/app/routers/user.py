@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
-from app.schemas import UserOut, UserProfileOut, UnlockedProductOut, WishlistItemOut
+from app.schemas import UserOut, UserProfileOut, UnlockedProductOut, WishlistItemOut, UserOrderOut
 from app import services
 
 router = APIRouter(prefix="/api/user", tags=["user"])
@@ -59,6 +59,29 @@ async def get_profile(
             UnlockedProductOut(id=u.id, product=u.product, unlocked_at=u.unlocked_at) for u in unlocked
         ],
     )
+
+
+@router.get("/orders", response_model=list[UserOrderOut])
+async def get_orders(
+    session_token: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    user = await services.get_user_by_session(db, session_token)
+    if not user:
+        raise HTTPException(status_code=401, detail="Nicht angemeldet")
+
+    orders = await services.get_user_orders(db, user.id)
+    return [
+        UserOrderOut(
+            id=o.id,
+            product_name=o.product.name if o.product else None,
+            amount=o.amount,
+            status=o.status.value,
+            ign=o.ign,
+            created_at=o.created_at,
+        )
+        for o in orders
+    ]
 
 
 @router.post("/wishlist/{product_id}")

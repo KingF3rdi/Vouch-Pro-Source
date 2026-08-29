@@ -6,6 +6,7 @@ import Header from '../../../components/Header';
 import ProductCard from '../../../components/ProductCard';
 import CategoryBadge from '../../../components/CategoryBadge';
 import CategoryDivider from '../../../components/CategoryDivider';
+import ProductGallery from '../../../components/ProductGallery';
 import { api } from '../../../lib/api';
 import AddToCartButton from '../../../components/AddToCartButton';
 import BuyNowButton from '../../../components/BuyNowButton';
@@ -17,7 +18,6 @@ export default function ProductPage() {
   const slug = params.slug;
   const [product, setProduct] = useState(null);
   const [similar, setSimilar] = useState([]);
-  const [activeMedia, setActiveMedia] = useState(0);
   const [user, setUser] = useState(null);
   const [orderMsg, setOrderMsg] = useState('');
   const [loading, setLoading] = useState(true);
@@ -26,7 +26,6 @@ export default function ProductPage() {
     setLoading(true);
     setProduct(null);
     setSimilar([]);
-    setActiveMedia(0);
 
     Promise.all([
       api.getProduct(slug).then(setProduct).catch(console.error),
@@ -80,36 +79,7 @@ export default function ProductPage() {
       <Header />
       <main className="container main-content main-content--offset">
         <div className="product-detail">
-          <div className="glass-panel product-gallery-panel">
-            <div className="gallery-main">
-              {allMedia.length > 0 ? (
-                allMedia[activeMedia]?.media_type === 'video' ? (
-                  <video src={allMedia[activeMedia].url} controls autoPlay muted loop />
-                ) : (
-                  <img src={allMedia[activeMedia]?.url} alt={product.name} />
-                )
-              ) : (
-                <div className="preview-placeholder">📦</div>
-              )}
-            </div>
-            {allMedia.length > 1 && (
-              <div className="gallery-thumbs">
-                {allMedia.map((m, i) => (
-                  <div
-                    key={i}
-                    className={`gallery-thumb ${i === activeMedia ? 'active' : ''}`}
-                    onClick={() => setActiveMedia(i)}
-                  >
-                    {m.media_type === 'video' ? (
-                      <div style={{ background: '#333', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>▶</div>
-                    ) : (
-                      <img src={m.url} alt="" />
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <ProductGallery media={allMedia} productName={product.name} />
 
           <div className="product-info glass-panel product-info-panel">
             <h1>{product.name}</h1>
@@ -128,7 +98,7 @@ export default function ProductPage() {
             )}
 
             <p style={{ fontSize: '0.85rem', color: 'var(--muted)', marginBottom: '1rem' }}>
-              IGN und Rabattcode werden an der Kasse abgefragt.
+              Ingame zahlen mit IGN oder mit Discord verifizieren — beides an der Kasse.
             </p>
 
             <div className="product-detail-actions">
@@ -144,8 +114,7 @@ export default function ProductPage() {
             )}
 
             <p style={{ marginTop: '1rem', fontSize: '0.85rem', color: 'var(--muted)' }}>
-              {product.sales_count} Verkäufe · Discord Rolle wird nach Kauf vergeben
-              {!user?.discord_id && ' · Discord-Verknüpfung im Profil erforderlich'}
+              {product.sales_count} Verkäufe · Download im Profil nach Zahlung
             </p>
           </div>
         </div>

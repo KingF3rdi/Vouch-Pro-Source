@@ -14,6 +14,8 @@ from app.schemas import (
     LinkRedeemRequest,
     OrderCreate,
     OrderOut,
+    PaymentConfigOut,
+    PaymentInstructionsOut,
     ProductListItem,
     ProductOut,
     PurchaseConfirmationOut,
@@ -32,6 +34,15 @@ router = APIRouter(prefix="/api", tags=["shop"])
 async def discord_config():
     from app.config import settings
     return {"invite_url": settings.discord_invite_url}
+
+
+@router.get("/config/payment", response_model=PaymentConfigOut)
+async def payment_config():
+    from app.config import settings
+    return {
+        "shop_owner_ign": settings.payment_recipient_ign,
+        "shop_bot_ign": settings.shop_bot_ign,
+    }
 
 
 @router.get("/purchases/recent", response_model=list[PurchaseConfirmationOut])
@@ -92,9 +103,21 @@ async def categories(db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/link/generate", response_model=LinkCodeOut)
-async def generate_link_code(body: LinkCodeCreate, db: AsyncSession = Depends(get_db)):
+async def generate_link_code(
+    body: LinkCodeCreate,
+    session_token: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
     code_type = LinkCodeType.discord if body.code_type == "discord" else LinkCodeType.ign
-    link = await services.create_link_code(db, code_type)
+    discord_id = None
+    ign = None
+    user = await services.get_user_by_session(db, session_token)
+    if user:
+        if code_type == LinkCodeType.discord and user.discord_id:
+            discord_id = user.discord_id
+        elif code_type == LinkCodeType.ign and user.ign:
+            ign = user.ign
+    link = await services.create_link_code(db, code_type, discord_id=discord_id, ign=ign)
     return link
 
 
@@ -164,14 +187,77 @@ async def create_order(
 @router.post("/orders/cart", response_model=CartOrderOut)
 async def create_cart_order(
     body: CartOrderCreate,
+    response: Response,
     session_token: str | None = Cookie(default=None),
     db: AsyncSession = Depends(get_db),
 ):
+    from app.config import settings
+
+    ign = body.ign.strip()
+    if not ign:
+        raise HTTPException(status_code=400, detail="Bitte Minecraft IGN eingeben.")
+
+    checkout_mode = body.checkout_mode or "verified"
+
+    if checkout_mode == "ingame":
+        try:
+            orders, total_amount, user = await services.create_cart_purchase_ingame(
+                db,
+                body.product_ids,
+                ign,
+                body.discount_code,
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+        token = await services.create_session_for_user(db, user)
+        response.set_cookie(
+            key="session_token",
+            value=token,
+            httponly=True,
+            samesite="lax",
+            max_age=60 * 60 * 24 * 30,
+        )
+
+        order_outs = [
+            OrderOut(
+                id=o.id,
+                product_id=o.product_id,
+                product_name=o.product.name if o.product else None,
+                ign=o.ign,
+                amount=o.amount,
+                status=o.status.value,
+                ticket_url=None,
+                created_at=o.created_at,
+            )
+            for o in orders
+        ]
+
+        payment_instructions = PaymentInstructionsOut(
+            ign=ign,
+            total_amount=total_amount,
+            shop_owner_ign=settings.payment_recipient_ign,
+            message=(
+                f"Zahle ingame den Gesamtbetrag an {settings.payment_recipient_ign}: "
+                f"{total_amount} mit IGN {ign}. "
+                "Eine Zahlung reicht — alle Packs werden danach automatisch freigeschaltet."
+            ),
+        )
+
+        return CartOrderOut(
+            orders=order_outs,
+            ticket_url=None,
+            total_amount=total_amount,
+            checkout_mode="ingame",
+            message=payment_instructions.message,
+            payment_instructions=payment_instructions,
+        )
+
     user = await services.get_user_by_session(db, session_token)
-    if not user:
+    if not user or not user.discord_id:
         raise HTTPException(
             status_code=401,
-            detail="Bitte zuerst Discord verbinden, um zu kaufen.",
+            detail="Bitte zuerst Discord verbinden für verifizierte Zahlung.",
         )
 
     try:
@@ -179,7 +265,7 @@ async def create_cart_order(
             db,
             body.product_ids,
             user,
-            body.ign,
+            ign,
             body.discount_code,
         )
     except ValueError as e:
@@ -209,5 +295,7 @@ async def create_cart_order(
         orders=order_outs,
         ticket_url=ticket_url,
         total_amount=total_amount,
+        checkout_mode="verified",
         message=message,
+        payment_instructions=None,
     )

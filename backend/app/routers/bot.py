@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.deps import verify_bot_api_key
 from app.schemas import (
+    BotLinkRedeem,
     BotPaymentConfirm,
     BotPriceChangeNotify,
     BotProductCreate,
@@ -13,6 +14,7 @@ from app.schemas import (
     UserOut,
     WishlistItemOut,
 )
+from app.routers.user import build_user_out
 from app import services
 
 router = APIRouter(prefix="/api/bot", tags=["bot-integration"], dependencies=[Depends(verify_bot_api_key)])
@@ -50,22 +52,41 @@ async def bot_sync_vouch(body: BotVouchSync, db: AsyncSession = Depends(get_db))
     return {"success": True, "vouch_id": vouch.id}
 
 
+@router.post("/link/redeem")
+async def bot_redeem_link_code(body: BotLinkRedeem, db: AsyncSession = Depends(get_db)):
+    """IGN mit Website-Account verknüpfen (Code vom Spieler ingame eingegeben)."""
+    try:
+        user = await services.redeem_link_code_ingame(db, body.code, body.ign)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    info = services.user_display_info(user)
+    return {
+        "success": True,
+        "ign": user.ign,
+        "connection_type": info["connection_type"],
+        "display_name": info["display_name"],
+    }
+
+
 @router.post("/payments/confirm")
 async def bot_confirm_payment(body: BotPaymentConfirm, db: AsyncSession = Depends(get_db)):
-    order = await services.confirm_payment(
+    orders = await services.confirm_payment(
         db,
         ign=body.ign,
         amount=body.amount,
         order_id=body.order_id,
         payment_reference=body.payment_reference,
     )
-    if not order:
+    if not orders:
         return {"success": False, "message": "Keine passende Bestellung gefunden"}
+    primary = orders[0]
     return {
         "success": True,
-        "order_id": order.id,
-        "status": order.status.value,
-        "product_unlocked": order.user_id is not None,
+        "order_id": primary.id,
+        "order_ids": [o.id for o in orders],
+        "orders_confirmed": len(orders),
+        "status": primary.status.value,
+        "product_unlocked": primary.user_id is not None,
     }
 
 

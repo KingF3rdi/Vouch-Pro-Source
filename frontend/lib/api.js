@@ -53,11 +53,18 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ product_id: productId, ign, discount_code: discountCode }),
     }),
-  createCartOrder: (productIds, ign, discountCode) =>
+  createCartOrder: (productIds, ign, discountCode, checkoutMode = 'verified') =>
     fetchApi('/api/orders/cart', {
       method: 'POST',
-      body: JSON.stringify({ product_ids: productIds, ign, discount_code: discountCode }),
+      body: JSON.stringify({
+        product_ids: productIds,
+        ign,
+        discount_code: discountCode,
+        checkout_mode: checkoutMode,
+      }),
     }),
+  getPaymentConfig: () => fetchApi('/api/config/payment'),
+  getOrders: () => fetchApi('/api/user/orders'),
   toggleWishlist: (productId) =>
     fetchApi(`/api/user/wishlist/${productId}`, { method: 'POST' }),
   getWishlist: () => fetchApi('/api/user/wishlist'),

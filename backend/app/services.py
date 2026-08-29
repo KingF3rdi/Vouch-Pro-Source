@@ -25,6 +25,14 @@ from app.models import (
 SHADER_MARKERS = ("shader", "shaders")
 
 
+def _amounts_equal(a: float, b: float) -> bool:
+    return round(float(a), 2) == round(float(b), 2)
+
+
+def _new_cart_group_id() -> str:
+    return secrets.token_hex(8)
+
+
 def _contains_shader_marker(value: str | None) -> bool:
     if not value:
         return False
@@ -303,6 +311,36 @@ async def create_link_code(
     return link
 
 
+async def redeem_link_code_ingame(db: AsyncSession, code: str, ign: str) -> User:
+    """Link-Code ingame einlösen (vom MC-Bot). IGN kommt vom Spielernamen."""
+    normalized = ign.strip()
+    if not normalized:
+        raise ValueError("IGN erforderlich")
+
+    result = await db.execute(select(LinkCode).where(LinkCode.code == code.upper()))
+    link = result.scalar_one_or_none()
+    if not link or link.used or link.expires_at < datetime.utcnow():
+        raise ValueError("Ungültiger oder abgelaufener Code")
+
+    if link.code_type == LinkCodeType.discord:
+        if not link.discord_id:
+            raise ValueError(
+                "Code ungültig: Bitte auf der Website mit Discord anmelden und neuen Code erstellen."
+            )
+        return await redeem_link_code(db, code, ign=normalized, discord_id=link.discord_id)
+
+    if link.code_type == LinkCodeType.ign:
+        if link.ign and link.ign.lower() != normalized.lower():
+            raise ValueError("Dieser Code gehört zu einem anderen Minecraft-Namen")
+        user = await get_or_create_user_by_ign(db, normalized)
+        link.used = True
+        await db.commit()
+        await db.refresh(user)
+        return user
+
+    raise ValueError("Unbekannter Code-Typ")
+
+
 async def redeem_link_code(
     db: AsyncSession,
     code: str,
@@ -354,6 +392,38 @@ async def get_user_by_session(db: AsyncSession, token: str | None) -> User | Non
         return None
     result = await db.execute(select(User).where(User.session_token == token))
     return result.scalar_one_or_none()
+
+
+async def get_or_create_user_by_ign(db: AsyncSession, ign: str) -> User:
+    normalized = ign.strip()
+    if not normalized:
+        raise ValueError("IGN erforderlich")
+
+    result = await db.execute(select(User).where(User.ign.ilike(normalized)))
+    user = result.scalar_one_or_none()
+    if user:
+        if user.ign != normalized:
+            user.ign = normalized
+        return user
+
+    user = User(ign=normalized)
+    db.add(user)
+    await db.flush()
+    return user
+
+
+async def attach_order_to_user(db: AsyncSession, order: Order) -> User | None:
+    if order.user_id:
+        result = await db.execute(select(User).where(User.id == order.user_id))
+        return result.scalar_one_or_none()
+
+    if not order.ign:
+        return None
+
+    user = await get_or_create_user_by_ign(db, order.ign)
+    order.user_id = user.id
+    await db.flush()
+    return user
 
 
 async def create_session_for_user(db: AsyncSession, user: User) -> str:
@@ -414,7 +484,8 @@ async def confirm_payment(
     amount: float,
     order_id: int | None = None,
     payment_reference: str | None = None,
-) -> Order | None:
+) -> list[Order]:
+    """Bestätigt Zahlung — einzelne Order oder ganze Warenkorb-Gruppe (Gesamtbetrag)."""
     if order_id:
         result = await db.execute(
             select(Order)
@@ -425,26 +496,88 @@ async def confirm_payment(
             )
         )
         order = result.scalar_one_or_none()
-    else:
-        result = await db.execute(
-            select(Order)
-            .options(selectinload(Order.product))
-            .where(
-                Order.ign.ilike(ign),
-                Order.amount == amount,
-                Order.status.in_([OrderStatus.pending, OrderStatus.ticket_open]),
-            )
-            .order_by(Order.created_at.desc())
-        )
-        order = result.scalar_one_or_none()
+        if not order:
+            return []
+        await _mark_order_paid(db, order, payment_reference)
+        return [order]
 
+    cart_orders = await _find_cart_orders_by_total(db, ign, amount)
+    if cart_orders:
+        confirmed: list[Order] = []
+        for order in cart_orders:
+            await _mark_order_paid(db, order, payment_reference)
+            confirmed.append(order)
+        return confirmed
+
+    result = await db.execute(
+        select(Order)
+        .options(selectinload(Order.product))
+        .where(
+            Order.ign.ilike(ign),
+            Order.amount == amount,
+            Order.status.in_([OrderStatus.pending, OrderStatus.ticket_open]),
+        )
+        .order_by(Order.created_at.desc())
+    )
+    order = result.scalar_one_or_none()
     if not order:
+        return []
+
+    await _mark_order_paid(db, order, payment_reference)
+    return [order]
+
+
+async def _find_cart_orders_by_total(
+    db: AsyncSession,
+    ign: str,
+    amount: float,
+) -> list[Order] | None:
+    result = await db.execute(
+        select(Order)
+        .options(selectinload(Order.product))
+        .where(
+            Order.ign.ilike(ign),
+            Order.cart_group_id.isnot(None),
+            Order.cart_total_amount.isnot(None),
+            Order.status.in_([OrderStatus.pending, OrderStatus.ticket_open]),
+        )
+        .order_by(Order.created_at.desc())
+    )
+    orders = list(result.scalars().all())
+    if not orders:
         return None
 
+    groups: dict[str, list[Order]] = {}
+    for order in orders:
+        groups.setdefault(order.cart_group_id, []).append(order)
+
+    sorted_groups = sorted(
+        groups.values(),
+        key=lambda group: max(o.created_at for o in group),
+        reverse=True,
+    )
+
+    for group_orders in sorted_groups:
+        total = group_orders[0].cart_total_amount
+        if total is None or not _amounts_equal(total, amount):
+            continue
+        line_sum = round(sum(o.amount for o in group_orders), 2)
+        if not _amounts_equal(line_sum, amount):
+            continue
+        return group_orders
+
+    return None
+
+
+async def _mark_order_paid(
+    db: AsyncSession,
+    order: Order,
+    payment_reference: str | None,
+) -> None:
+    await attach_order_to_user(db, order)
     order.mc_confirmed = True
     order.payment_reference = payment_reference
     await finalize_order(db, order)
-    return order
 
 
 async def sync_sale_from_bot(
@@ -651,8 +784,9 @@ async def finalize_order(db: AsyncSession, order: Order) -> Order:
     order.status = OrderStatus.confirmed
     order.paid_at = datetime.utcnow()
 
-    if order.user_id:
-        await unlock_product_for_user(db, order.user_id, order.product_id, order.id)
+    buyer = await attach_order_to_user(db, order)
+    if buyer:
+        await unlock_product_for_user(db, buyer.id, order.product_id, order.id)
 
     await db.commit()
     await db.refresh(order)
@@ -777,6 +911,7 @@ async def create_cart_purchase_with_ticket(
     orders: list[Order] = []
     line_items: list[dict] = []
     total_amount = 0.0
+    cart_group_id = _new_cart_group_id()
 
     for product in products:
         amount = product.price
@@ -790,6 +925,8 @@ async def create_cart_purchase_with_ticket(
             amount=amount,
             discount_code=discount_code if discount_percent else None,
             status=OrderStatus.pending,
+            cart_group_id=cart_group_id,
+            cart_total_amount=None,
         )
         db.add(order)
         orders.append(order)
@@ -801,6 +938,10 @@ async def create_cart_purchase_with_ticket(
             }
         )
         total_amount += amount
+
+    total_amount = round(total_amount, 2)
+    for order in orders:
+        order.cart_total_amount = total_amount
 
     await db.flush()
 
@@ -836,6 +977,84 @@ async def create_cart_purchase_with_ticket(
         await db.refresh(order)
 
     return orders, ticket_url if ticket.get("success") else None, total_amount
+
+
+async def create_cart_purchase_ingame(
+    db: AsyncSession,
+    product_ids: list[int],
+    ign: str,
+    discount_code: str | None = None,
+) -> tuple[list[Order], float, User]:
+    """Ingame checkout: no Discord ticket — payment detected by MC bot."""
+    unique_ids = list(dict.fromkeys(product_ids))
+    if not unique_ids:
+        raise ValueError("Warenkorb ist leer")
+
+    user = await get_or_create_user_by_ign(db, ign)
+
+    result = await db.execute(
+        select(Product).where(Product.id.in_(unique_ids), *_active_product_filters())
+    )
+    products = list(result.scalars().all())
+    if len(products) != len(unique_ids):
+        raise ValueError("Ein oder mehrere Produkte sind nicht verfügbar")
+
+    discount_percent = 0
+    dc = None
+    if discount_code:
+        dc = await validate_discount(db, discount_code)
+        if dc:
+            discount_percent = dc.discount_percent
+
+    orders: list[Order] = []
+    total_amount = 0.0
+    cart_group_id = _new_cart_group_id()
+
+    for product in products:
+        amount = product.price
+        if discount_percent:
+            amount = round(product.price * (1 - discount_percent / 100), 2)
+
+        order = Order(
+            product_id=product.id,
+            user_id=user.id,
+            ign=user.ign or ign.strip(),
+            amount=amount,
+            discount_code=discount_code if discount_percent else None,
+            status=OrderStatus.pending,
+            cart_group_id=cart_group_id,
+            cart_total_amount=None,
+        )
+        db.add(order)
+        orders.append(order)
+        total_amount += amount
+
+    total_amount = round(total_amount, 2)
+    for order in orders:
+        order.cart_total_amount = total_amount
+
+    await db.flush()
+
+    if dc and discount_percent:
+        dc.uses += 1
+
+    await db.commit()
+    for order in orders:
+        order.product = next(p for p in products if p.id == order.product_id)
+        await db.refresh(order)
+
+    return orders, total_amount, user
+
+
+async def get_user_orders(db: AsyncSession, user_id: int, limit: int = 20):
+    result = await db.execute(
+        select(Order)
+        .options(selectinload(Order.product))
+        .where(Order.user_id == user_id)
+        .order_by(Order.created_at.desc())
+        .limit(limit)
+    )
+    return result.scalars().all()
 
 
 async def get_user_profile(db: AsyncSession, user_id: int):

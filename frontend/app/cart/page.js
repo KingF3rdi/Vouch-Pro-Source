@@ -13,11 +13,15 @@ export default function CartPage() {
   const [ign, setIgn] = useState('');
   const [discountCode, setDiscountCode] = useState('');
   const [discountResult, setDiscountResult] = useState(null);
+  const [checkoutMode, setCheckoutMode] = useState('ingame');
+  const [paymentConfig, setPaymentConfig] = useState(null);
   const [checkoutMsg, setCheckoutMsg] = useState('');
+  const [paymentInfo, setPaymentInfo] = useState(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     api.getMe().then(setUser).catch(() => setUser(null));
+    api.getPaymentConfig().then(setPaymentConfig).catch(() => null);
   }, []);
 
   async function validateDiscount() {
@@ -31,10 +35,6 @@ export default function CartPage() {
   }
 
   async function handleCheckout() {
-    if (!user?.discord_id) {
-      setCheckoutMsg('Bitte zuerst Discord verbinden (Profil), um zu kaufen.');
-      return;
-    }
     if (!ign.trim()) {
       setCheckoutMsg('Bitte Minecraft IGN eingeben.');
       return;
@@ -43,17 +43,29 @@ export default function CartPage() {
       setCheckoutMsg('Dein Warenkorb ist leer.');
       return;
     }
+    if (checkoutMode === 'verified' && !user?.discord_id) {
+      setCheckoutMsg('Für verifizierte Zahlung bitte zuerst Discord verbinden (Profil).');
+      return;
+    }
 
     setLoading(true);
     setCheckoutMsg('');
+    setPaymentInfo(null);
     try {
       const result = await api.createCartOrder(
         items.map((i) => i.id),
         ign.trim(),
-        discountResult?.valid ? discountCode : null
+        discountResult?.valid ? discountCode : null,
+        checkoutMode
       );
       clearCart();
-      if (result.ticket_url) {
+
+      if (result.checkout_mode === 'ingame' && result.payment_instructions) {
+        setPaymentInfo(result.payment_instructions);
+        setCheckoutMsg(result.message);
+        const me = await api.getMe();
+        setUser(me);
+      } else if (result.ticket_url) {
         setCheckoutMsg(
           `Bestellung erstellt (${result.orders.length} Pack(s), ${formatIngamePrice(result.total_amount)}). Discord-Ticket geöffnet.`
         );
@@ -66,6 +78,9 @@ export default function CartPage() {
     }
     setLoading(false);
   }
+
+  const shopOwner = paymentConfig?.shop_owner_ign || paymentConfig?.shop_bot_ign || 'ShopBot';
+  const payTotal = formatIngamePrice(getDiscountedTotal());
 
   return (
     <>
@@ -136,7 +151,32 @@ export default function CartPage() {
               )}
               <div className="cart-summary-row cart-summary-total">
                 <span>Gesamt</span>
-                <span className="price-large">{formatIngamePrice(getDiscountedTotal())}</span>
+                <span className="price-large">{payTotal}</span>
+              </div>
+
+              <div className="checkout-mode">
+                <p className="checkout-field-label">Zahlungsart</p>
+                <div className="checkout-mode-options">
+                  <button
+                    type="button"
+                    className={`checkout-mode-btn${checkoutMode === 'ingame' ? ' checkout-mode-btn--active' : ''}`}
+                    onClick={() => setCheckoutMode('ingame')}
+                  >
+                    Ingame zahlen (IGN)
+                  </button>
+                  <button
+                    type="button"
+                    className={`checkout-mode-btn${checkoutMode === 'verified' ? ' checkout-mode-btn--active' : ''}`}
+                    onClick={() => setCheckoutMode('verified')}
+                  >
+                    Mit Discord verifizieren
+                  </button>
+                </div>
+                <p className="checkout-field-hint">
+                  {checkoutMode === 'ingame'
+                    ? 'Nur Minecraft-Name nötig. Zahlung an den Shop-Bot — Download wird automatisch freigeschaltet.'
+                    : 'Discord-Ticket mit verifizierter Zahlung über deinen Discord-Account.'}
+                </p>
               </div>
 
               <div className="checkout-field">
@@ -148,9 +188,6 @@ export default function CartPage() {
                   placeholder="DeinIngameName"
                   autoComplete="off"
                 />
-                <p className="checkout-field-hint">
-                  Wird für die Zahlung und Pack-Freischaltung benötigt.
-                </p>
               </div>
 
               <div className="checkout-field">
@@ -185,9 +222,11 @@ export default function CartPage() {
               >
                 {loading
                   ? 'Wird erstellt…'
-                  : user?.discord_id
-                    ? 'Bezahlen (Discord Ticket)'
-                    : 'Discord verbinden zum Kaufen'}
+                  : checkoutMode === 'verified'
+                    ? user?.discord_id
+                      ? 'Bezahlen & verifizieren (Discord Ticket)'
+                      : 'Discord verbinden zum Verifizieren'
+                    : 'Bestellung erstellen & ingame zahlen'}
               </button>
 
               {checkoutMsg && (
@@ -196,9 +235,31 @@ export default function CartPage() {
                 </p>
               )}
 
-              <p style={{ marginTop: '1rem', fontSize: '0.8rem', color: 'var(--muted)' }}>
-                Bezahlung läuft über ein Discord-Ticket. Alle Packs werden in einem Ticket zusammengefasst.
-              </p>
+              {paymentInfo && (
+                <div className="payment-instructions glass-card">
+                  <h3>Ingame-Zahlung</h3>
+                  <p>
+                    Zahle den <strong>Gesamtbetrag</strong>{' '}
+                    <strong>{formatIngamePrice(paymentInfo.total_amount)}</strong> an{' '}
+                    <strong>{paymentInfo.shop_owner_ign}</strong>
+                  </p>
+                  <p className="payment-cmd-hint">
+                    Beispiel: <code>/pay {paymentInfo.shop_owner_ign} {paymentInfo.total_amount}</code>
+                  </p>
+                  <p style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>
+                    Eine Zahlung für alle Packs im Warenkorb. IGN: <strong>{paymentInfo.ign}</strong>
+                  </p>
+                  <Link href="/account" className="btn btn-outline-glass" style={{ marginTop: '0.75rem', width: '100%' }}>
+                    Zum Profil (Download nach Zahlung)
+                  </Link>
+                </div>
+              )}
+
+              {checkoutMode === 'verified' && !user?.discord_id && (
+                <a href="/api/auth/discord/login" className="btn btn-outline-glass" style={{ width: '100%', marginTop: '0.75rem' }}>
+                  Discord verbinden
+                </a>
+              )}
             </div>
           </div>
         )}
