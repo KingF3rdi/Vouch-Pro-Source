@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     upload_dir: str = "./uploads"
     default_discount_percent: int = 10
     admin_discord_ids: str = ""
+    shop_owner_ign: str = "ShopOwner"
 
     def get_admin_discord_ids(self) -> list[str]:
         if not self.admin_discord_ids.strip():

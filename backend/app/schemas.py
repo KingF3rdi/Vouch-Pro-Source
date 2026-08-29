@@ -163,6 +163,26 @@ class CartOrderCreate(BaseModel):
     product_ids: list[int] = Field(min_length=1, max_length=20)
     ign: str
     discount_code: str | None = None
+    checkout_mode: Literal["verified", "ingame"] = "verified"
+
+
+class PaymentInstructionsOut(BaseModel):
+    ign: str
+    total_amount: float
+    shop_owner_ign: str
+    message: str
+
+
+class UserOrderOut(BaseModel):
+    id: int
+    product_name: str | None
+    amount: float
+    status: str
+    ign: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
 
 
 class OrderOut(BaseModel):
@@ -185,6 +205,12 @@ class CartOrderOut(BaseModel):
     ticket_url: str | None = None
     total_amount: float
     message: str | None = None
+    checkout_mode: str = "verified"
+    payment_instructions: PaymentInstructionsOut | None = None
+
+
+class PaymentConfigOut(BaseModel):
+    shop_owner_ign: str
 
 
 class SearchParams(BaseModel):

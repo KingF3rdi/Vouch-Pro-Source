@@ -356,6 +356,38 @@ async def get_user_by_session(db: AsyncSession, token: str | None) -> User | Non
     return result.scalar_one_or_none()
 
 
+async def get_or_create_user_by_ign(db: AsyncSession, ign: str) -> User:
+    normalized = ign.strip()
+    if not normalized:
+        raise ValueError("IGN erforderlich")
+
+    result = await db.execute(select(User).where(User.ign.ilike(normalized)))
+    user = result.scalar_one_or_none()
+    if user:
+        if user.ign != normalized:
+            user.ign = normalized
+        return user
+
+    user = User(ign=normalized)
+    db.add(user)
+    await db.flush()
+    return user
+
+
+async def attach_order_to_user(db: AsyncSession, order: Order) -> User | None:
+    if order.user_id:
+        result = await db.execute(select(User).where(User.id == order.user_id))
+        return result.scalar_one_or_none()
+
+    if not order.ign:
+        return None
+
+    user = await get_or_create_user_by_ign(db, order.ign)
+    order.user_id = user.id
+    await db.flush()
+    return user
+
+
 async def create_session_for_user(db: AsyncSession, user: User) -> str:
     token = secrets.token_urlsafe(32)
     user.session_token = token
@@ -441,6 +473,7 @@ async def confirm_payment(
     if not order:
         return None
 
+    await attach_order_to_user(db, order)
     order.mc_confirmed = True
     order.payment_reference = payment_reference
     await finalize_order(db, order)
@@ -651,8 +684,9 @@ async def finalize_order(db: AsyncSession, order: Order) -> Order:
     order.status = OrderStatus.confirmed
     order.paid_at = datetime.utcnow()
 
-    if order.user_id:
-        await unlock_product_for_user(db, order.user_id, order.product_id, order.id)
+    buyer = await attach_order_to_user(db, order)
+    if buyer:
+        await unlock_product_for_user(db, buyer.id, order.product_id, order.id)
 
     await db.commit()
     await db.refresh(order)
@@ -836,6 +870,77 @@ async def create_cart_purchase_with_ticket(
         await db.refresh(order)
 
     return orders, ticket_url if ticket.get("success") else None, total_amount
+
+
+async def create_cart_purchase_ingame(
+    db: AsyncSession,
+    product_ids: list[int],
+    ign: str,
+    discount_code: str | None = None,
+) -> tuple[list[Order], float, User]:
+    """Ingame checkout: no Discord ticket — payment detected by MC bot."""
+    unique_ids = list(dict.fromkeys(product_ids))
+    if not unique_ids:
+        raise ValueError("Warenkorb ist leer")
+
+    user = await get_or_create_user_by_ign(db, ign)
+
+    result = await db.execute(
+        select(Product).where(Product.id.in_(unique_ids), *_active_product_filters())
+    )
+    products = list(result.scalars().all())
+    if len(products) != len(unique_ids):
+        raise ValueError("Ein oder mehrere Produkte sind nicht verfügbar")
+
+    discount_percent = 0
+    dc = None
+    if discount_code:
+        dc = await validate_discount(db, discount_code)
+        if dc:
+            discount_percent = dc.discount_percent
+
+    orders: list[Order] = []
+    total_amount = 0.0
+
+    for product in products:
+        amount = product.price
+        if discount_percent:
+            amount = round(product.price * (1 - discount_percent / 100), 2)
+
+        order = Order(
+            product_id=product.id,
+            user_id=user.id,
+            ign=user.ign or ign.strip(),
+            amount=amount,
+            discount_code=discount_code if discount_percent else None,
+            status=OrderStatus.pending,
+        )
+        db.add(order)
+        orders.append(order)
+        total_amount += amount
+
+    await db.flush()
+
+    if dc and discount_percent:
+        dc.uses += 1
+
+    await db.commit()
+    for order in orders:
+        order.product = next(p for p in products if p.id == order.product_id)
+        await db.refresh(order)
+
+    return orders, total_amount, user
+
+
+async def get_user_orders(db: AsyncSession, user_id: int, limit: int = 20):
+    result = await db.execute(
+        select(Order)
+        .options(selectinload(Order.product))
+        .where(Order.user_id == user_id)
+        .order_by(Order.created_at.desc())
+        .limit(limit)
+    )
+    return result.scalars().all()
 
 
 async def get_user_profile(db: AsyncSession, user_id: int):

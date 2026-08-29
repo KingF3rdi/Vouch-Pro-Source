@@ -8,14 +8,27 @@ import { api } from '../../lib/api';
 
 export default function AccountPage() {
   const [profile, setProfile] = useState(null);
+  const [orders, setOrders] = useState([]);
   const [linkCode, setLinkCode] = useState(null);
   const [redeemCode, setRedeemCode] = useState('');
   const [redeemIgn, setRedeemIgn] = useState('');
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    api.getProfile().then(setProfile).catch(() => setProfile(null));
+    loadProfile();
   }, []);
+
+  async function loadProfile() {
+    try {
+      const p = await api.getProfile();
+      setProfile(p);
+      const o = await api.getOrders();
+      setOrders(o);
+    } catch {
+      setProfile(null);
+      setOrders([]);
+    }
+  }
 
   async function generateIgnCode() {
     const code = await api.generateLinkCode('ign');
@@ -64,11 +77,31 @@ export default function AccountPage() {
             <p style={{ color: 'var(--muted)', marginBottom: '1rem' }}>Nicht angemeldet</p>
           )}
 
+          {orders.some((o) => o.status === 'pending' || o.status === 'ticket_open') && (
+            <div className="glass-card profile-orders-panel" style={{ marginTop: '1rem', padding: '1rem' }}>
+              <h3>Offene Bestellungen</h3>
+              <p style={{ color: 'var(--muted)', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+                Nach ingame-Zahlung wird der Status automatisch aktualisiert.
+              </p>
+              {orders
+                .filter((o) => o.status === 'pending' || o.status === 'ticket_open')
+                .map((o) => (
+                  <div key={o.id} className="profile-order-row">
+                    <span>{o.product_name}</span>
+                    <span style={{ color: 'var(--muted)' }}>{o.status}</span>
+                  </div>
+                ))}
+              <button type="button" className="btn btn-outline-glass btn-sm" style={{ marginTop: '0.75rem' }} onClick={loadProfile}>
+                Zahlung prüfen / Profil aktualisieren
+              </button>
+            </div>
+          )}
+
           {user?.unlocked_products?.length > 0 && (
             <div className="profile-section">
               <h3>Freigeschaltete Produkte — Kaufbestätigungen ({user.unlocked_products.length})</h3>
               <p style={{ color: 'var(--muted)', fontSize: '0.85rem', marginBottom: '1rem' }}>
-                Nach jedem Kauf erscheint eine Bestätigung hier und in Discord.
+                Downloads sind freigeschaltet — klicke auf ein Pack für Details.
               </p>
               <div className="unlocked-grid">
                 {user.unlocked_products.map((item) => (
@@ -86,7 +119,7 @@ export default function AccountPage() {
 
           {user && user.unlocked_products?.length === 0 && (
             <p style={{ color: 'var(--muted)', marginTop: '1rem' }}>
-              Noch keine freigeschalteten Produkte. Kaufe ein Pack über Discord-Ticket!
+              Noch keine freigeschalteten Downloads. Kaufe ein Pack und zahle ingame — Freischaltung läuft automatisch.
             </p>
           )}
 
