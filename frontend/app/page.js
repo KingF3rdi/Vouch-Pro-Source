@@ -5,6 +5,7 @@ import HeroBanner from '../components/HeroBanner';
 import VouchesSection from '../components/VouchesSection';
 import RecentPurchases from '../components/RecentPurchases';
 import BestsellersSection, { BestsellersSectionSkeleton } from '../components/home/BestsellersSection';
+import FeaturedPreviewSection, { FeaturedPreviewSectionSkeleton } from '../components/home/FeaturedPreviewSection';
 import CategoriesSection, { CategoriesSectionSkeleton } from '../components/home/CategoriesSection';
 import NewProductsSection, { NewProductsSectionSkeleton } from '../components/home/NewProductsSection';
 
@@ -14,6 +15,9 @@ export default function HomePage() {
       <div className="home-hero-wrap">
         <Header onHero />
         <HeroBanner />
+        <Suspense fallback={<FeaturedPreviewSectionSkeleton />}>
+          <FeaturedPreviewSection />
+        </Suspense>
       </div>
 
       <main className="main-content">
