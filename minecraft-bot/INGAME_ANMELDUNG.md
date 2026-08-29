@@ -23,13 +23,13 @@ Der Shop-Bot ist **ein Minecraft-Spieleraccount** für beides:
 ## Zahlung
 
 1. Pack auf der Website kaufen (IGN eingeben)
-2. Ingame an den **Bot-Account** zahlen:
+2. Ingame den **Gesamtbetrag** an den Bot-Account zahlen (auch bei mehreren Packs nur **eine** Zahlung):
 
 ```
-/pay DeinBotAccount 10000
+/pay DeinBotAccount 17500
 ```
 
-3. Bot erkennt die Zahlung (z. B. EssentialsX: `Spieler paid you $10000`) und schaltet das Pack frei.
+3. Bot erkennt die Zahlung und schaltet **alle Packs der Bestellung** frei.
 
 ## Bot starten
 
