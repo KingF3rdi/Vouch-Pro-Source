@@ -326,16 +326,22 @@ nano .env
 MC_HOST=ip-oder-hostname-deines-mc-servers
 MC_PORT=25565
 MC_BOT_USERNAME=TxTEmpirePayBot
-MC_AUTH=offline
+MC_AUTH=microsoft
+MC_MSG_CMD=msg
 SHOP_API_URL=https://shop.deinedomain.de
 BOT_API_KEY=gleicher-key-wie-backend
 SHOP_OWNER_IGN=DeinShopOwnerIGN
 ```
 
+In `backend/.env` zusätzlich `SHOP_BOT_IGN=TxTEmpirePayBot` (gleicher Name wie `MC_BOT_USERNAME`).
+
 | Variable | Erklärung |
 |----------|-----------|
-| `MC_AUTH` | `offline` = Cracked/Offline-Server. Online-Mode = Microsoft-Login nötig |
-| `SHOP_OWNER_IGN` | Account, an den Spieler `/pay` senden |
+| `MC_BOT_USERNAME` | Echter Minecraft-Account des Bots (IGN) |
+| `MC_AUTH` | `microsoft` = Premium. `offline` = nur Cracked-Server |
+| `MC_MSG_CMD` | Whisper-Befehl auf dem Server (`msg`, `tell`, `w`) |
+| `SHOP_OWNER_IGN` | Account, **an den** Spieler `/pay` senden (oft ≠ Bot) |
+| `SHOP_BOT_IGN` | Bot-IGN für Anzeige auf der Website |
 | `BOT_API_KEY` | **Identisch** mit `backend/.env` |
 
 ## C4. Script starten

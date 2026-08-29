@@ -39,7 +39,10 @@ async def discord_config():
 @router.get("/config/payment", response_model=PaymentConfigOut)
 async def payment_config():
     from app.config import settings
-    return {"shop_owner_ign": settings.shop_owner_ign, "shop_bot_ign": settings.shop_bot_ign}
+    return {
+        "shop_owner_ign": settings.payment_recipient_ign,
+        "shop_bot_ign": settings.shop_bot_ign,
+    }
 
 
 @router.get("/purchases/recent", response_model=list[PurchaseConfirmationOut])
@@ -233,11 +236,11 @@ async def create_cart_order(
         payment_instructions = PaymentInstructionsOut(
             ign=ign,
             total_amount=total_amount,
-            shop_owner_ign=settings.shop_owner_ign,
+            shop_owner_ign=settings.payment_recipient_ign,
             message=(
-                f"Zahle ingame an {settings.shop_owner_ign}: "
+                f"Zahle ingame an {settings.payment_recipient_ign}: "
                 f"{total_amount} mit IGN {ign}. "
-                "Nach Erkennung durch den Payment-Bot wird der Download automatisch im Profil freigeschaltet."
+                "Nach Erkennung durch den Bot-Account wird der Download automatisch im Profil freigeschaltet."
             ),
         )
 

@@ -79,7 +79,7 @@ export default function CartPage() {
     setLoading(false);
   }
 
-  const shopOwner = paymentConfig?.shop_owner_ign || 'ShopOwner';
+  const shopOwner = paymentConfig?.shop_owner_ign || paymentConfig?.shop_bot_ign || 'ShopBot';
   const payTotal = formatIngamePrice(getDiscountedTotal());
 
   return (
