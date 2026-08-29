@@ -8,6 +8,8 @@ class CategoryOut(BaseModel):
     id: int
     name: str
     slug: str
+    product_count: int = 0
+    preview_url: str | None = None
 
     class Config:
         from_attributes = True

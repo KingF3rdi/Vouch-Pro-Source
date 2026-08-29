@@ -5,6 +5,7 @@ import HeroBanner from '../components/HeroBanner';
 import VouchesSection from '../components/VouchesSection';
 import RecentPurchases from '../components/RecentPurchases';
 import BestsellersSection, { BestsellersSectionSkeleton } from '../components/home/BestsellersSection';
+import CategoriesSection, { CategoriesSectionSkeleton } from '../components/home/CategoriesSection';
 import NewProductsSection, { NewProductsSectionSkeleton } from '../components/home/NewProductsSection';
 
 export default function HomePage() {
@@ -18,6 +19,10 @@ export default function HomePage() {
       <main className="main-content">
         <Suspense fallback={<BestsellersSectionSkeleton />}>
           <BestsellersSection />
+        </Suspense>
+
+        <Suspense fallback={<CategoriesSectionSkeleton />}>
+          <CategoriesSection />
         </Suspense>
 
         <Suspense fallback={<NewProductsSectionSkeleton />}>

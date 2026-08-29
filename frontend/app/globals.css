@@ -2100,3 +2100,191 @@ a {
 .profile-order-row:last-child {
   border-bottom: none;
 }
+
+/* ─── Category pick cards (under previews) ───────── */
+.categories-section {
+  padding-top: 0.5rem;
+}
+
+.category-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  margin-top: 0.35rem;
+}
+
+.category-pick-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: calc(var(--radius-lg) + 2px);
+  border: 1px solid var(--glass-pink-border);
+  background: linear-gradient(
+    160deg,
+    rgba(219, 39, 119, 0.18),
+    rgba(255, 255, 255, 0.06) 45%,
+    rgba(192, 38, 211, 0.12)
+  );
+  backdrop-filter: blur(22px) saturate(1.35);
+  -webkit-backdrop-filter: blur(22px) saturate(1.35);
+  box-shadow:
+    inset 0 1px 0 rgba(251, 207, 232, 0.28),
+    0 14px 40px rgba(219, 39, 119, 0.22);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.category-pick-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(251, 207, 232, 0.58);
+  box-shadow:
+    inset 0 1px 0 rgba(251, 207, 232, 0.35),
+    0 18px 48px rgba(219, 39, 119, 0.32);
+}
+
+.category-pick-card__preview {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.category-pick-card__bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+
+.category-pick-card__bg--fallback {
+  background:
+    radial-gradient(ellipse 80% 70% at 30% 40%, rgba(249, 168, 212, 0.35), transparent 60%),
+    radial-gradient(ellipse 70% 60% at 80% 70%, rgba(219, 39, 119, 0.45), transparent 55%),
+    linear-gradient(145deg, #2a1224 0%, #1a0e18 50%, #321028 100%);
+}
+
+.category-pick-card__overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    180deg,
+    rgba(18, 10, 20, 0.15) 0%,
+    rgba(18, 10, 20, 0.35) 45%,
+    rgba(18, 10, 20, 0.72) 100%
+  );
+  pointer-events: none;
+}
+
+.category-pick-card__badge {
+  position: absolute;
+  top: 0.85rem;
+  left: 0.85rem;
+  z-index: 2;
+  width: 2.35rem;
+  height: 2.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  border-radius: 12px;
+  background: rgba(219, 39, 119, 0.35);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(251, 207, 232, 0.4);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.category-pick-card__title-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  pointer-events: none;
+}
+
+.category-pick-card__display {
+  font-size: clamp(1.6rem, 5vw, 2.35rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-align: center;
+  line-height: 1.15;
+  color: #fff;
+  text-shadow:
+    0 2px 16px rgba(219, 39, 119, 0.55),
+    0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+.category-pick-card__box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.95rem 1.15rem 1.1rem;
+  background: linear-gradient(
+    135deg,
+    rgba(219, 39, 119, 0.28),
+    rgba(255, 255, 255, 0.08) 40%,
+    rgba(192, 38, 211, 0.18)
+  );
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  border-top: 1px solid rgba(251, 207, 232, 0.32);
+  box-shadow: inset 0 1px 0 rgba(251, 207, 232, 0.22);
+}
+
+.category-pick-card__count {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(251, 207, 232, 0.75);
+}
+
+.category-pick-card__name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--accent-bright);
+}
+
+.category-pick-card__name-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.category-pick-card--skeleton {
+  pointer-events: none;
+}
+
+.category-pick-card--skeleton .category-pick-card__preview {
+  min-height: 160px;
+}
+
+.category-pick-card--skeleton .category-pick-card__box {
+  min-height: 64px;
+  border-top: none;
+}
+
+@media (min-width: 768px) {
+  .category-card-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.25rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .category-pick-card__box {
+    padding: 0.85rem 1rem 1rem;
+  }
+
+  .category-pick-card__name {
+    font-size: 0.98rem;
+  }
+}

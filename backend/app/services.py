@@ -244,7 +244,45 @@ async def get_categories(db: AsyncSession):
         .where(~_shader_category_filter())
         .order_by(Category.name)
     )
-    return result.scalars().all()
+    categories = list(result.scalars().all())
+    if not categories:
+        return []
+
+    category_ids = [c.id for c in categories]
+    count_result = await db.execute(
+        select(Product.category_id, func.count(Product.id))
+        .where(
+            Product.category_id.in_(category_ids),
+            *_active_product_filters(),
+        )
+        .group_by(Product.category_id)
+    )
+    counts = {row[0]: row[1] for row in count_result.all()}
+
+    preview_result = await db.execute(
+        select(Product.category_id, Product.preview_url)
+        .where(
+            Product.category_id.in_(category_ids),
+            Product.preview_url.isnot(None),
+            *_active_product_filters(),
+        )
+        .order_by(Product.sales_count.desc(), Product.created_at.desc())
+    )
+    previews: dict[int, str] = {}
+    for category_id, preview_url in preview_result.all():
+        if category_id not in previews and preview_url:
+            previews[category_id] = preview_url
+
+    return [
+        {
+            "id": c.id,
+            "name": c.name,
+            "slug": c.slug,
+            "product_count": counts.get(c.id, 0),
+            "preview_url": previews.get(c.id),
+        }
+        for c in categories
+    ]
 
 
 async def remove_shader_content(db: AsyncSession) -> dict:
