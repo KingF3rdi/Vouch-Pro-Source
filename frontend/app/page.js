@@ -6,6 +6,7 @@ import VouchesSection from '../components/VouchesSection';
 import RecentPurchases from '../components/RecentPurchases';
 import BestsellersSection, { BestsellersSectionSkeleton } from '../components/home/BestsellersSection';
 import NewProductsSection, { NewProductsSectionSkeleton } from '../components/home/NewProductsSection';
+import NewPacksSlideshowSection, { NewPacksSlideshowSkeleton } from '../components/home/NewPacksSlideshowSection';
 
 export default function HomePage() {
   return (
@@ -16,6 +17,10 @@ export default function HomePage() {
       </div>
 
       <main className="main-content">
+        <Suspense fallback={<NewPacksSlideshowSkeleton />}>
+          <NewPacksSlideshowSection />
+        </Suspense>
+
         <Suspense fallback={<BestsellersSectionSkeleton />}>
           <BestsellersSection />
         </Suspense>
