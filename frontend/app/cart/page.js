@@ -174,7 +174,7 @@ export default function CartPage() {
                 </div>
                 <p className="checkout-field-hint">
                   {checkoutMode === 'ingame'
-                    ? 'Nur Minecraft-Name nötig. Nach Zahlung wird der Download automatisch im Profil freigeschaltet.'
+                    ? 'Nur Minecraft-Name nötig. Zahlung an den Shop-Bot — Download wird automatisch freigeschaltet.'
                     : 'Discord-Ticket mit verifizierter Zahlung über deinen Discord-Account.'}
                 </p>
               </div>
