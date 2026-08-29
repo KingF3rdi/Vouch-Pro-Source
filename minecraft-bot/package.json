@@ -1,7 +1,7 @@
 {
   "name": "mc-shop-bot",
   "version": "1.0.0",
-  "description": "Minecraft Ingame Bot für automatische Zahlungserkennung",
+  "description": "Minecraft Ingame Bot — Zahlungserkennung & Anmeldung per Code",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"

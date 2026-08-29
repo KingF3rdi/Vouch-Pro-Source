@@ -1,5 +1,6 @@
 require('dotenv').config();
 const mineflayer = require('mineflayer');
+const { registerLinkAuth } = require('./link-auth');
 
 const CONFIG = {
   host: process.env.MC_HOST || 'localhost',
@@ -85,7 +86,8 @@ bot.on('login', () => {
 });
 
 bot.on('spawn', () => {
-  console.log('[Bot] Gespawnt — warte auf Zahlungen...');
+  console.log('[Bot] Gespawnt — warte auf Zahlungen & Link-Codes...');
+  registerLinkAuth(bot, CONFIG);
 });
 
 bot.on('chat', async (username, message) => {

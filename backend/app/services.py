@@ -303,6 +303,36 @@ async def create_link_code(
     return link
 
 
+async def redeem_link_code_ingame(db: AsyncSession, code: str, ign: str) -> User:
+    """Link-Code ingame einlösen (vom MC-Bot). IGN kommt vom Spielernamen."""
+    normalized = ign.strip()
+    if not normalized:
+        raise ValueError("IGN erforderlich")
+
+    result = await db.execute(select(LinkCode).where(LinkCode.code == code.upper()))
+    link = result.scalar_one_or_none()
+    if not link or link.used or link.expires_at < datetime.utcnow():
+        raise ValueError("Ungültiger oder abgelaufener Code")
+
+    if link.code_type == LinkCodeType.discord:
+        if not link.discord_id:
+            raise ValueError(
+                "Code ungültig: Bitte auf der Website mit Discord anmelden und neuen Code erstellen."
+            )
+        return await redeem_link_code(db, code, ign=normalized, discord_id=link.discord_id)
+
+    if link.code_type == LinkCodeType.ign:
+        if link.ign and link.ign.lower() != normalized.lower():
+            raise ValueError("Dieser Code gehört zu einem anderen Minecraft-Namen")
+        user = await get_or_create_user_by_ign(db, normalized)
+        link.used = True
+        await db.commit()
+        await db.refresh(user)
+        return user
+
+    raise ValueError("Unbekannter Code-Typ")
+
+
 async def redeem_link_code(
     db: AsyncSession,
     code: str,

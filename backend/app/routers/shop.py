@@ -100,9 +100,21 @@ async def categories(db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/link/generate", response_model=LinkCodeOut)
-async def generate_link_code(body: LinkCodeCreate, db: AsyncSession = Depends(get_db)):
+async def generate_link_code(
+    body: LinkCodeCreate,
+    session_token: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
     code_type = LinkCodeType.discord if body.code_type == "discord" else LinkCodeType.ign
-    link = await services.create_link_code(db, code_type)
+    discord_id = None
+    ign = None
+    user = await services.get_user_by_session(db, session_token)
+    if user:
+        if code_type == LinkCodeType.discord and user.discord_id:
+            discord_id = user.discord_id
+        elif code_type == LinkCodeType.ign and user.ign:
+            ign = user.ign
+    link = await services.create_link_code(db, code_type, discord_id=discord_id, ign=ign)
     return link
 
 

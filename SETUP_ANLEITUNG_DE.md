@@ -305,6 +305,9 @@ pm2 start main.py --name discord-bot --interpreter python3
 - Erkennt Zahlungs-Muster (EssentialsX, Vault, etc.).
 - Sendet `POST /api/bot/payments/confirm` mit **IGN + Betrag**.
 - API findet offene Bestellung → schaltet Pack frei.
+- **Neu:** Ingame-Anmeldung per Code (`!shop link CODE`) → `POST /api/bot/link/redeem`.
+
+Details: `minecraft-bot/INGAME_ANMELDUNG.md`
 
 ## C2. Installation
 

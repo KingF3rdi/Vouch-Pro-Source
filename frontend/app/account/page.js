@@ -31,7 +31,8 @@ export default function AccountPage() {
   }
 
   async function generateIgnCode() {
-    const code = await api.generateLinkCode('ign');
+    const codeType = profile?.discord_id ? 'discord' : 'ign';
+    const code = await api.generateLinkCode(codeType);
     setLinkCode(code);
   }
 
@@ -137,8 +138,13 @@ export default function AccountPage() {
           <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '1.5rem 0' }} />
 
           <h3>IGN per Code verknüpfen</h3>
+          <p style={{ color: 'var(--muted)', fontSize: '0.9rem', marginBottom: '0.75rem' }}>
+            {profile?.discord_id
+              ? 'Code generieren und ingame eingeben: !shop link CODE (oder /msg ShopBot link CODE)'
+              : 'Ohne Discord: Code generieren und ingame mit !shop link CODE anmelden.'}
+          </p>
           <button className="btn btn-outline-glass" onClick={generateIgnCode} style={{ width: '100%', marginTop: '0.5rem' }}>
-            IGN-Verknüpfungscode generieren
+            {profile?.discord_id ? 'IGN-Verknüpfungscode generieren' : 'Ingame-Anmeldecode generieren'}
           </button>
 
           {linkCode && (
@@ -146,6 +152,9 @@ export default function AccountPage() {
               <div className="link-code">{linkCode.code}</div>
               <p style={{ color: 'var(--muted)', fontSize: '0.85rem', textAlign: 'center' }}>
                 Gültig bis {new Date(linkCode.expires_at).toLocaleTimeString('de-DE')}
+              </p>
+              <p style={{ color: 'var(--muted)', fontSize: '0.85rem', textAlign: 'center', marginTop: '0.5rem' }}>
+                Ingame: <code>!shop link {linkCode.code}</code>
               </p>
             </div>
           )}

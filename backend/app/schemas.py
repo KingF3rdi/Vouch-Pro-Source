@@ -255,6 +255,11 @@ class BotPaymentConfirm(BaseModel):
     payment_reference: str | None = None
 
 
+class BotLinkRedeem(BaseModel):
+    code: str
+    ign: str
+
+
 class BotPriceChangeNotify(BaseModel):
     product_id: int
     old_price: float
