@@ -2,6 +2,8 @@ require('dotenv').config();
 const mineflayer = require('mineflayer');
 const { registerLinkAuth } = require('./link-auth');
 const { registerPaymentHandler } = require('./payment-handler');
+const { registerPaymentCodeHandler } = require('./payment-code');
+const { registerPendingSync } = require('./pending-payments');
 
 const botUsername = process.env.MC_BOT_USERNAME || 'ShopBot';
 
@@ -29,8 +31,10 @@ bot.on('login', () => {
 });
 
 bot.on('spawn', () => {
-  console.log('[Bot] Gespawnt — Link-Codes & Zahlungen aktiv');
+  console.log('[Bot] Gespawnt — Link-Codes, Zahlungscodes & Zahlungen aktiv');
   registerLinkAuth(bot, CONFIG);
+  registerPendingSync(bot, CONFIG);
+  registerPaymentCodeHandler(bot, CONFIG);
   registerPaymentHandler(bot, CONFIG);
 });
 

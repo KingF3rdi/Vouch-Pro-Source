@@ -9,3 +9,4 @@ class ClientLinkRedeem(BaseModel):
 class ClientPaymentConfirm(BaseModel):
     ign: str = Field(min_length=1, max_length=16)
     amount: float = Field(gt=0)
+    payment_code: str | None = Field(default=None, min_length=4, max_length=12)

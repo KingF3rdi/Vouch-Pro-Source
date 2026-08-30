@@ -46,6 +46,7 @@ async def startup():
             "ALTER TABLE orders ADD COLUMN confirmation_posted_at DATETIME",
             "ALTER TABLE orders ADD COLUMN cart_group_id VARCHAR(32)",
             "ALTER TABLE orders ADD COLUMN cart_total_amount FLOAT",
+            "ALTER TABLE orders ADD COLUMN payment_code VARCHAR(12)",
         ]
         for sql in migrations:
             try:

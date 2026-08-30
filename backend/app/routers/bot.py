@@ -6,6 +6,7 @@ from app.deps import verify_bot_api_key
 from app.schemas import (
     BotLinkRedeem,
     BotPaymentConfirm,
+    BotPendingPaymentOut,
     BotPriceChangeNotify,
     BotProductCreate,
     BotSaleSync,
@@ -68,6 +69,13 @@ async def bot_redeem_link_code(body: BotLinkRedeem, db: AsyncSession = Depends(g
     }
 
 
+@router.get("/payments/pending", response_model=list[BotPendingPaymentOut])
+async def bot_pending_payments(db: AsyncSession = Depends(get_db)):
+    """Offene Zahlungen mit Code — Bot synchronisiert beim Start und periodisch."""
+    rows = await services.get_pending_bot_payments(db)
+    return rows
+
+
 @router.post("/payments/confirm")
 async def bot_confirm_payment(body: BotPaymentConfirm, db: AsyncSession = Depends(get_db)):
     orders = await services.confirm_payment(
@@ -76,6 +84,7 @@ async def bot_confirm_payment(body: BotPaymentConfirm, db: AsyncSession = Depend
         amount=body.amount,
         order_id=body.order_id,
         payment_reference=body.payment_reference,
+        payment_code=body.payment_code,
     )
     if not orders:
         return {"success": False, "message": "Keine passende Bestellung gefunden"}

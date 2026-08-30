@@ -51,19 +51,25 @@ function parsePayment(message, config, botUsername) {
   return null;
 }
 
-async function confirmPayment(config, ign, amount, reference) {
+const { resolvePaymentCode } = require('./pending-payments');
+
+async function confirmPayment(config, ign, amount, reference, paymentCode) {
   try {
+    const body = {
+      ign,
+      amount: parseFloat(amount),
+      payment_reference: reference,
+    };
+    if (paymentCode) {
+      body.payment_code = paymentCode;
+    }
     const res = await fetch(`${config.apiUrl}/api/bot/payments/confirm`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-Bot-Api-Key': config.apiKey,
       },
-      body: JSON.stringify({
-        ign,
-        amount: parseFloat(amount),
-        payment_reference: reference,
-      }),
+      body: JSON.stringify(body),
     });
     return await res.json();
   } catch (err) {
@@ -79,8 +85,18 @@ function registerPaymentHandler(bot, config) {
   async function handlePayment(payerIgn, amount, reference) {
     if (!payerIgn || payerIgn === botName) return;
 
-    console.log(`[Payment] ${payerIgn} -> ${paymentRecipient}: ${amount}`);
-    const result = await confirmPayment(config, payerIgn, amount, reference);
+    const paymentCode = resolvePaymentCode(payerIgn, amount);
+    console.log(
+      `[Payment] ${payerIgn} -> ${paymentRecipient}: ${amount}` +
+        (paymentCode ? ` (Code ${paymentCode})` : '')
+    );
+    const result = await confirmPayment(
+      config,
+      payerIgn,
+      amount,
+      reference,
+      paymentCode
+    );
 
     if (result.success) {
       const count = result.orders_confirmed || 1;

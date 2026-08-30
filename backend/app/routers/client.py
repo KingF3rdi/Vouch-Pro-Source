@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -24,6 +24,18 @@ async def client_redeem_link(body: ClientLinkRedeem, db: AsyncSession = Depends(
     }
 
 
+@router.get("/payment/pending")
+async def client_pending_payment(
+    ign: str = Query(..., min_length=1, max_length=16),
+    db: AsyncSession = Depends(get_db),
+):
+    """Client-Mod: offene Zahlung inkl. Code für diesen IGN."""
+    pending = await services.get_pending_payment_for_ign(db, ign)
+    if not pending:
+        return {"pending": False}
+    return {"pending": True, **pending}
+
+
 @router.post("/payment/confirm")
 async def client_confirm_payment(body: ClientPaymentConfirm, db: AsyncSession = Depends(get_db)):
     """Ingame-Mod: Zahlung melden nach /pay (Spieler-Client, kein Server-Plugin)."""
@@ -32,6 +44,7 @@ async def client_confirm_payment(body: ClientPaymentConfirm, db: AsyncSession = 
         ign=body.ign,
         amount=body.amount,
         payment_reference="client-mod",
+        payment_code=body.payment_code,
     )
     if not orders:
         return {"success": False, "message": "Keine passende Bestellung gefunden"}

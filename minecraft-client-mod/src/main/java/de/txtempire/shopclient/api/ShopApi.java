@@ -70,10 +70,37 @@ public final class ShopApi {
         }
     }
 
-    public static PaymentResult confirmPayment(String apiUrl, String ign, double amount) {
+    public static PendingPayment fetchPendingPayment(String apiUrl, String ign) {
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(apiUrl + "/api/client/payment/pending?ign=" + ign))
+                    .timeout(Duration.ofSeconds(10))
+                    .GET()
+                    .build();
+            HttpResponse<String> response = HTTP.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() >= 400) {
+                return PendingPayment.none();
+            }
+            JsonObject json = JsonParser.parseString(response.body()).getAsJsonObject();
+            if (!json.has("pending") || !json.get("pending").getAsBoolean()) {
+                return PendingPayment.none();
+            }
+            return new PendingPayment(
+                    json.get("payment_code").getAsString(),
+                    json.get("amount").getAsDouble()
+            );
+        } catch (Exception e) {
+            return PendingPayment.none();
+        }
+    }
+
+    public static PaymentResult confirmPayment(String apiUrl, String ign, double amount, String paymentCode) {
         JsonObject body = new JsonObject();
         body.addProperty("ign", ign);
         body.addProperty("amount", amount);
+        if (paymentCode != null && !paymentCode.isBlank()) {
+            body.addProperty("payment_code", paymentCode.toUpperCase());
+        }
         try {
             HttpResponse<String> response = post(apiUrl, "/api/client/payment/confirm", body.toString());
             JsonObject json = JsonParser.parseString(response.body()).getAsJsonObject();
@@ -120,6 +147,16 @@ public final class ShopApi {
 
         static PaymentResult fail() {
             return new PaymentResult(false, 0, 0);
+        }
+    }
+
+    public record PendingPayment(String paymentCode, double amount) {
+        static PendingPayment none() {
+            return new PendingPayment(null, 0);
+        }
+
+        public boolean hasCode() {
+            return paymentCode != null && !paymentCode.isBlank();
         }
     }
 }

@@ -238,16 +238,21 @@ export default function CartPage() {
               {paymentInfo && (
                 <div className="payment-instructions glass-card">
                   <h3>Ingame-Zahlung</h3>
-                  <p>
-                    Zahle den <strong>Gesamtbetrag</strong>{' '}
-                    <strong>{formatIngamePrice(paymentInfo.total_amount)}</strong> an{' '}
-                    <strong>{paymentInfo.shop_owner_ign}</strong>
+                  <p className="payment-code-display">
+                    Zahlungscode: <strong className="payment-code">{paymentInfo.payment_code}</strong>
                   </p>
-                  <p className="payment-cmd-hint">
-                    Beispiel: <code>/pay {paymentInfo.shop_owner_ign} {paymentInfo.total_amount}</code>
-                  </p>
+                  <ol className="payment-steps">
+                    <li>
+                      Code an Bot senden:{' '}
+                      <code>/msg {shopOwner} zahlung {paymentInfo.payment_code}</code>
+                    </li>
+                    <li>
+                      Danach zahlen:{' '}
+                      <code>/pay {paymentInfo.shop_owner_ign} {paymentInfo.total_amount}</code>
+                    </li>
+                  </ol>
                   <p style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>
-                    Eine Zahlung für alle Packs im Warenkorb. IGN: <strong>{paymentInfo.ign}</strong>
+                    IGN: <strong>{paymentInfo.ign}</strong> — Bot ordnet Zahlung automatisch zu.
                   </p>
                   <Link href="/account" className="btn btn-outline-glass" style={{ marginTop: '0.75rem', width: '100%' }}>
                     Zum Profil (Download nach Zahlung)

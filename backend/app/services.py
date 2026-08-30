@@ -33,6 +33,23 @@ def _new_cart_group_id() -> str:
     return secrets.token_hex(8)
 
 
+def _new_payment_code() -> str:
+    alphabet = string.ascii_uppercase + string.digits
+    return "".join(secrets.choice(alphabet) for _ in range(6))
+
+
+async def _generate_unique_payment_code(db: AsyncSession) -> str:
+    for _ in range(20):
+        code = _new_payment_code()
+        existing = await db.scalar(
+            select(Order.id).where(
+                Order.payment_code == code,
+                Order.status.in_([OrderStatus.pending, OrderStatus.ticket_open]),
+            )
+        )
+        if not existing:
+            return code
+    return _new_payment_code() + secrets.choice(string.digits)
 def _contains_shader_marker(value: str | None) -> bool:
     if not value:
         return False
@@ -522,8 +539,20 @@ async def confirm_payment(
     amount: float,
     order_id: int | None = None,
     payment_reference: str | None = None,
+    payment_code: str | None = None,
 ) -> list[Order]:
-    """Bestätigt Zahlung — einzelne Order oder ganze Warenkorb-Gruppe (Gesamtbetrag)."""
+    """Bestätigt Zahlung — per Code, Warenkorb-Gesamtbetrag oder Einzelorder."""
+    if payment_code:
+        code_orders = await _find_orders_by_payment_code(
+            db, payment_code.strip().upper(), ign
+        )
+        if code_orders:
+            confirmed: list[Order] = []
+            for order in code_orders:
+                await _mark_order_paid(db, order, payment_reference or payment_code)
+                confirmed.append(order)
+            return confirmed
+
     if order_id:
         result = await db.execute(
             select(Order)
@@ -563,6 +592,93 @@ async def confirm_payment(
 
     await _mark_order_paid(db, order, payment_reference)
     return [order]
+
+
+async def _find_orders_by_payment_code(
+    db: AsyncSession,
+    code: str,
+    ign: str,
+) -> list[Order] | None:
+    result = await db.execute(
+        select(Order)
+        .options(selectinload(Order.product))
+        .where(
+            Order.payment_code == code,
+            Order.ign.ilike(ign.strip()),
+            Order.status.in_([OrderStatus.pending, OrderStatus.ticket_open]),
+        )
+    )
+    orders = list(result.scalars().all())
+    if not orders:
+        return None
+
+    cart_group_id = orders[0].cart_group_id
+    if cart_group_id:
+        group_result = await db.execute(
+            select(Order)
+            .options(selectinload(Order.product))
+            .where(
+                Order.cart_group_id == cart_group_id,
+                Order.status.in_([OrderStatus.pending, OrderStatus.ticket_open]),
+            )
+        )
+        return list(group_result.scalars().all())
+    return orders
+
+
+async def get_pending_bot_payments(db: AsyncSession) -> list[dict]:
+    """Offene ingame-Bestellungen mit Zahlungscode für den MC-Bot."""
+    result = await db.execute(
+        select(Order)
+        .where(
+            Order.payment_code.isnot(None),
+            Order.status.in_([OrderStatus.pending, OrderStatus.ticket_open]),
+            Order.mc_confirmed == False,  # noqa: E712
+        )
+        .order_by(Order.created_at.desc())
+    )
+    orders = list(result.scalars().all())
+    seen_codes: set[str] = set()
+    pending: list[dict] = []
+    for order in orders:
+        code = order.payment_code
+        if not code or code in seen_codes:
+            continue
+        seen_codes.add(code)
+        pending.append(
+            {
+                "payment_code": code,
+                "ign": order.ign,
+                "amount": float(order.cart_total_amount or order.amount),
+                "cart_group_id": order.cart_group_id,
+                "order_id": order.id,
+                "created_at": order.created_at,
+            }
+        )
+    return pending
+
+
+async def get_pending_payment_for_ign(db: AsyncSession, ign: str) -> dict | None:
+    """Neueste offene Zahlung für einen Spieler (Client-Mod)."""
+    result = await db.execute(
+        select(Order)
+        .where(
+            Order.ign.ilike(ign.strip()),
+            Order.payment_code.isnot(None),
+            Order.status.in_([OrderStatus.pending, OrderStatus.ticket_open]),
+            Order.mc_confirmed == False,  # noqa: E712
+        )
+        .order_by(Order.created_at.desc())
+    )
+    order = result.scalars().first()
+    if not order or not order.payment_code:
+        return None
+    return {
+        "payment_code": order.payment_code,
+        "ign": order.ign,
+        "amount": float(order.cart_total_amount or order.amount),
+        "order_id": order.id,
+    }
 
 
 async def _find_cart_orders_by_total(
@@ -1022,7 +1138,7 @@ async def create_cart_purchase_ingame(
     product_ids: list[int],
     ign: str,
     discount_code: str | None = None,
-) -> tuple[list[Order], float, User]:
+) -> tuple[list[Order], float, User, str]:
     """Ingame checkout: no Discord ticket — payment detected by MC bot."""
     unique_ids = list(dict.fromkeys(product_ids))
     if not unique_ids:
@@ -1047,6 +1163,7 @@ async def create_cart_purchase_ingame(
     orders: list[Order] = []
     total_amount = 0.0
     cart_group_id = _new_cart_group_id()
+    payment_code = await _generate_unique_payment_code(db)
 
     for product in products:
         amount = product.price
@@ -1062,6 +1179,7 @@ async def create_cart_purchase_ingame(
             status=OrderStatus.pending,
             cart_group_id=cart_group_id,
             cart_total_amount=None,
+            payment_code=payment_code,
         )
         db.add(order)
         orders.append(order)
@@ -1081,7 +1199,7 @@ async def create_cart_purchase_ingame(
         order.product = next(p for p in products if p.id == order.product_id)
         await db.refresh(order)
 
-    return orders, total_amount, user
+    return orders, total_amount, user, payment_code
 
 
 async def get_user_orders(db: AsyncSession, user_id: int, limit: int = 20):

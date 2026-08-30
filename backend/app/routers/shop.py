@@ -201,7 +201,7 @@ async def create_cart_order(
 
     if checkout_mode == "ingame":
         try:
-            orders, total_amount, user = await services.create_cart_purchase_ingame(
+            orders, total_amount, user, payment_code = await services.create_cart_purchase_ingame(
                 db,
                 body.product_ids,
                 ign,
@@ -237,10 +237,11 @@ async def create_cart_order(
             ign=ign,
             total_amount=total_amount,
             shop_owner_ign=settings.payment_recipient_ign,
+            payment_code=payment_code,
             message=(
-                f"Zahle ingame den Gesamtbetrag an {settings.payment_recipient_ign}: "
-                f"{total_amount} mit IGN {ign}. "
-                "Eine Zahlung reicht — alle Packs werden danach automatisch freigeschaltet."
+                f"Zahle ingame {total_amount} an {settings.payment_recipient_ign}. "
+                f"Zahlungscode: {payment_code} — zuerst an den Bot senden: "
+                f"/msg {settings.shop_bot_ign} zahlung {payment_code}"
             ),
         )
 

@@ -24,14 +24,18 @@ Der Shop-Bot ist **ein Minecraft-Spieleraccount** für beides:
 
 ## Zahlung
 
-1. Pack auf der Website kaufen (IGN eingeben)
-2. Ingame den **Gesamtbetrag** an den Bot-Account zahlen (auch bei mehreren Packs nur **eine** Zahlung):
+1. Pack auf der Website kaufen (IGN eingeben) → du erhältst einen **Zahlungscode**
+2. Code an Bot senden:
+   ```
+   /msg DeinBotAccount zahlung AB12CD
+   ```
+3. Ingame zahlen:
+   ```
+   /pay DeinBotAccount 17500
+   ```
+4. Bot synchronisiert Codes von der Website und ordnet die Zahlung automatisch zu.
 
-```
-/pay DeinBotAccount 17500
-```
-
-3. Bot erkennt die Zahlung und schaltet **alle Packs der Bestellung** frei.
+Der Bot lädt offene Codes alle 20 Sekunden von `GET /api/bot/payments/pending`.
 
 ## Bot starten
 
@@ -54,6 +58,8 @@ npm start
 ## Dateien
 
 - `index.js` — Bot starten
-- `link-auth.js` — Code-Einlösung
+- `link-auth.js` — Code-Einlösung (Account)
+- `payment-code.js` — Zahlungscode von Website entgegennehmen
+- `pending-payments.js` — Codes von Website-API synchronisieren
 - `payment-handler.js` — Zahlungserkennung am Bot-Account
 - `player-messages.js` — Antworten per `/msg`

@@ -110,7 +110,9 @@ public final class ChatHandler {
         ));
 
         new Thread(() -> {
-            ShopApi.PaymentResult result = ShopApi.confirmPayment(apiUrl, ign, amount);
+            ShopApi.PendingPayment pending = ShopApi.fetchPendingPayment(apiUrl, ign);
+            String paymentCode = pending.hasCode() ? pending.paymentCode() : null;
+            ShopApi.PaymentResult result = ShopApi.confirmPayment(apiUrl, ign, amount, paymentCode);
             client.execute(() -> {
                 if (client.player == null) {
                     return;

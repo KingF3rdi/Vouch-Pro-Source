@@ -172,6 +172,7 @@ class PaymentInstructionsOut(BaseModel):
     ign: str
     total_amount: float
     shop_owner_ign: str
+    payment_code: str
     message: str
 
 
@@ -256,6 +257,16 @@ class BotPaymentConfirm(BaseModel):
     ign: str
     amount: float
     payment_reference: str | None = None
+    payment_code: str | None = None
+
+
+class BotPendingPaymentOut(BaseModel):
+    payment_code: str
+    ign: str
+    amount: float
+    cart_group_id: str | None = None
+    order_id: int
+    created_at: datetime
 
 
 class BotLinkRedeem(BaseModel):
