@@ -45,7 +45,8 @@ python bot.py
 | `/item add/list/delete` | Items (Preis, Pack-DM, Pack-Link, Autorole) |
 | `/ticketlimit` | Max. offene Kauf-Tickets |
 | `/shoppanel` | Shop-Panel posten |
-| `/buypanel` | Buy-Panel mit Kaufen-Button |
+| `/buypanel` | Buy-Panel posten (optional: eine Kategorie, Channel, Titel) |
+| `/buypanels` | Ein Buy-Panel pro Kategorie posten |
 | `/cart` | Warenkorb öffnen |
 | `/vouch` | Einmalig pro bestätigtem Kauf |
 

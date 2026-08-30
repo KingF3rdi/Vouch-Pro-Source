@@ -117,6 +117,9 @@ class SetupCog(commands.Cog):
             role_id=role.id if role else None,
             emoji=emoji[:32],
         )
+        from utils.panels import ensure_buy_panel_view
+
+        await ensure_buy_panel_view(self.bot, cid)
         await interaction.response.send_message(
             embed=success_embed(
                 "Kategorie erstellt",

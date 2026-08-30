@@ -441,6 +441,9 @@ class AddCategoryModal(discord.ui.Modal, title="Kategorie hinzufügen"):
             description=str(self.description.value or ""),
             emoji=str(self.emoji.value or ""),
         )
+        from utils.panels import ensure_buy_panel_view
+
+        await ensure_buy_panel_view(self.bot, cid)
 
         async def on_pick(inter: discord.Interaction, role: discord.Role | None) -> None:
             await self.bot.db.update_category(cid, role_id=role.id if role else None)

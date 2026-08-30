@@ -272,6 +272,16 @@ class Database:
         )
         return [dict(r) for r in rows]
 
+    async def list_all_categories(self) -> list[dict[str, Any]]:
+        """Alle Kategorien (für persistente Buy-Panel-Views beim Bot-Start)."""
+        rows = await self.fetchall(
+            """
+            SELECT * FROM categories
+            ORDER BY guild_id ASC, sort_order ASC, name ASC
+            """
+        )
+        return [dict(r) for r in rows]
+
     # ── Items ───────────────────────────────────────────────────────
 
     async def add_item(

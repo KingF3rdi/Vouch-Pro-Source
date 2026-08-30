@@ -29,11 +29,12 @@ class ShopBot(commands.Bot):
             await self.load_extension(ext)
 
         # Persistent views
-        from views.shop_views import BuyPanelView, ShopPanelView
+        from utils.panels import register_buy_panel_views
+        from views.shop_views import ShopPanelView
         from views.ticket_views import TicketOrderView
 
         self.add_view(ShopPanelView(self))
-        self.add_view(BuyPanelView(self))
+        await register_buy_panel_views(self)
         self.add_view(TicketOrderView(self))
 
         try:
