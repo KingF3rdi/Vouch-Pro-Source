@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Header from '../../components/Header';
 import ProductCard from '../../components/ProductCard';
 import CategoryBadge from '../../components/CategoryBadge';
+import CategoryFilterDropdown from '../../components/CategoryFilterDropdown';
 import { api } from '../../lib/api';
 import ProductGridSkeleton from '../../components/skeletons/ProductGridSkeleton';
 
@@ -70,16 +71,13 @@ function SearchContent() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <select
+        <CategoryFilterDropdown
           value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          className="category-filter-select"
-        >
-          <option value="">Alle Kategorien</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.slug}>{c.name}</option>
-          ))}
-        </select>
+          onChange={setCategory}
+          categories={categories}
+          variant="default"
+          ariaLabel="Kategorie filtern"
+        />
         <button type="submit" className="btn">Suchen</button>
       </form>
 

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '../lib/api';
+import CategoryFilterDropdown from './CategoryFilterDropdown';
 
 export default function HeaderSearch() {
   const router = useRouter();
@@ -41,17 +42,13 @@ export default function HeaderSearch() {
         onBlur={() => setFocused(false)}
         aria-label="Suche"
       />
-      <select
-        className="header-search-select category-filter-select"
+      <CategoryFilterDropdown
         value={category}
-        onChange={(e) => setCategory(e.target.value)}
-        aria-label="Kategorie"
-      >
-        <option value="">Alle Kategorien</option>
-        {categories.map((c) => (
-          <option key={c.id} value={c.slug}>{c.name}</option>
-        ))}
-      </select>
+        onChange={setCategory}
+        categories={categories}
+        variant="header"
+        ariaLabel="Kategorie"
+      />
       <button type="submit" className="header-search-btn" aria-label="Suchen">
         →
       </button>
