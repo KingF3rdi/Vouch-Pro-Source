@@ -1,5 +1,7 @@
 # Ingame-Anmeldung & Zahlungen (ein Account)
 
+**Paper/Spigot-Alternative:** Server-Plugin ohne Bot-Account → [`../minecraft-plugin/`](../minecraft-plugin/).
+
 Der Shop-Bot ist **ein Minecraft-Spieleraccount** für beides:
 
 1. **Anmeldung / Verknüpfung** — `/msg BotName link CODE`
