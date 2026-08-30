@@ -307,28 +307,25 @@ async def action_cancel_order(bot: ShopBot, interaction: discord.Interaction) ->
 
     await interaction.response.defer()
     await bot.db.update_order(int(order["id"]), status="cancelled")
-    assert interaction.guild is not None
-    settings = await bot.db.ensure_guild(interaction.guild.id)
 
     await interaction.followup.send(
         embed=warn_embed(
             "Kauf abgebrochen",
             f"Abgebrochen von {interaction.user.mention}.\n"
-            f"Bestellung **{order_ref(order)}** wurde storniert.",
+            f"Bestellung **{order_ref(order)}** wurde storniert.\n\n"
+            "⏳ Dieses Ticket wird in 5 Sekunden automatisch geschlossen.",
         )
     )
 
     channel = interaction.channel
-    if isinstance(channel, discord.TextChannel) and settings.get("delete_on_cancel"):
-        try:
-            await channel.delete(reason="Kauf abgebrochen")
-        except discord.HTTPException:
-            pass
-    elif isinstance(channel, discord.TextChannel):
-        try:
-            await channel.edit(name=f"cancelled-{channel.name}"[:100])
-        except discord.HTTPException:
-            pass
+    if isinstance(channel, discord.TextChannel):
+        asyncio.create_task(
+            _delete_channel_later(
+                channel,
+                5.0,
+                reason="Kauf abgebrochen — Ticket automatisch geschlossen",
+            )
+        )
 
 
 async def action_close_ticket(
