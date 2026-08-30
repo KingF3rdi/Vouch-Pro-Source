@@ -59,5 +59,6 @@ cd discord-bot && pip install -r requirements.txt && python3 bot.py
 ```bash
 curl http://localhost:8000/api/health
 curl http://localhost:8000/api/config/payment
+curl -H "X-Bot-Api-Key: preview-bot-api-key" http://localhost:8000/api/bot/catalog
 curl -H "X-Bot-Api-Key: preview-bot-api-key" http://localhost:8000/api/bot/payments/pending
 ```

@@ -302,6 +302,33 @@ async def get_categories(db: AsyncSession):
     ]
 
 
+async def get_bot_catalog(db: AsyncSession) -> dict:
+    """Katalog für Discord-Bot: Kategorien inkl. aktiver Produkte."""
+    categories = await get_categories(db)
+    catalog: list[dict] = []
+    for cat in categories:
+        products = await search_products(
+            db, category_slug=cat["slug"], limit=200
+        )
+        catalog.append(
+            {
+                **cat,
+                "products": [
+                    {
+                        "id": p.id,
+                        "name": p.name,
+                        "slug": p.slug,
+                        "price": float(p.price),
+                        "description": p.description or "",
+                        "discord_role_id": p.discord_role_id,
+                    }
+                    for p in products
+                ],
+            }
+        )
+    return {"categories": catalog}
+
+
 async def remove_shader_content(db: AsyncSession) -> dict:
     """Shader-Kategorien und Shader-Produkte vollständig aus dem Shop entfernen."""
     shader_categories = (

@@ -252,6 +252,27 @@ class BotVouchSync(BaseModel):
     is_positive: bool = True
 
 
+class BotCatalogProductOut(BaseModel):
+    id: int
+    name: str
+    slug: str
+    price: float
+    description: str = ""
+    discord_role_id: str | None = None
+
+
+class BotCatalogCategoryOut(BaseModel):
+    id: int
+    name: str
+    slug: str
+    product_count: int = 0
+    products: list[BotCatalogProductOut] = []
+
+
+class BotCatalogOut(BaseModel):
+    categories: list[BotCatalogCategoryOut] = []
+
+
 class BotPaymentConfirm(BaseModel):
     order_id: int | None = None
     ign: str

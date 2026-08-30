@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # TxTEmpire Shop — Vorschau starten (Backend + Frontend)
 set -euo pipefail
-ROOT="$(cd "$(dirname "$0")" && pwd)"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 export BOT_API_KEY="${BOT_API_KEY:-preview-bot-api-key}"
 export SHOP_API_URL="${SHOP_API_URL:-http://localhost:8000}"
