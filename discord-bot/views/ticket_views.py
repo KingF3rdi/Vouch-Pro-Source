@@ -280,6 +280,22 @@ async def action_confirm_order(bot: ShopBot, interaction: discord.Interaction) -
 
     await interaction.followup.send(embed=success)
 
+    from utils.vouch_request import send_vouch_request_dm
+
+    product_names = ", ".join(
+        str(item.get("name_snapshot") or "Produkt") for item in order_items[:3]
+    )
+    if len(order_items) > 3:
+        product_names += " …"
+    asyncio.create_task(
+        send_vouch_request_dm(
+            bot,
+            buyer,
+            order_ref_text=order_ref(order),
+            product_hint=product_names or "dein Kauf",
+        )
+    )
+
     channel = interaction.channel
     if isinstance(channel, discord.TextChannel):
         asyncio.create_task(

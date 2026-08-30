@@ -127,6 +127,7 @@ class Order(Base):
     confirmation_posted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     mc_confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
     discord_confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
+    vouch_used: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     paid_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 

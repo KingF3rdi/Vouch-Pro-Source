@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     discord_guild_id: str = ""
     discord_ticket_category_id: str = ""
     discord_purchase_log_channel_id: str = ""
+    discord_vouch_channel_id: str = ""
     discord_invite_url: str = "https://discord.gg/UjH99aR5ph"
     frontend_url: str = "http://localhost:3000"
     upload_dir: str = "./uploads"

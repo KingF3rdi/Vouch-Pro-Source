@@ -34,6 +34,25 @@ Website (3000) ──proxy──► API (8000) ◄── minecraft-bot
 3. Spieler: `/msg TxtEmpire zahlung AB12CD` → `/pay TxtEmpire <betrag>`
 4. Bot: `POST /api/bot/payments/confirm` → Packs freigeschaltet
 
+## Vouch abgeben (nach Kauf)
+
+Einmalig pro bestätigter Bestellung — per **Website** oder **Discord-DM**:
+
+| Weg | Aktion |
+|-----|--------|
+| **Website** | http://localhost:3000/account → „Vouch abgeben“ |
+| **Discord-DM** | `/vouch rating:5 message:Dein Text` an den Bot |
+| **Discord-Server** | `/vouch` (Ticket-Käufe) |
+
+Nach Kauf sendet der Bot optional eine **Vouch-Anfrage per DM** (wenn `DISCORD_BOT_TOKEN` gesetzt).
+
+API:
+```bash
+curl -H "X-Bot-Api-Key: preview-bot-api-key" "http://localhost:8000/api/bot/vouches/pending?discord_id=DEINE_DISCORD_ID"
+```
+
+Optional: `DISCORD_VOUCH_CHANNEL_ID` in `backend/.env` — Vouches erscheinen auch im Discord-Channel.
+
 ## Bots starten (optional)
 
 ```bash

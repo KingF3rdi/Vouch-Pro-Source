@@ -866,6 +866,101 @@ async def sync_vouch(db: AsyncSession, data: dict) -> Vouch:
     return vouch
 
 
+def _format_vouch_stars(rating: int) -> str:
+    rating = max(1, min(5, int(rating)))
+    return "★" * rating + "☆" * (5 - rating)
+
+
+async def get_pending_vouch_orders(db: AsyncSession, user_id: int) -> list[Order]:
+    result = await db.execute(
+        select(Order)
+        .options(selectinload(Order.product))
+        .where(
+            Order.user_id == user_id,
+            Order.status == OrderStatus.confirmed,
+            Order.vouch_used.is_(False),
+        )
+        .order_by(Order.paid_at.asc(), Order.created_at.asc())
+    )
+    return list(result.scalars().all())
+
+
+async def get_pending_vouch_orders_by_discord(db: AsyncSession, discord_id: str) -> list[Order]:
+    result = await db.execute(select(User).where(User.discord_id == discord_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        return []
+    return await get_pending_vouch_orders(db, user.id)
+
+
+async def submit_vouch_for_order(
+    db: AsyncSession,
+    *,
+    user_id: int,
+    order_id: int,
+    rating: int,
+    message: str,
+    giver_name: str,
+) -> tuple[Vouch, Order]:
+    text = (message or "").strip()
+    if not text:
+        raise ValueError("Bitte eine Nachricht eingeben.")
+    if rating < 1 or rating > 5:
+        raise ValueError("Bewertung muss zwischen 1 und 5 liegen.")
+
+    result = await db.execute(
+        select(Order)
+        .options(selectinload(Order.product))
+        .where(
+            Order.id == order_id,
+            Order.user_id == user_id,
+            Order.status == OrderStatus.confirmed,
+            Order.vouch_used.is_(False),
+        )
+    )
+    order = result.scalar_one_or_none()
+    if not order:
+        raise ValueError("Keine offene Vouch-Anfrage für diese Bestellung.")
+
+    stars = _format_vouch_stars(rating)
+    vouch = await sync_vouch(
+        db,
+        {
+            "external_id": order.id,
+            "giver_name": giver_name[:100],
+            "message": f"{stars} — {text[:500]}",
+            "is_positive": rating >= 4,
+        },
+    )
+    order.vouch_used = True
+    await db.commit()
+    await db.refresh(order)
+    return vouch, order
+
+
+async def submit_vouch_by_discord(
+    db: AsyncSession,
+    *,
+    discord_id: str,
+    order_id: int,
+    rating: int,
+    message: str,
+    giver_name: str,
+) -> tuple[Vouch, Order]:
+    result = await db.execute(select(User).where(User.discord_id == discord_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise ValueError("Kein Website-Account mit dieser Discord-ID verknüpft.")
+    return await submit_vouch_for_order(
+        db,
+        user_id=user.id,
+        order_id=order_id,
+        rating=rating,
+        message=message,
+        giver_name=giver_name,
+    )
+
+
 async def toggle_wishlist(db: AsyncSession, user_id: int, product_id: int) -> bool:
     result = await db.execute(
         select(WishlistItem).where(
@@ -988,6 +1083,14 @@ async def finalize_order(db: AsyncSession, order: Order) -> Order:
             discount_code=order.discount_code,
             ticket_channel_id=order.ticket_channel_id,
         )
+        if buyer and buyer.discord_id:
+            from app.discord_notify import send_vouch_request_dm
+
+            await send_vouch_request_dm(
+                buyer.discord_id,
+                order_id=order.id,
+                product_name=product.name,
+            )
         order.confirmation_posted_at = datetime.utcnow()
         await db.commit()
         await db.refresh(order)
@@ -1221,10 +1324,11 @@ async def create_cart_purchase_ingame(
     if dc and discount_percent:
         dc.uses += 1
 
+    product_by_id = {p.id: p for p in products}
+    order_product_ids = [order.product_id for order in orders]
     await db.commit()
-    for order in orders:
-        order.product = next(p for p in products if p.id == order.product_id)
-        await db.refresh(order)
+    for order, product_id in zip(orders, order_product_ids):
+        order.product = product_by_id.get(product_id)
 
     return orders, total_amount, user, payment_code
 

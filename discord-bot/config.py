@@ -16,6 +16,7 @@ DATABASE_PATH = DATA_DIR / "shop.db"
 # Website-Shop API (optional)
 SHOP_API_URL = os.getenv("SHOP_API_URL", "")
 BOT_API_KEY = os.getenv("BOT_API_KEY", "")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 # Embed accent color (blue-ish, not purple)
 EMBED_COLOR = 0x2B6CB0

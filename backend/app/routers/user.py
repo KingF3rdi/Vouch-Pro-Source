@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
-from app.schemas import UserOut, UserProfileOut, UnlockedProductOut, WishlistItemOut, UserOrderOut
+from app.schemas import UserOut, UserProfileOut, UnlockedProductOut, WishlistItemOut, UserOrderOut, PendingVouchOrderOut, VouchSubmitRequest, VouchSubmitOut
 from app import services
 
 router = APIRouter(prefix="/api/user", tags=["user"])
@@ -82,6 +82,66 @@ async def get_orders(
         )
         for o in orders
     ]
+
+
+@router.get("/vouches/pending", response_model=list[PendingVouchOrderOut])
+async def pending_vouches(
+    session_token: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    user = await services.get_user_by_session(db, session_token)
+    if not user:
+        raise HTTPException(status_code=401, detail="Nicht angemeldet")
+
+    orders = await services.get_pending_vouch_orders(db, user.id)
+    return [
+        PendingVouchOrderOut(
+            order_id=o.id,
+            product_name=o.product.name if o.product else None,
+            amount=o.amount,
+            ign=o.ign,
+            created_at=o.created_at,
+        )
+        for o in orders
+    ]
+
+
+@router.post("/vouches", response_model=VouchSubmitOut)
+async def submit_vouch(
+    body: VouchSubmitRequest,
+    session_token: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    user = await services.get_user_by_session(db, session_token)
+    if not user:
+        raise HTTPException(status_code=401, detail="Nicht angemeldet")
+
+    info = services.user_display_info(user)
+    try:
+        vouch, order = await services.submit_vouch_for_order(
+            db,
+            user_id=user.id,
+            order_id=body.order_id,
+            rating=body.rating,
+            message=body.message,
+            giver_name=info["display_name"],
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    from app.discord_notify import notify_vouch_submitted
+
+    await notify_vouch_submitted(
+        giver_name=info["display_name"],
+        message=vouch.message,
+        rating=body.rating,
+        order_id=order.id,
+        product_name=order.product.name if order.product else None,
+        amount=order.amount,
+        ign=order.ign,
+    )
+
+    return VouchSubmitOut(vouch_id=vouch.id)
 
 
 @router.post("/wishlist/{product_id}")

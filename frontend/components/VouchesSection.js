@@ -29,7 +29,7 @@ export default function VouchesSection() {
             <div className="vouch-count">{data.total}</div>
           </div>
           <p style={{ color: 'var(--muted)', marginTop: '0.5rem', fontSize: '0.9rem' }}>
-            Vertrauen unserer Community — synchronisiert vom Discord Bot
+            Vertrauen unserer Community — per Website oder Discord
           </p>
           <div>
             {data.examples.map((v) => (

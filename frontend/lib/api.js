@@ -65,6 +65,12 @@ export const api = {
     }),
   getPaymentConfig: () => fetchApi('/api/config/payment'),
   getOrders: () => fetchApi('/api/user/orders'),
+  getPendingVouches: () => fetchApi('/api/user/vouches/pending'),
+  submitVouch: (orderId, rating, message) =>
+    fetchApi('/api/user/vouches', {
+      method: 'POST',
+      body: JSON.stringify({ order_id: orderId, rating, message }),
+    }),
   toggleWishlist: (productId) =>
     fetchApi(`/api/user/wishlist/${productId}`, { method: 'POST' }),
   getWishlist: () => fetchApi('/api/user/wishlist'),

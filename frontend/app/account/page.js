@@ -14,6 +14,9 @@ export default function AccountPage() {
   const [redeemCode, setRedeemCode] = useState('');
   const [redeemIgn, setRedeemIgn] = useState('');
   const [message, setMessage] = useState('');
+  const [pendingVouches, setPendingVouches] = useState([]);
+  const [vouchForms, setVouchForms] = useState({});
+  const [vouchLoading, setVouchLoading] = useState(null);
 
   useEffect(() => {
     loadProfile();
@@ -28,10 +31,43 @@ export default function AccountPage() {
       setProfile(p);
       const o = await api.getOrders();
       setOrders(o);
+      if (p) {
+        const pending = await api.getPendingVouches().catch(() => []);
+        setPendingVouches(pending);
+      } else {
+        setPendingVouches([]);
+      }
     } catch {
       setProfile(null);
       setOrders([]);
+      setPendingVouches([]);
     }
+  }
+
+  async function submitVouch(orderId) {
+    const form = vouchForms[orderId] || { rating: 5, message: '' };
+    if (!form.message.trim()) {
+      setMessage('Bitte einen Vouch-Text eingeben.');
+      return;
+    }
+    setVouchLoading(orderId);
+    setMessage('');
+    try {
+      await api.submitVouch(orderId, form.rating, form.message.trim());
+      setMessage('Vouch gesendet — danke!');
+      await loadProfile();
+    } catch (e) {
+      setMessage(e.message);
+    } finally {
+      setVouchLoading(null);
+    }
+  }
+
+  function updateVouchForm(orderId, field, value) {
+    setVouchForms((prev) => ({
+      ...prev,
+      [orderId]: { rating: 5, message: '', ...prev[orderId], [field]: value },
+    }));
   }
 
   async function generateIgnCode() {
@@ -99,6 +135,57 @@ export default function AccountPage() {
               <button type="button" className="btn btn-outline-glass btn-sm" style={{ marginTop: '0.75rem' }} onClick={loadProfile}>
                 Zahlung prüfen / Profil aktualisieren
               </button>
+            </div>
+          )}
+
+          {pendingVouches.length > 0 && (
+            <div className="glass-card profile-orders-panel vouch-request-panel" style={{ marginTop: '1rem', padding: '1rem' }}>
+              <h3>Vouch abgeben</h3>
+              <p style={{ color: 'var(--muted)', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+                Einmalig pro Kauf — alternativ per Discord-DM mit <code>/vouch</code>.
+              </p>
+              {pendingVouches.map((v) => {
+                const form = vouchForms[v.order_id] || { rating: 5, message: '' };
+                return (
+                  <div key={v.order_id} className="vouch-form-card">
+                    <div className="vouch-form-header">
+                      <strong>{v.product_name || 'Bestellung'}</strong>
+                      <span style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>
+                        #{v.order_id} · {v.amount} Coins
+                      </span>
+                    </div>
+                    <div className="vouch-stars">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          className={`vouch-star${form.rating >= star ? ' active' : ''}`}
+                          onClick={() => updateVouchForm(v.order_id, 'rating', star)}
+                          aria-label={`${star} Sterne`}
+                        >
+                          ★
+                        </button>
+                      ))}
+                    </div>
+                    <textarea
+                      className="form-input vouch-message"
+                      placeholder="Dein Vouch-Text …"
+                      rows={3}
+                      value={form.message}
+                      onChange={(e) => updateVouchForm(v.order_id, 'message', e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="btn btn-sm"
+                      style={{ width: '100%', marginTop: '0.5rem' }}
+                      disabled={vouchLoading === v.order_id}
+                      onClick={() => submitVouch(v.order_id)}
+                    >
+                      {vouchLoading === v.order_id ? 'Wird gesendet …' : 'Vouch absenden'}
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
 

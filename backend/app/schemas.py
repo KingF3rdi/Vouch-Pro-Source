@@ -295,6 +295,42 @@ class BotLinkRedeem(BaseModel):
     ign: str
 
 
+class BotVouchSubmit(BaseModel):
+    discord_id: str
+    order_id: int
+    rating: int = Field(ge=1, le=5)
+    message: str = Field(min_length=1, max_length=1500)
+    giver_name: str = Field(min_length=1, max_length=100)
+
+
+class BotPendingVouchOut(BaseModel):
+    order_id: int
+    product_name: str | None = None
+    amount: float
+    ign: str
+    created_at: datetime
+
+
+class VouchSubmitRequest(BaseModel):
+    order_id: int
+    rating: int = Field(ge=1, le=5)
+    message: str = Field(min_length=1, max_length=1500)
+
+
+class PendingVouchOrderOut(BaseModel):
+    order_id: int
+    product_name: str | None = None
+    amount: float
+    ign: str
+    created_at: datetime
+
+
+class VouchSubmitOut(BaseModel):
+    success: bool = True
+    vouch_id: int
+    message: str = "Vouch gespeichert — danke!"
+
+
 class BotPriceChangeNotify(BaseModel):
     product_id: int
     old_price: float

@@ -116,5 +116,106 @@ async def post_purchase_confirmation(
     return results
 
 
+async def post_vouch_to_channel(
+    *,
+    giver_name: str,
+    message: str,
+    rating: int,
+    order_id: int,
+    product_name: str | None,
+    amount: float,
+    ign: str | None,
+) -> bool:
+    """Postet einen Vouch in den konfigurierten Discord-Vouch-Channel."""
+    if not settings.discord_vouch_channel_id:
+        return False
+
+    stars = "★" * max(1, min(5, rating)) + "☆" * (5 - max(1, min(5, rating)))
+    embed = {
+        "title": "Neuer Vouch",
+        "description": message[:1500],
+        "color": 0x2B6CB0,
+        "fields": [
+            {"name": "Bewertung", "value": stars, "inline": True},
+            {"name": "Bestellung", "value": f"#{order_id}", "inline": True},
+            {"name": "Betrag", "value": format_ingame_price(amount), "inline": True},
+        ],
+        "footer": {"text": f"Von {giver_name} · TxTEmpire Shop"},
+    }
+    if product_name:
+        embed["fields"].append({"name": "Produkt", "value": product_name, "inline": True})
+    if ign:
+        embed["fields"].append({"name": "IGN", "value": ign, "inline": True})
+
+    return await _post_message(
+        settings.discord_vouch_channel_id,
+        content="⭐ **Neuer Vouch**",
+        embed=embed,
+    )
+
+
+async def send_vouch_request_dm(
+    discord_user_id: str,
+    *,
+    order_id: int,
+    product_name: str,
+    frontend_url: str | None = None,
+) -> bool:
+    """Sendet Vouch-Anfrage per DM nach bestätigtem Kauf."""
+    base = (frontend_url or settings.frontend_url).rstrip("/")
+    embed = {
+        "title": "⭐ Vouch abgeben",
+        "description": (
+            f"Danke für deinen Kauf von **{product_name}**!\n\n"
+            "Du kannst einmalig einen Vouch hinterlassen:"
+        ),
+        "color": 0x2B6CB0,
+        "fields": [
+            {
+                "name": "Auf der Website",
+                "value": f"[Profil öffnen]({base}/account) → Vouch-Formular",
+                "inline": False,
+            },
+            {
+                "name": "Per Discord-DM",
+                "value": "Schreib mir hier: `/vouch rating:5 message:Dein Text`",
+                "inline": False,
+            },
+            {
+                "name": "Im Discord-Server",
+                "value": "Alternativ `/vouch` im Shop-Server nutzen",
+                "inline": False,
+            },
+        ],
+        "footer": {"text": f"Bestellung #{order_id} · einmalig pro Kauf"},
+    }
+    return await _dm_user(
+        discord_user_id,
+        content="🙏 **Wie war dein Einkauf?** Hinterlasse gerne einen Vouch!",
+        embed=embed,
+    )
+
+
+async def notify_vouch_submitted(
+    *,
+    giver_name: str,
+    message: str,
+    rating: int,
+    order_id: int,
+    product_name: str | None,
+    amount: float,
+    ign: str | None,
+) -> None:
+    await post_vouch_to_channel(
+        giver_name=giver_name,
+        message=message,
+        rating=rating,
+        order_id=order_id,
+        product_name=product_name,
+        amount=amount,
+        ign=ign,
+    )
+
+
 # Re-export ticket creation from discord_tickets for backwards compatibility
 from app.discord_tickets import create_purchase_ticket  # noqa: E402

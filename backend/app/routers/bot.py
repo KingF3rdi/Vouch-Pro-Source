@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Response
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -6,6 +6,8 @@ from app.deps import verify_bot_api_key
 from app.schemas import (
     BotCatalogOut,
     BotLinkRedeem,
+    BotPendingVouchOut,
+    BotVouchSubmit,
     BotPaymentConfirm,
     BotPendingPaymentOut,
     BotPriceChangeNotify,
@@ -58,6 +60,63 @@ async def bot_sync_sale(body: BotSaleSync, db: AsyncSession = Depends(get_db)):
 async def bot_sync_vouch(body: BotVouchSync, db: AsyncSession = Depends(get_db)):
     vouch = await services.sync_vouch(db, body.model_dump())
     return {"success": True, "vouch_id": vouch.id}
+
+
+@router.get("/vouches/pending", response_model=list[BotPendingVouchOut])
+async def bot_pending_vouches(
+    discord_id: str = Query(..., min_length=1),
+    db: AsyncSession = Depends(get_db),
+):
+    """Offene Vouch-Anfragen für einen Discord-User (Website-Bestellungen)."""
+    orders = await services.get_pending_vouch_orders_by_discord(db, discord_id)
+    return [
+        BotPendingVouchOut(
+            order_id=o.id,
+            product_name=o.product.name if o.product else None,
+            amount=o.amount,
+            ign=o.ign,
+            created_at=o.created_at,
+        )
+        for o in orders
+    ]
+
+
+@router.post("/vouches/submit")
+async def bot_submit_vouch(body: BotVouchSubmit, db: AsyncSession = Depends(get_db)):
+    """Vouch aus Discord-Bot (DM oder Server) für Website-Bestellung."""
+    try:
+        vouch, order = await services.submit_vouch_by_discord(
+            db,
+            discord_id=body.discord_id,
+            order_id=body.order_id,
+            rating=body.rating,
+            message=body.message,
+            giver_name=body.giver_name,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    from app.discord_notify import notify_vouch_submitted
+
+    await notify_vouch_submitted(
+        giver_name=body.giver_name,
+        message=vouch.message,
+        rating=body.rating,
+        order_id=order.id,
+        product_name=order.product.name if order.product else None,
+        amount=order.amount,
+        ign=order.ign,
+    )
+
+    return {
+        "success": True,
+        "vouch_id": vouch.id,
+        "order_id": order.id,
+        "product_name": order.product.name if order.product else None,
+        "amount": order.amount,
+        "ign": order.ign,
+        "message": vouch.message,
+    }
 
 
 @router.post("/link/redeem")
