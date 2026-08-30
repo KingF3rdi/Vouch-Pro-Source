@@ -13,6 +13,25 @@ class ShopApiClient:
         self.api_key = config.BOT_API_KEY or ""
         self.enabled = bool(self.api_url and self.api_key)
 
+    async def fetch_catalog(self) -> dict | None:
+        if not self.enabled:
+            return None
+        try:
+            async with httpx.AsyncClient(timeout=20) as client:
+                resp = await client.get(
+                    f"{self.api_url}/api/bot/catalog",
+                    headers={"X-Bot-Api-Key": self.api_key},
+                )
+                if resp.status_code >= 400:
+                    print(
+                        f"[Shop API] Catalog fetch fehlgeschlagen: HTTP {resp.status_code}"
+                    )
+                    return None
+                return resp.json()
+        except Exception as exc:
+            print(f"[Shop API] Catalog fetch fehlgeschlagen: {exc}")
+            return None
+
     async def sync_vouch(
         self,
         *,

@@ -123,8 +123,10 @@ async def _browse_categories(
     category_id: int | None = None,
 ) -> None:
     from views.selectors import CategorySearchView
+    from integrations.catalog_sync import maybe_sync_shop_catalog
 
     assert interaction.guild is not None
+    await maybe_sync_shop_catalog(bot, interaction.guild.id)
 
     if category_id is not None:
         cat = await bot.db.get_category(category_id)

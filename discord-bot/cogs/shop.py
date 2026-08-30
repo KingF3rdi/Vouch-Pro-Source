@@ -6,6 +6,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from integrations.catalog_sync import sync_shop_catalog
+from integrations.shop_api import shop_api
 from utils.embeds import base_embed, success_embed
 from utils.panels import (
     build_buy_panel_embed,
@@ -29,9 +31,64 @@ async def _resolve_target_channel(
     return None
 
 
+async def _ensure_catalog(bot: ShopBot, guild_id: int) -> dict | None:
+    """Synchronisiert Kategorien von der Website, wenn API konfiguriert ist."""
+    if not shop_api.enabled:
+        return None
+    return await sync_shop_catalog(bot, guild_id)
+
+
 class ShopCog(commands.Cog):
     def __init__(self, bot: ShopBot) -> None:
         self.bot = bot
+
+    @app_commands.command(
+        name="syncshop",
+        description="Kategorien und Produkte von der Website übernehmen",
+    )
+    @app_commands.default_permissions(manage_guild=True)
+    async def syncshop(self, interaction: discord.Interaction) -> None:
+        assert interaction.guild is not None
+        if not shop_api.enabled:
+            from utils.embeds import error_embed
+
+            await interaction.response.send_message(
+                embed=error_embed(
+                    "API nicht konfiguriert",
+                    "Setze `SHOP_API_URL` und `BOT_API_KEY` in der `.env`.",
+                ),
+                ephemeral=True,
+            )
+            return
+
+        await interaction.response.defer(ephemeral=True)
+        result = await sync_shop_catalog(self.bot, interaction.guild.id)
+        if result.get("error"):
+            from utils.embeds import error_embed
+
+            await interaction.followup.send(
+                embed=error_embed(
+                    "Sync fehlgeschlagen",
+                    "Katalog konnte nicht von der Website geladen werden.",
+                ),
+                ephemeral=True,
+            )
+            return
+
+        await interaction.followup.send(
+            embed=success_embed(
+                "Shop synchronisiert",
+                f"**{result.get('categories', 0)}** Kategorien · "
+                f"**{result.get('items', 0)}** Produkte übernommen"
+                + (
+                    f"\nEntfernt: {result.get('removed_categories', 0)} Kategorien, "
+                    f"{result.get('removed_items', 0)} Produkte"
+                    if result.get("removed_categories") or result.get("removed_items")
+                    else ""
+                ),
+            ),
+            ephemeral=True,
+        )
 
     @app_commands.command(
         name="buypanel",
@@ -51,6 +108,8 @@ class ShopCog(commands.Cog):
         title: str | None = None,
     ) -> None:
         assert interaction.guild is not None
+        await _ensure_catalog(self.bot, interaction.guild.id)
+
         cats = await self.bot.db.list_categories(interaction.guild.id)
         settings = await self.bot.db.ensure_guild(interaction.guild.id)
 
@@ -106,7 +165,7 @@ class ShopCog(commands.Cog):
 
     @app_commands.command(
         name="buypanels",
-        description="Ein Buy-Panel pro Kategorie posten",
+        description="Ein Buy-Panel pro Kategorie posten (Kategorien von Website)",
     )
     @app_commands.describe(
         channel="Optional: Ziel-Channel (Standard: aktueller Channel)",
@@ -118,15 +177,20 @@ class ShopCog(commands.Cog):
         channel: discord.TextChannel | None = None,
     ) -> None:
         assert interaction.guild is not None
+        await _ensure_catalog(self.bot, interaction.guild.id)
+
         cats = await self.bot.db.list_categories(interaction.guild.id)
         if not cats:
             from utils.embeds import error_embed
 
+            hint = (
+                "Keine Kategorien auf der Website gefunden."
+                if shop_api.enabled
+                else "Lege Kategorien an (`/adminpanel` oder `/category add`) "
+                "oder konfiguriere `SHOP_API_URL` + `BOT_API_KEY`."
+            )
             await interaction.response.send_message(
-                embed=error_embed(
-                    "Keine Kategorien",
-                    "Lege zuerst Kategorien an (`/adminpanel` oder `/category add`).",
-                ),
+                embed=error_embed("Keine Kategorien", hint),
                 ephemeral=True,
             )
             return
@@ -176,13 +240,15 @@ class ShopCog(commands.Cog):
     @app_commands.default_permissions(manage_guild=True)
     async def shoppanel(self, interaction: discord.Interaction) -> None:
         assert interaction.guild is not None
+        await _ensure_catalog(self.bot, interaction.guild.id)
+
         cats = await self.bot.db.list_categories(interaction.guild.id)
         embed = base_embed(
             "Shop",
             "Wähle **Kategorien anzeigen**, um Artikel in den Warenkorb zu legen.\n"
             "Danach **Weiter einkaufen**, **Warenkorb** oder **Kaufen**.\n\n"
             f"**{PAYMENT_NOTICE}**\n\n"
-            "_Tipp: `/buypanel` für ein allgemeines Panel, `/buypanels` für je Kategorie._",
+            "_Tipp: `/buypanels` postet je Kategorie ein Panel (Website-Sync)._",
         )
         if cats:
             embed.add_field(
@@ -195,7 +261,7 @@ class ShopCog(commands.Cog):
         else:
             embed.add_field(
                 name="Hinweis",
-                value="Noch keine Kategorien — Admin: `/adminpanel` oder `/category add`.",
+                value="Noch keine Kategorien — Website-Sync mit `/syncshop` oder Admin-Panel.",
                 inline=False,
             )
         await interaction.response.send_message(

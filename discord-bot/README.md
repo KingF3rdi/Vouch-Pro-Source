@@ -21,7 +21,7 @@ cp .env.example .env
 DISCORD_TOKEN=dein_token
 GUILD_ID=deine_server_id
 
-# Optional — Vouches auf der Website anzeigen
+# Optional — Vouches auf der Website + Kategorien/Produkte automatisch übernehmen
 SHOP_API_URL=https://shop.deinedomain.de
 BOT_API_KEY=gleicher-key-wie-backend
 ```
@@ -46,7 +46,8 @@ python bot.py
 | `/ticketlimit` | Max. offene Kauf-Tickets |
 | `/shoppanel` | Shop-Panel posten |
 | `/buypanel` | Buy-Panel posten (optional: eine Kategorie, Channel, Titel) |
-| `/buypanels` | Ein Buy-Panel pro Kategorie posten |
+| `/buypanels` | Ein Buy-Panel pro Kategorie posten (übernimmt Kategorien von der Website) |
+| `/syncshop` | Kategorien und Produkte manuell von der Website synchronisieren |
 | `/cart` | Warenkorb öffnen |
 | `/vouch` | Einmalig pro bestätigtem Kauf |
 
@@ -58,6 +59,12 @@ python bot.py
 4. Staff: **Payment bestätigen** → Pack per DM/Link, Rollen, `/vouch` freigeschaltet
 
 ## Website-Anbindung
+
+Wenn `SHOP_API_URL` und `BOT_API_KEY` gesetzt sind:
+
+- **Kategorien und Produkte** werden beim Bot-Start und vor `/buypanels` automatisch von der Website übernommen
+- Manueller Sync: `/syncshop`
+- **Vouches** werden an die Website gesendet
 
 | Komponente | Rolle |
 |------------|--------|

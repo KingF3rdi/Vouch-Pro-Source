@@ -133,6 +133,8 @@ class Database:
             ("items", "pack_file", "TEXT NOT NULL DEFAULT ''"),
             ("order_items", "pack_file", "TEXT NOT NULL DEFAULT ''"),
             ("orders", "order_number", "INTEGER"),
+            ("categories", "api_id", "INTEGER"),
+            ("items", "api_id", "INTEGER"),
         ):
             try:
                 await self.db.execute(
@@ -281,6 +283,148 @@ class Database:
             """
         )
         return [dict(r) for r in rows]
+
+    async def get_category_by_api_id(
+        self, guild_id: int, api_id: int
+    ) -> dict[str, Any] | None:
+        row = await self.fetchone(
+            "SELECT * FROM categories WHERE guild_id = ? AND api_id = ?",
+            (guild_id, api_id),
+        )
+        return dict(row) if row else None
+
+    async def upsert_category_from_api(
+        self,
+        guild_id: int,
+        api_id: int,
+        name: str,
+        description: str = "",
+        sort_order: int = 0,
+    ) -> int:
+        existing = await self.get_category_by_api_id(guild_id, api_id)
+        if existing:
+            await self.update_category(
+                int(existing["id"]),
+                name=name,
+                description=description,
+                sort_order=sort_order,
+            )
+            return int(existing["id"])
+        cur = await self.db.execute(
+            """
+            INSERT INTO categories (guild_id, name, description, role_id, emoji, sort_order, api_id)
+            VALUES (?, ?, ?, NULL, '', ?, ?)
+            """,
+            (guild_id, name, description, sort_order, api_id),
+        )
+        await self.db.commit()
+        return cur.lastrowid  # type: ignore[return-value]
+
+    async def delete_api_categories_not_in(
+        self, guild_id: int, api_ids: list[int]
+    ) -> int:
+        if api_ids:
+            placeholders = ",".join("?" for _ in api_ids)
+            cur = await self.db.execute(
+                f"""
+                DELETE FROM categories
+                WHERE guild_id = ? AND api_id IS NOT NULL
+                  AND api_id NOT IN ({placeholders})
+                """,
+                (guild_id, *api_ids),
+            )
+        else:
+            cur = await self.db.execute(
+                """
+                DELETE FROM categories
+                WHERE guild_id = ? AND api_id IS NOT NULL
+                """,
+                (guild_id,),
+            )
+        await self.db.commit()
+        return cur.rowcount
+
+    async def get_item_by_api_id(
+        self, guild_id: int, api_id: int
+    ) -> dict[str, Any] | None:
+        row = await self.fetchone(
+            "SELECT * FROM items WHERE guild_id = ? AND api_id = ?",
+            (guild_id, api_id),
+        )
+        return dict(row) if row else None
+
+    async def upsert_item_from_api(
+        self,
+        guild_id: int,
+        category_id: int,
+        api_id: int,
+        name: str,
+        price: float,
+        description: str = "",
+        pack_dm_text: str = "",
+        pack_link: str = "",
+        pack_file: str = "",
+        role_id: int | None = None,
+    ) -> int:
+        fields = {
+            "category_id": category_id,
+            "name": name,
+            "price": price,
+            "description": description,
+            "pack_dm_text": pack_dm_text,
+            "pack_link": pack_link,
+            "pack_file": pack_file,
+            "role_id": role_id,
+            "active": 1,
+        }
+        existing = await self.get_item_by_api_id(guild_id, api_id)
+        if existing:
+            await self.update_item(int(existing["id"]), **fields)
+            return int(existing["id"])
+        cur = await self.db.execute(
+            """
+            INSERT INTO items
+              (category_id, guild_id, name, description, price,
+               pack_dm_text, pack_link, pack_file, role_id, active, api_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+            """,
+            (
+                category_id,
+                guild_id,
+                name,
+                description,
+                price,
+                pack_dm_text,
+                pack_link,
+                pack_file,
+                role_id,
+                api_id,
+            ),
+        )
+        await self.db.commit()
+        return cur.lastrowid  # type: ignore[return-value]
+
+    async def delete_api_items_not_in(self, guild_id: int, api_ids: list[int]) -> int:
+        if api_ids:
+            placeholders = ",".join("?" for _ in api_ids)
+            cur = await self.db.execute(
+                f"""
+                DELETE FROM items
+                WHERE guild_id = ? AND api_id IS NOT NULL
+                  AND api_id NOT IN ({placeholders})
+                """,
+                (guild_id, *api_ids),
+            )
+        else:
+            cur = await self.db.execute(
+                """
+                DELETE FROM items
+                WHERE guild_id = ? AND api_id IS NOT NULL
+                """,
+                (guild_id,),
+            )
+        await self.db.commit()
+        return cur.rowcount
 
     # ── Items ───────────────────────────────────────────────────────
 

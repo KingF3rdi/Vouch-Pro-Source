@@ -99,6 +99,19 @@ class ShopBot(commands.Bot):
                 )
             else:
                 print(f"Guild OK: {guild.name}")
+                from integrations.catalog_sync import sync_shop_catalog
+                from integrations.shop_api import shop_api
+
+                if shop_api.enabled:
+                    result = await sync_shop_catalog(self, config.GUILD_ID)
+                    if result.get("error"):
+                        print("[Shop API] Katalog-Sync beim Start fehlgeschlagen")
+                    elif not result.get("skipped"):
+                        print(
+                            f"[Shop API] Katalog synchronisiert: "
+                            f"{result.get('categories', 0)} Kategorien, "
+                            f"{result.get('items', 0)} Produkte"
+                        )
         print("Bot ist bereit.")
 
 

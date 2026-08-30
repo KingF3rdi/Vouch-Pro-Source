@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.deps import verify_bot_api_key
 from app.schemas import (
+    BotCatalogOut,
     BotLinkRedeem,
     BotPaymentConfirm,
     BotPriceChangeNotify,
@@ -18,6 +19,12 @@ from app.routers.user import build_user_out
 from app import services
 
 router = APIRouter(prefix="/api/bot", tags=["bot-integration"], dependencies=[Depends(verify_bot_api_key)])
+
+
+@router.get("/catalog", response_model=BotCatalogOut)
+async def bot_catalog(db: AsyncSession = Depends(get_db)):
+    """Kategorien und Produkte für den Discord-Shop-Bot."""
+    return await services.get_bot_catalog(db)
 
 
 @router.post("/products", response_model=ProductOut)
