@@ -6,7 +6,7 @@ export default function RecentPurchasesSkeleton() {
     <section className="section section--category-divided" aria-busy="true" aria-label="Käufe werden geladen">
       <div className="container">
         <CategoryDividerSkeleton />
-        <div className="glass-panel recent-purchases">
+        <div className="glass-panel category-glass-panel recent-purchases">
           <div className="section-header recent-purchases-skeleton-header">
             <SkeletonBlock className="skeleton-title skeleton-title--sm" />
             <SkeletonBlock className="skeleton-line skeleton-line--meta" />

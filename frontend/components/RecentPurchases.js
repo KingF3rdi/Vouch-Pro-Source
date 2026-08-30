@@ -24,10 +24,13 @@ export default function RecentPurchases() {
     <section className="section section--category-divided">
       <div className="container">
         <CategoryDivider label="Shop Aktivität" />
-        <div className="glass-panel recent-purchases">
-          <div className="section-header" style={{ marginBottom: '1rem' }}>
-            <h2>✅ Letzte Käufe</h2>
-            <span style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>Live Kaufbestätigungen</span>
+        <div className="glass-panel category-glass-panel recent-purchases">
+          <div className="section-header recent-purchases-header">
+            <h2>
+              <span className="recent-purchases-icon" aria-hidden="true">✓</span>
+              Letzte Käufe
+            </h2>
+            <span className="recent-purchases-sub">Live Kaufbestätigungen</span>
           </div>
           <div className="purchase-feed">
             {purchases.map((p) => (
