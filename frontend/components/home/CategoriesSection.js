@@ -22,6 +22,21 @@ function categoryIcon(slug, name) {
   return '📦';
 }
 
+/** Placeholder-Bilder ohne eingebetteten Text — Kategoriename steht im Footer. */
+function categoryPreviewSrc(url) {
+  if (!url) return url;
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname.replace(/^www\./, '') === 'placehold.co') {
+      parsed.searchParams.delete('text');
+      return parsed.toString();
+    }
+  } catch {
+    /* relative URLs o.ä. */
+  }
+  return url.replace(/([?&])text=[^&]*&?/g, '$1').replace(/[?&]$/, '');
+}
+
 async function fetchCategories() {
   const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
   const res = await fetch(`${base}/api/categories`, { cache: 'no-store' });
@@ -54,7 +69,7 @@ export default async function CategoriesSection() {
                 <div className="category-pick-card__preview">
                   {cat.preview_url ? (
                     <img
-                      src={cat.preview_url}
+                      src={categoryPreviewSrc(cat.preview_url)}
                       alt=""
                       className="category-pick-card__bg"
                     />
@@ -65,9 +80,6 @@ export default async function CategoriesSection() {
                   <span className="category-pick-card__badge" aria-hidden="true">
                     {icon}
                   </span>
-                  <div className="category-pick-card__title-wrap">
-                    <span className="category-pick-card__display">{cat.name}</span>
-                  </div>
                 </div>
 
                 <div className="category-pick-card__box">
