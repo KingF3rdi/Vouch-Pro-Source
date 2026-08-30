@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "txtshop",
+  "version": "${version}",
+  "name": "TxT Shop Client",
+  "description": "Website-Shop ingame — Link-Codes & Zahlungen (Client-Mod, kein Server-Zugriff nötig)",
+  "authors": ["TxTEmpire"],
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["de.txtempire.shopclient.TxTShopClient"]
+  },
+  "depends": {
+    "fabricloader": ">=0.15.0",
+    "minecraft": "~1.20.1",
+    "java": ">=17",
+    "fabric-api": "*"
+  }
+}

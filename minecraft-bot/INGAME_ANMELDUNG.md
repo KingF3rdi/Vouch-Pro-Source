@@ -1,5 +1,7 @@
 # Ingame-Anmeldung & Zahlungen (ein Account)
 
+**Kein Server-Zugriff?** → Fabric **Client-Mod**: [`../minecraft-client-mod/`](../minecraft-client-mod/) (läuft beim Spieler, verbunden mit Website).
+
 Der Shop-Bot ist **ein Minecraft-Spieleraccount** für beides:
 
 1. **Anmeldung / Verknüpfung** — `/msg BotName link CODE`

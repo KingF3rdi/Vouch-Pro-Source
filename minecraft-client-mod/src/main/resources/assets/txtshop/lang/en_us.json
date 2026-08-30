@@ -1,0 +1,15 @@
+{
+  "key.txtshop.link": "Shop: Link code",
+  "key.txtshop.status": "Shop: Status",
+  "category.txtshop": "TxT Shop",
+  "txtshop.link.title": "Link website account",
+  "txtshop.link.hint": "Enter code from the website:",
+  "txtshop.link.submit": "Link",
+  "txtshop.link.cancel": "Cancel",
+  "txtshop.msg.linked": "Account linked: %s",
+  "txtshop.msg.link_failed": "Link failed: %s",
+  "txtshop.msg.payment_ok": "Payment confirmed! Order #%s",
+  "txtshop.msg.payment_ok_multi": "Payment confirmed! %s orders",
+  "txtshop.msg.payment_fail": "No matching order for %s",
+  "txtshop.msg.config_missing": "Create config/txtshop.json (shop-api-url)"
+}

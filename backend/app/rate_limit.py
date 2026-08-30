@@ -43,6 +43,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             if (
                 path.startswith("/api/orders")
                 or path.startswith("/api/link")
+                or path.startswith("/api/client")
                 or path.startswith("/api/discount")
                 or path.startswith("/api/user/wishlist")
             ):

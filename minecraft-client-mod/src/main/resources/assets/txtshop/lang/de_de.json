@@ -1,0 +1,15 @@
+{
+  "key.txtshop.link": "Shop: Link-Code",
+  "key.txtshop.status": "Shop: Status",
+  "category.txtshop": "TxT Shop",
+  "txtshop.link.title": "Website verknüpfen",
+  "txtshop.link.hint": "Code von der Website eingeben:",
+  "txtshop.link.submit": "Verknüpfen",
+  "txtshop.link.cancel": "Abbrechen",
+  "txtshop.msg.linked": "Account verknüpft: %s",
+  "txtshop.msg.link_failed": "Verknüpfung fehlgeschlagen: %s",
+  "txtshop.msg.payment_ok": "Zahlung bestätigt! Bestellung #%s",
+  "txtshop.msg.payment_ok_multi": "Zahlung bestätigt! %s Bestellungen",
+  "txtshop.msg.payment_fail": "Keine passende Bestellung für %s",
+  "txtshop.msg.config_missing": "Bitte config/txtshop.json anlegen (shop-api-url)"
+}
