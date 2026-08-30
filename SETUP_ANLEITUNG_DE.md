@@ -195,104 +195,80 @@ curl https://shop.deinedomain.de/api/health
 
 ---
 
-# TEIL B — Deinen Discord Bot anbinden
+# TEIL B — Discord Shop Bot (`discord-bot/`)
 
-Dein Bot liegt im Repo bereits mit Shop-Bridge (`main.py` + `shop_bridge.py`). Er muss nur **konfiguriert** und mit der **öffentlichen Shop-URL** verbunden werden.
+Der offizielle Discord-Bot liegt im Ordner **`discord-bot/`** (shop_bot_py): Slash-Commands, Warenkorb, Tickets, Pack-Versand, Vouch.
 
-## B1. Benötigte Dateien (in deinem Bot-Ordner)
+Details: `discord-bot/README.md`
 
-| Datei | Zweck |
-|-------|--------|
-| `discord_integration/discord_integration.py` | Shop-API Client + `!shop` Commands |
-| `shop_bridge.py` | Einfache Bridge für `main.py` |
-| `config.py` | `SHOP_API_URL` + `BOT_API_KEY` |
-
-Falls noch nicht vorhanden: aus dem Repo kopieren.
-
-## B2. `config.py` anpassen
-
-```python
-import os
-
-DISCORD_TOKEN = 'dein-bot-token'   # wie in backend/.env
-
-# Shop API (Oracle)
-SHOP_API_URL = os.getenv('SHOP_API_URL', 'https://shop.deinedomain.de')
-BOT_API_KEY = os.getenv('BOT_API_KEY', 'gleicher-key-wie-backend')
-DISCORD_INVITE_URL = 'https://discord.gg/xxxxx'
-```
-
-Oder per Umgebungsvariable beim Start:
+## B1. Installation
 
 ```bash
-export SHOP_API_URL=https://shop.deinedomain.de
-export BOT_API_KEY=dein-api-key
-python main.py
+cd ~/txtempire-shop/discord-bot
+pip install -r requirements.txt
+cp .env.example .env
+nano .env
 ```
 
-## B3. `main.py` — Shop-Commands (bereits eingebaut)
+## B2. `.env`
 
-Dein Bot fängt `!shop` ab **bevor** andere Commands:
+```env
+DISCORD_TOKEN=dein-bot-token
+GUILD_ID=deine-server-id
 
-```python
-import shop_bridge
-
-async def on_message(self, message):
-    if message.author == self.user:
-        return
-
-    # TxTEmpire Shop (!shop post, !shop stats, ...)
-    if message.content.strip().lower().startswith('!shop'):
-        if await shop_bridge.handle_shop_command(message):
-            return
-
-    # ... deine +vouch, +dwc Commands ...
+# Optional — Vouches auf Website syncen
+SHOP_API_URL=https://shop.deinedomain.de
+BOT_API_KEY=gleicher-key-wie-backend
 ```
 
-**Kein Prefix-Wechsel nötig** — Shop nutzt `!shop`, dein Bot nutzt `+` für andere Commands.
+| Variable | Erklärung |
+|----------|-----------|
+| `DISCORD_TOKEN` | **Identisch** mit `DISCORD_BOT_TOKEN` in `backend/.env` |
+| `GUILD_ID` | Server-ID für schnelles Slash-Command-Sync |
+| `SHOP_API_URL` | Website-API für Vouch-Sync |
 
-## B4. Vouches automatisch zur Website syncen
+## B3. Bot starten
 
-In `adminCommands.py` (bei Vouch-Freigabe) ist bereits:
-
-```python
-await shop_bridge.sync_vouch_to_shop(
-    giverUser.name,
-    vouch.message,
-    vouch.isPositive,
-    vouchID,
-)
+```bash
+python bot.py
 ```
 
-→ Freigegebene Vouches erscheinen auf der Website.
+Mit PM2:
 
-## B5. Shop-Commands (`!shop`)
+```bash
+pm2 start bot.py --name discord-shop-bot --interpreter python3
+```
 
-| Command | Wer | Beschreibung |
-|---------|-----|--------------|
-| `!shop post Name \| Preis \| RollenID \| Tags \| PreviewURL` | Admin | Produkt anlegen |
-| `!shop stats` | Alle | Verkäufe / Umsatz / Vouches |
-| `!shop linkign Code IGN` | Alle | IGN mit Discord verknüpfen |
-| `!shop syncvouch Name \| Text` | Alle | Vouch manuell syncen |
-| `!shop price 3 15000` | Admin | Preis ändern (ID + Betrag) |
-| `!shop complete 42` | Admin | Bestellung #42 abschließen |
-| `!shop vouches` | Alle | Vouch-Übersicht |
+## B4. Ersteinrichtung auf dem Server
+
+1. Bot einladen (Scope: `bot`, `applications.commands`)
+2. `/setup` — Staff-Rolle, Customer-Rolle, Ticket-Kategorie, Vouch-Channel
+3. `/payees` — Zahlungsempfänger (50/50 optional)
+4. `/adminpanel` — Kategorien & Items anlegen
+5. `/buypanel` oder `/shoppanel` — Shop-Panel posten
+
+## B5. Slash-Commands (Übersicht)
+
+| Command | Beschreibung |
+|---------|--------------|
+| `/setup` | Rollen, Ticket-Kategorie, Vouch-Channel |
+| `/adminpanel` | Admin-Panel |
+| `/category add/list/delete` | Kategorien |
+| `/item add/list/delete` | Produkte/Items |
+| `/cart` | Warenkorb |
+| `/vouch` | Bewertung nach Kauf |
 
 ## B6. Discord Developer Portal
 
 1. **OAuth2 → Redirects:** `https://shop.deinedomain.de/api/auth/discord/callback`
-2. **Bot Token** = identisch in `backend/.env` und deinem Bot (`DISCORD_TOKEN`)
-3. Bot braucht Rechte: Kanäle erstellen, Nachrichten senden, Rollen verwalten
+2. **Bot Token** = identisch in `backend/.env` (`DISCORD_BOT_TOKEN`) und `discord-bot/.env` (`DISCORD_TOKEN`)
+3. Rechte: Kanäle erstellen, Nachrichten senden, Rollen verwalten, Dateien anhängen
 
-**Wichtig:** Die Shop API nutzt `DISCORD_BOT_TOKEN` um **Kauf-Tickets** zu erstellen. Es muss der **gleiche Bot** sein wie dein laufender Discord Bot.
+**Wichtig:** Die Website nutzt denselben Bot-Token für **Kauf-Tickets** (`DISCORD_BOT_TOKEN`).
 
-## B7. Bot starten (Beispiel PM2)
+## B7. Legacy (`main.py` + `!shop`)
 
-```bash
-cd ~/dein-discord-bot
-pip install httpx discord.py
-pm2 start main.py --name discord-bot --interpreter python3
-```
+Ältere Integration mit `!shop`-Prefix-Commands liegt weiterhin in `main.py` + `discord_integration/`. Für den vollständigen Discord-Shop wird **`discord-bot/`** empfohlen.
 
 ---
 
