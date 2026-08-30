@@ -1,0 +1,43 @@
+name: Publish split repos
+
+on:
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish txtempire-website
+        env:
+          PAT: ${{ secrets.REPO_PUBLISH_PAT }}
+        run: |
+          if [ -z "$PAT" ]; then
+            echo "REPO_PUBLISH_PAT secret fehlt — siehe repos/PUSH_ANLEITUNG.md"
+            exit 1
+          fi
+          git clone --depth 1 -b export-txtempire-website \
+            https://x-access-token:${PAT}@github.com/KingF3rdi/Vouch-Pro-Source.git website-src
+          cd website-src
+          git remote add target https://x-access-token:${PAT}@github.com/KingF3rdi/txtempire-website.git
+          git push target HEAD:main --force
+
+      - name: Publish txtempire-shop-bot (Discord)
+        env:
+          PAT: ${{ secrets.REPO_PUBLISH_PAT }}
+        run: |
+          git clone --depth 1 -b export-txtempire-discord-bot \
+            https://x-access-token:${PAT}@github.com/KingF3rdi/Vouch-Pro-Source.git discord-src
+          cd discord-src
+          git remote add target https://x-access-token:${PAT}@github.com/KingF3rdi/txtempire-shop-bot.git
+          git push target HEAD:main --force
+
+      - name: Publish txtempire-minecraft-bot (optional)
+        env:
+          PAT: ${{ secrets.REPO_PUBLISH_PAT }}
+        continue-on-error: true
+        run: |
+          git clone --depth 1 -b export-txtempire-minecraft-bot \
+            https://x-access-token:${PAT}@github.com/KingF3rdi/Vouch-Pro-Source.git mc-src
+          cd mc-src
+          git remote add target https://x-access-token:${PAT}@github.com/KingF3rdi/txtempire-minecraft-bot.git
+          git push target HEAD:main --force
