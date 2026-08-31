@@ -10,8 +10,13 @@ from integrations.catalog_sync import sync_shop_catalog
 from integrations.shop_api import shop_api
 from utils.embeds import base_embed, success_embed
 from utils.panels import (
+    PanelFilter,
+    apply_panel_filter,
     build_buy_panel_embed,
+    ensure_buy_panel_slot_view,
     ensure_buy_panel_view,
+    get_panel_filter_for_slot,
+    panel_filter_summary,
 )
 from views.shop_views import BuyPanelView, CartView, ShopPanelView
 from config import PAYMENT_NOTICE
@@ -91,11 +96,122 @@ class ShopCog(commands.Cog):
         )
 
     @app_commands.command(
-        name="buypanel",
-        description="Buy-Panel posten (allgemein oder für eine Kategorie)",
+        name="buypanelconfig",
+        description="Buy Panel 1 oder 2 konfigurieren (Kategorien / alle außer)",
     )
     @app_commands.describe(
-        category="Optional: Panel nur für diese Kategorie",
+        slot="Panel 1 oder 2",
+        mode="Kategorie-Filter",
+        categories="Kategorie-IDs, kommagetrennt (z. B. 1,3,5) — bei Include/Exclude",
+        title="Optional: Panel-Titel",
+    )
+    @app_commands.choices(
+        mode=[
+            app_commands.Choice(name="Alle Kategorien", value="all"),
+            app_commands.Choice(name="Nur diese Kategorien", value="include"),
+            app_commands.Choice(name="Alle außer diese", value="exclude"),
+        ]
+    )
+    @app_commands.default_permissions(manage_guild=True)
+    async def buypanelconfig(
+        self,
+        interaction: discord.Interaction,
+        slot: app_commands.Range[int, 1, 2],
+        mode: app_commands.Choice[str],
+        categories: str | None = None,
+        title: str | None = None,
+    ) -> None:
+        assert interaction.guild is not None
+        from utils.embeds import error_embed
+
+        filter_mode = mode.value
+        category_ids: list[int] = []
+        if filter_mode in ("include", "exclude"):
+            if not categories or not categories.strip():
+                await interaction.response.send_message(
+                    embed=error_embed(
+                        "Kategorien fehlen",
+                        "Bei **Nur diese** oder **Alle außer** bitte `categories` "
+                        "angeben (IDs kommagetrennt). Tipp: `/buypanelconfig` "
+                        "Autocomplete bei categories.",
+                    ),
+                    ephemeral=True,
+                )
+                return
+            for part in categories.replace(" ", "").split(","):
+                if not part:
+                    continue
+                try:
+                    category_ids.append(int(part))
+                except ValueError:
+                    await interaction.response.send_message(
+                        embed=error_embed(
+                            "Ungültige ID",
+                            f"`{part}` ist keine gültige Kategorie-ID.",
+                        ),
+                        ephemeral=True,
+                    )
+                    return
+            cats = await self.bot.db.list_categories(interaction.guild.id)
+            valid_ids = {int(c["id"]) for c in cats}
+            invalid = [i for i in category_ids if i not in valid_ids]
+            if invalid:
+                await interaction.response.send_message(
+                    embed=error_embed(
+                        "Kategorie nicht gefunden",
+                        f"Unbekannte IDs: {', '.join(str(i) for i in invalid)}",
+                    ),
+                    ephemeral=True,
+                )
+                return
+
+        await self.bot.db.set_buy_panel_slot(
+            interaction.guild.id,
+            slot,
+            filter_mode=filter_mode,
+            category_ids=category_ids,
+            title=title,
+        )
+        await ensure_buy_panel_slot_view(self.bot, slot)
+
+        pf = PanelFilter(mode=filter_mode, category_ids=tuple(category_ids))
+        cats = await self.bot.db.list_categories(interaction.guild.id)
+        filtered = apply_panel_filter(cats, pf)
+        names = ", ".join(c["name"] for c in filtered[:10])
+        if len(filtered) > 10:
+            names += f" … (+{len(filtered) - 10})"
+
+        await interaction.response.send_message(
+            embed=success_embed(
+                f"Buy Panel {slot} konfiguriert",
+                f"**Filter:** {panel_filter_summary(pf)}\n"
+                + (f"**Titel:** {title}\n" if title else "")
+                + (f"**Sichtbar:** {names or '—'}\n\n" if filtered else "")
+                + f"Posten mit `/buypanel slot:{slot}`",
+            ),
+            ephemeral=True,
+        )
+
+    @buypanelconfig.autocomplete("categories")
+    async def buypanelconfig_categories_autocomplete(
+        self,
+        interaction: discord.Interaction,
+        current: str,
+    ) -> list[app_commands.Choice[str]]:
+        from views.selectors import category_autocomplete
+
+        choices = await category_autocomplete(self.bot, interaction, current)
+        return [
+            app_commands.Choice(name=c.name, value=str(c.value)) for c in choices[:25]
+        ]
+
+    @app_commands.command(
+        name="buypanel",
+        description="Buy-Panel posten (Slot 1/2, allgemein oder eine Kategorie)",
+    )
+    @app_commands.describe(
+        slot="Optional: Buy Panel 1 oder 2 (mit /buypanelconfig)",
+        category="Optional: Panel nur für diese Kategorie (Legacy)",
         channel="Optional: Ziel-Channel (Standard: aktueller Channel)",
         title="Optional: eigener Panel-Titel",
     )
@@ -103,6 +219,7 @@ class ShopCog(commands.Cog):
     async def buypanel(
         self,
         interaction: discord.Interaction,
+        slot: app_commands.Range[int, 1, 2] | None = None,
         category: int | None = None,
         channel: discord.TextChannel | None = None,
         title: str | None = None,
@@ -114,7 +231,31 @@ class ShopCog(commands.Cog):
         settings = await self.bot.db.ensure_guild(interaction.guild.id)
 
         cat: dict | None = None
-        if category is not None:
+        panel_filter: PanelFilter | None = None
+        panel_slot: int | None = None
+        panel_title = title
+
+        if slot is not None and category is not None:
+            from utils.embeds import error_embed
+
+            await interaction.response.send_message(
+                embed=error_embed(
+                    "Konflikt",
+                    "Bitte entweder `slot` (Panel 1/2) **oder** `category` angeben.",
+                ),
+                ephemeral=True,
+            )
+            return
+
+        if slot is not None:
+            panel_slot = slot
+            panel_filter, stored_title = await get_panel_filter_for_slot(
+                self.bot, interaction.guild.id, slot
+            )
+            if not panel_title and stored_title:
+                panel_title = stored_title
+            await ensure_buy_panel_slot_view(self.bot, slot)
+        elif category is not None:
             cat = await self.bot.db.get_category(category)
             if not cat or int(cat["guild_id"]) != interaction.guild.id:
                 from utils.embeds import error_embed
@@ -124,14 +265,22 @@ class ShopCog(commands.Cog):
                     ephemeral=True,
                 )
                 return
+            await ensure_buy_panel_view(self.bot, category)
+        else:
+            await ensure_buy_panel_view(self.bot, None)
 
-        await ensure_buy_panel_view(self.bot, category)
-
+        display_cats = (
+            apply_panel_filter(cats, panel_filter)
+            if panel_filter
+            else cats
+        )
         embed = build_buy_panel_embed(
-            categories=cats,
+            categories=display_cats if panel_filter else cats,
             settings=settings,
             category=cat,
-            title=title,
+            title=panel_title,
+            panel_filter=panel_filter,
+            slot=panel_slot,
         )
         target = await _resolve_target_channel(interaction, channel)
         if target is None:
@@ -146,12 +295,21 @@ class ShopCog(commands.Cog):
             )
             return
 
-        label = cat["name"] if cat else "Buy Panel"
+        if panel_slot is not None:
+            label = panel_title or f"Buy Panel {panel_slot}"
+            view = BuyPanelView(self.bot, panel_slot=panel_slot)
+        elif cat:
+            label = cat["name"]
+            view = BuyPanelView(self.bot, category_id=category)
+        else:
+            label = panel_title or "Buy Panel"
+            view = BuyPanelView(self.bot, category_id=None)
+
         await interaction.response.send_message(
             embed=success_embed("Buy-Panel gepostet", f"**{label}** → {target.mention}"),
             ephemeral=True,
         )
-        await target.send(embed=embed, view=BuyPanelView(self.bot, category_id=category))
+        await target.send(embed=embed, view=view)
 
     @buypanel.autocomplete("category")
     async def buypanel_category_autocomplete(
