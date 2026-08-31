@@ -194,7 +194,8 @@ class CategorySearchView(SafeView):
 
     async def _show_all(self, interaction: discord.Interaction) -> None:
         self.message = interaction.message
-        self._rebuild(self.all_categories[:25])
+        self._visible_categories = self.all_categories[:25]
+        self._rebuild(self._visible_categories)
         await interaction.response.edit_message(
             content=f"Kategorien ({min(25, len(self.all_categories))} von {len(self.all_categories)}):",
             view=self,
@@ -247,6 +248,232 @@ class CategorySearchModal(discord.ui.Modal, title="Kategorie suchen"):
     )
 
     def __init__(self, parent: CategorySearchView) -> None:
+        super().__init__()
+        self.parent = parent
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        await self.parent.apply_filter(interaction, str(self.query.value))
+
+
+CategoryMultiConfirmCallback = Callable[
+    [discord.Interaction, list[dict]], Awaitable[None]
+]
+
+
+class CategoryMultiSelectView(SafeView):
+    """Mehrere Kategorien per Dropdown auswählen (Auswahl sammeln, dann speichern)."""
+
+    def __init__(
+        self,
+        categories: list[dict],
+        *,
+        on_confirm: CategoryMultiConfirmCallback,
+        header: str = "Kategorien wählen",
+        placeholder: str = "Kategorien auswählen…",
+        min_selected: int = 1,
+        timeout: float = 300,
+    ) -> None:
+        super().__init__(timeout=timeout)
+        self.all_categories = categories
+        self.on_confirm = on_confirm
+        self.header = header
+        self.placeholder = placeholder
+        self.min_selected = min_selected
+        self.selected_ids: set[int] = set()
+        self.message: discord.Message | None = None
+        self._visible_categories = categories[:25]
+        self._rebuild(self._visible_categories)
+
+    def _selected_categories(self) -> list[dict]:
+        by_id = {int(c["id"]): c for c in self.all_categories}
+        return [by_id[i] for i in sorted(self.selected_ids) if i in by_id]
+
+    def _status_text(self, *, list_hint: str | None = None) -> str:
+        selected = self._selected_categories()
+        if selected:
+            names = ", ".join(
+                f"**{c['name']}**" for c in selected[:12]
+            )
+            if len(selected) > 12:
+                names += f" … (+{len(selected) - 12})"
+            picked = f"**Ausgewählt ({len(selected)}):** {names}"
+        else:
+            picked = "_Noch keine Kategorien ausgewählt._"
+        hint = list_hint or (
+            f"Zeige {min(25, len(self.all_categories))} von "
+            f"{len(self.all_categories)} — Suche bei vielen Kategorien."
+        )
+        return f"{self.header}\n\n{hint}\n\n{picked}"
+
+    def _rebuild(self, cats: list[dict]) -> None:
+        self.clear_items()
+        visible = cats[:25]
+        if visible:
+            safe_options: list[discord.SelectOption] = []
+            for c in visible:
+                kwargs = {
+                    "label": c["name"][:100],
+                    "value": str(c["id"]),
+                    "description": ((c.get("description") or "")[:100] or None),
+                    "default": int(c["id"]) in self.selected_ids,
+                }
+                emoji = (c.get("emoji") or "").strip()
+                try:
+                    if emoji:
+                        safe_options.append(discord.SelectOption(**kwargs, emoji=emoji))
+                    else:
+                        safe_options.append(discord.SelectOption(**kwargs))
+                except (TypeError, ValueError):
+                    safe_options.append(
+                        discord.SelectOption(
+                            label=c["name"][:100],
+                            value=str(c["id"]),
+                            default=int(c["id"]) in self.selected_ids,
+                        )
+                    )
+            max_vals = min(25, len(safe_options))
+            select = discord.ui.Select(
+                placeholder=self.placeholder,
+                options=safe_options,
+                min_values=1,
+                max_values=max_vals,
+                row=0,
+            )
+            select.callback = self._selected  # type: ignore[method-assign]
+            self.add_item(select)
+
+        search_btn = discord.ui.Button(
+            label="Suchen…", style=discord.ButtonStyle.secondary, emoji="🔍", row=1
+        )
+        search_btn.callback = self._open_search  # type: ignore[method-assign]
+        self.add_item(search_btn)
+
+        show_all = discord.ui.Button(
+            label="Alle anzeigen", style=discord.ButtonStyle.secondary, row=1
+        )
+        show_all.callback = self._show_all  # type: ignore[method-assign]
+        self.add_item(show_all)
+
+        clear_btn = discord.ui.Button(
+            label="Auswahl leeren",
+            style=discord.ButtonStyle.secondary,
+            row=2,
+            disabled=not self.selected_ids,
+        )
+        clear_btn.callback = self._clear_selection  # type: ignore[method-assign]
+        self.add_item(clear_btn)
+
+        save_btn = discord.ui.Button(
+            label="Speichern",
+            style=discord.ButtonStyle.success,
+            row=2,
+            disabled=len(self.selected_ids) < self.min_selected,
+        )
+        save_btn.callback = self._save  # type: ignore[method-assign]
+        self.add_item(save_btn)
+
+        cancel_btn = discord.ui.Button(
+            label="Abbrechen", style=discord.ButtonStyle.danger, row=2
+        )
+        cancel_btn.callback = self._cancel  # type: ignore[method-assign]
+        self.add_item(cancel_btn)
+
+    async def _selected(self, interaction: discord.Interaction) -> None:
+        select: discord.ui.Select = next(
+            c for c in self.children if isinstance(c, discord.ui.Select)
+        )
+        for val in select.values:
+            self.selected_ids.add(int(val))
+        self.message = interaction.message
+        self._visible_categories = self.all_categories[:25]
+        self._rebuild(self._visible_categories)
+        await interaction.response.edit_message(
+            content=self._status_text(), view=self
+        )
+
+    async def _save(self, interaction: discord.Interaction) -> None:
+        if len(self.selected_ids) < self.min_selected:
+            await interaction.response.send_message(
+                embed=error_embed(
+                    "Zu wenig ausgewählt",
+                    f"Mindestens **{self.min_selected}** Kategorie(n) nötig.",
+                ),
+                ephemeral=True,
+            )
+            return
+        selected = self._selected_categories()
+        self.stop()
+        await self.on_confirm(interaction, selected)
+
+    async def _cancel(self, interaction: discord.Interaction) -> None:
+        self.stop()
+        await interaction.response.edit_message(content="Abgebrochen.", view=None)
+
+    async def _clear_selection(self, interaction: discord.Interaction) -> None:
+        self.selected_ids.clear()
+        self.message = interaction.message
+        self._visible_categories = self.all_categories[:25]
+        self._rebuild(self._visible_categories)
+        await interaction.response.edit_message(
+            content=self._status_text(), view=self
+        )
+
+    async def _open_search(self, interaction: discord.Interaction) -> None:
+        self.message = interaction.message
+        await interaction.response.send_modal(CategoryMultiSearchModal(self))
+
+    async def _show_all(self, interaction: discord.Interaction) -> None:
+        self.message = interaction.message
+        self._visible_categories = self.all_categories[:25]
+        self._rebuild(self._visible_categories)
+        await interaction.response.edit_message(
+            content=self._status_text(
+                list_hint=(
+                    f"Alle Kategorien ({min(25, len(self.all_categories))} "
+                    f"von {len(self.all_categories)}):"
+                )
+            ),
+            view=self,
+        )
+
+    async def apply_filter(self, interaction: discord.Interaction, query: str) -> None:
+        q = query.strip().lower()
+        if not q:
+            filtered = self.all_categories
+        else:
+            filtered = [
+                c
+                for c in self.all_categories
+                if q in (c.get("name") or "").lower()
+                or q in (c.get("description") or "").lower()
+                or q == str(c.get("id"))
+            ]
+        if not filtered:
+            await interaction.response.send_message(
+                embed=error_embed("Keine Treffer", f"Nichts gefunden für `{query}`."),
+                ephemeral=True,
+            )
+            return
+        self.message = interaction.message
+        self._visible_categories = filtered[:25]
+        self._rebuild(self._visible_categories)
+        await interaction.response.edit_message(
+            content=self._status_text(
+                list_hint=f"Suchergebnis für **{query}** ({len(filtered)}):"
+            ),
+            view=self,
+        )
+
+
+class CategoryMultiSearchModal(discord.ui.Modal, title="Kategorie suchen"):
+    query = discord.ui.TextInput(
+        label="Suchbegriff",
+        placeholder="Name oder Teil des Namens…",
+        max_length=100,
+        required=True,
+    )
+
+    def __init__(self, parent: CategoryMultiSelectView) -> None:
         super().__init__()
         self.parent = parent
 

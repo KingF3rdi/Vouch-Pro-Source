@@ -159,7 +159,7 @@ class ShopCog(commands.Cog):
     @app_commands.describe(
         slot="Panel 1 oder 2",
         mode="Kategorie-Filter",
-        categories="Kategorie-IDs, kommagetrennt (z. B. 1,3,5) — bei Include/Exclude",
+        categories="Optional: Kategorie-IDs kommagetrennt (sonst interaktive Auswahl)",
         title="Optional: Panel-Titel",
     )
     @app_commands.choices(
@@ -180,21 +180,12 @@ class ShopCog(commands.Cog):
     ) -> None:
         assert interaction.guild is not None
         from utils.embeds import error_embed
+        from views.selectors import CategoryMultiSelectView
 
         filter_mode = mode.value
         category_ids: list[int] = []
-        if filter_mode in ("include", "exclude"):
-            if not categories or not categories.strip():
-                await interaction.response.send_message(
-                    embed=error_embed(
-                        "Kategorien fehlen",
-                        "Bei **Nur diese** oder **Alle außer** bitte `categories` "
-                        "angeben (IDs kommagetrennt). Tipp: `/buypanelconfig` "
-                        "Autocomplete bei categories.",
-                    ),
-                    ephemeral=True,
-                )
-                return
+
+        if filter_mode in ("include", "exclude") and categories and categories.strip():
             for part in categories.replace(" ", "").split(","):
                 if not part:
                     continue
@@ -221,6 +212,72 @@ class ShopCog(commands.Cog):
                     ephemeral=True,
                 )
                 return
+            await self._save_buy_panel_config(
+                interaction, slot, filter_mode, category_ids, title
+            )
+            return
+
+        if filter_mode in ("include", "exclude"):
+            cats = await self.bot.db.list_categories(interaction.guild.id)
+            if not cats:
+                await interaction.response.send_message(
+                    embed=error_embed(
+                        "Keine Kategorien",
+                        "Erst Kategorien anlegen oder `/syncshop` ausführen.",
+                    ),
+                    ephemeral=True,
+                )
+                return
+
+            mode_label = (
+                "Nur diese Kategorien"
+                if filter_mode == "include"
+                else "Alle außer diese"
+            )
+            header = (
+                f"**{mode_label}** — Buy Panel **{slot}**\n"
+                "Wähle im Dropdown **eine oder mehrere** Kategorien. "
+                "Mit **Suchen** findest du weitere. Danach **Speichern**."
+            )
+            if title:
+                header += f"\n\n_Titel: {title}_"
+
+            async def on_confirm(
+                inter: discord.Interaction, selected: list[dict]
+            ) -> None:
+                ids = [int(c["id"]) for c in selected]
+                await self._save_buy_panel_config(
+                    inter, slot, filter_mode, ids, title, edit=True
+                )
+
+            view = CategoryMultiSelectView(
+                cats,
+                on_confirm=on_confirm,
+                header=header,
+                placeholder="Eine oder mehrere Kategorien wählen…",
+            )
+            await interaction.response.send_message(
+                content=view._status_text(),
+                view=view,
+                ephemeral=True,
+            )
+            return
+
+        await self._save_buy_panel_config(
+            interaction, slot, filter_mode, category_ids, title
+        )
+
+    async def _save_buy_panel_config(
+        self,
+        interaction: discord.Interaction,
+        slot: int,
+        filter_mode: str,
+        category_ids: list[int],
+        title: str | None,
+        *,
+        edit: bool = False,
+    ) -> None:
+        assert interaction.guild is not None
 
         await self.bot.db.set_buy_panel_slot(
             interaction.guild.id,
@@ -238,16 +295,19 @@ class ShopCog(commands.Cog):
         if len(filtered) > 10:
             names += f" … (+{len(filtered) - 10})"
 
-        await interaction.response.send_message(
-            embed=success_embed(
-                f"Buy Panel {slot} konfiguriert",
-                f"**Filter:** {panel_filter_summary(pf)}\n"
-                + (f"**Titel:** {title}\n" if title else "")
-                + (f"**Sichtbar:** {names or '—'}\n\n" if filtered else "")
-                + f"Posten mit `/buypanel slot:{slot}`",
-            ),
-            ephemeral=True,
+        embed = success_embed(
+            f"Buy Panel {slot} konfiguriert",
+            f"**Filter:** {panel_filter_summary(pf)}\n"
+            + (f"**Titel:** {title}\n" if title else "")
+            + (f"**Sichtbar:** {names or '—'}\n\n" if filtered else "")
+            + f"Posten mit `/buypanel slot:{slot}`",
         )
+        if edit:
+            await interaction.response.edit_message(
+                content=None, embed=embed, view=None
+            )
+        else:
+            await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @buypanelconfig.autocomplete("categories")
     async def buypanelconfig_categories_autocomplete(
