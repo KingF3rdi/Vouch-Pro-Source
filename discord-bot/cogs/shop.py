@@ -17,6 +17,7 @@ from utils.panels import (
     ensure_buy_panel_view,
     get_panel_filter_for_slot,
     panel_filter_summary,
+    refresh_slot_panel,
 )
 from views.shop_views import BuyPanelView, CartView, ShopPanelView
 from config import PAYMENT_NOTICE
@@ -72,32 +73,7 @@ async def _post_slot_panel(
 
 
 async def _refresh_slot_panel(bot: ShopBot, guild: discord.Guild, slot: int) -> str:
-    row = await bot.db.ensure_buy_panel_slot(guild.id, slot)
-    channel_id = row.get("channel_id")
-    message_id = row.get("message_id")
-    if not channel_id or not message_id:
-        return f"Panel {slot}: keine gespeicherte Nachricht — bitte `/buypanel slot:{slot}`"
-    channel = guild.get_channel(int(channel_id))
-    if not isinstance(channel, discord.TextChannel):
-        return f"Panel {slot}: Channel nicht gefunden"
-    try:
-        msg = await channel.fetch_message(int(message_id))
-    except discord.NotFound:
-        return f"Panel {slot}: Nachricht gelöscht — bitte neu posten"
-    cats = await bot.db.list_categories(guild.id)
-    settings = await bot.db.ensure_guild(guild.id)
-    panel_filter, stored_title = await get_panel_filter_for_slot(bot, guild.id, slot)
-    filtered = apply_panel_filter(cats, panel_filter)
-    embed = build_buy_panel_embed(
-        categories=filtered,
-        settings=settings,
-        title=stored_title,
-        panel_filter=panel_filter,
-        slot=slot,
-    )
-    await ensure_buy_panel_slot_view(bot, slot)
-    await msg.edit(embed=embed, view=BuyPanelView(bot, panel_slot=slot))
-    return f"Panel {slot}: aktualisiert in {channel.mention}"
+    return await refresh_slot_panel(bot, guild, slot)
 
 
 class ShopCog(commands.Cog):
@@ -234,10 +210,16 @@ class ShopCog(commands.Cog):
                 if filter_mode == "include"
                 else "Alle außer diese"
             )
+            action = (
+                "Wähle die Kategorien, die **sichtbar** sein sollen."
+                if filter_mode == "include"
+                else "Wähle die Kategorien, die **ausgeblendet** werden sollen."
+            )
             header = (
                 f"**{mode_label}** — Buy Panel **{slot}**\n"
-                "Wähle im Dropdown **eine oder mehrere** Kategorien. "
-                "Mit **Suchen** findest du weitere. Danach **Speichern**."
+                f"{action}\n"
+                "Im Dropdown **mehrere** Kategorien wählen (erneut klicken = abwählen). "
+                "Mit **Suchen** weitere finden. Danach **Speichern**."
             )
             if title:
                 header += f"\n\n_Titel: {title}_"
@@ -295,12 +277,21 @@ class ShopCog(commands.Cog):
         if len(filtered) > 10:
             names += f" … (+{len(filtered) - 10})"
 
+        refresh_note = ""
+        row = await self.bot.db.get_buy_panel_slot(interaction.guild.id, slot)
+        if row and row.get("message_id"):
+            refresh_result = await refresh_slot_panel(
+                self.bot, interaction.guild, slot
+            )
+            refresh_note = f"\n\n**Panel aktualisiert:** {refresh_result}"
+
         embed = success_embed(
             f"Buy Panel {slot} konfiguriert",
             f"**Filter:** {panel_filter_summary(pf)}\n"
             + (f"**Titel:** {title}\n" if title else "")
             + (f"**Sichtbar:** {names or '—'}\n\n" if filtered else "")
-            + f"Posten mit `/buypanel slot:{slot}`",
+            + f"Posten mit `/buypanel slot:{slot}`"
+            + refresh_note,
         )
         if edit:
             await interaction.response.edit_message(
@@ -534,8 +525,16 @@ class ShopCog(commands.Cog):
             label = panel_title or "Buy Panel"
             view = BuyPanelView(self.bot, category_id=None)
 
+        tip = (
+            "\n\n_Tipp: Für zwei parallele Panels `/buypanelboth` oder "
+            "`slot:1` / `slot:2` nutzen._"
+            if not cat
+            else ""
+        )
         await interaction.response.send_message(
-            embed=success_embed("Buy-Panel gepostet", f"**{label}** → {target.mention}"),
+            embed=success_embed(
+                "Buy-Panel gepostet", f"**{label}** → {target.mention}{tip}"
+            ),
             ephemeral=True,
         )
         await target.send(embed=embed, view=view)

@@ -383,9 +383,12 @@ class CategoryMultiSelectView(SafeView):
             c for c in self.children if isinstance(c, discord.ui.Select)
         )
         for val in select.values:
-            self.selected_ids.add(int(val))
+            cat_id = int(val)
+            if cat_id in self.selected_ids:
+                self.selected_ids.discard(cat_id)
+            else:
+                self.selected_ids.add(cat_id)
         self.message = interaction.message
-        self._visible_categories = self.all_categories[:25]
         self._rebuild(self._visible_categories)
         await interaction.response.edit_message(
             content=self._status_text(), view=self

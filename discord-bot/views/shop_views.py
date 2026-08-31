@@ -7,7 +7,7 @@ import discord
 
 from utils.embeds import cart_embed, error_embed, format_price, success_embed
 from utils.view_helpers import SafeView
-from utils.panels import PanelFilter, apply_panel_filter
+from utils.panels import PanelFilter, apply_panel_filter, parse_buy_custom_id
 from config import DEFAULT_PAYEE, PAYMENT_NOTICE
 
 if TYPE_CHECKING:
@@ -144,7 +144,25 @@ class BuyPanelView(discord.ui.View):
         info_btn.callback = self._on_info_click
         self.add_item(info_btn)
 
+    def _sync_ctx_from_interaction(self, interaction: discord.Interaction) -> None:
+        """Slot/Kategorie aus custom_id lesen — wichtig für parallele Panels 1/2."""
+        custom_id = interaction.data.get("custom_id") if interaction.data else None
+        slot, category_id = parse_buy_custom_id(custom_id)
+        if slot is not None:
+            self.panel_slot = slot
+            self.category_id = None
+            self.browse_ctx.panel_slot = slot
+            self.browse_ctx.category_id = None
+            self.browse_ctx.panel_filter = None
+        elif category_id is not None:
+            self.category_id = category_id
+            self.panel_slot = None
+            self.browse_ctx.category_id = category_id
+            self.browse_ctx.panel_slot = None
+            self.browse_ctx.panel_filter = None
+
     async def _on_buy_click(self, interaction: discord.Interaction) -> None:
+        self._sync_ctx_from_interaction(interaction)
         custom_id = interaction.data.get("custom_id") if interaction.data else "?"
         print(
             f"[BuyPanel] Kaufen geklickt: {custom_id} "
@@ -153,9 +171,11 @@ class BuyPanelView(discord.ui.View):
         await self._buy(interaction)
 
     async def _on_cart_click(self, interaction: discord.Interaction) -> None:
+        self._sync_ctx_from_interaction(interaction)
         await self._cart(interaction)
 
     async def _on_info_click(self, interaction: discord.Interaction) -> None:
+        self._sync_ctx_from_interaction(interaction)
         await self._info(interaction)
 
     async def _buy(self, interaction: discord.Interaction) -> None:
