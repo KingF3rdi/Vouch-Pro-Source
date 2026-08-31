@@ -39,6 +39,8 @@ class PanelFilter:
             ids = ()
         if mode not in ("all", "include", "exclude"):
             mode = "all"
+        if mode == "include" and not ids:
+            mode = "all"
         return cls(mode=mode, category_ids=ids)
 
 
