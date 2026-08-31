@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import aiosqlite
 from pathlib import Path
 from typing import Any, Optional
@@ -120,6 +121,15 @@ class Database:
                 uploaded_by INTEGER NOT NULL,
                 created_at TEXT NOT NULL DEFAULT (datetime('now')),
                 FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS buy_panel_slots (
+                guild_id INTEGER NOT NULL,
+                slot INTEGER NOT NULL CHECK (slot IN (1, 2)),
+                filter_mode TEXT NOT NULL DEFAULT 'all',
+                category_ids TEXT NOT NULL DEFAULT '[]',
+                title TEXT,
+                PRIMARY KEY (guild_id, slot)
             );
             """
         )
@@ -283,6 +293,50 @@ class Database:
             """
         )
         return [dict(r) for r in rows]
+
+    # ── Buy panel slots (1 & 2) ───────────────────────────────────
+
+    async def get_buy_panel_slot(
+        self, guild_id: int, slot: int
+    ) -> dict[str, Any] | None:
+        row = await self.fetchone(
+            "SELECT * FROM buy_panel_slots WHERE guild_id = ? AND slot = ?",
+            (guild_id, slot),
+        )
+        return dict(row) if row else None
+
+    async def set_buy_panel_slot(
+        self,
+        guild_id: int,
+        slot: int,
+        *,
+        filter_mode: str,
+        category_ids: list[int],
+        title: str | None = None,
+    ) -> None:
+        ids_json = json.dumps(sorted({int(i) for i in category_ids}))
+        await self.db.execute(
+            """
+            INSERT INTO buy_panel_slots (guild_id, slot, filter_mode, category_ids, title)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(guild_id, slot) DO UPDATE SET
+                filter_mode = excluded.filter_mode,
+                category_ids = excluded.category_ids,
+                title = COALESCE(excluded.title, buy_panel_slots.title)
+            """,
+            (guild_id, slot, filter_mode, ids_json, title),
+        )
+        await self.db.commit()
+
+    async def ensure_buy_panel_slot(self, guild_id: int, slot: int) -> dict[str, Any]:
+        row = await self.get_buy_panel_slot(guild_id, slot)
+        if row:
+            return row
+        await self.set_buy_panel_slot(
+            guild_id, slot, filter_mode="all", category_ids=[], title=None
+        )
+        row = await self.get_buy_panel_slot(guild_id, slot)
+        return dict(row)  # type: ignore[arg-type]
 
     async def get_category_by_api_id(
         self, guild_id: int, api_id: int
