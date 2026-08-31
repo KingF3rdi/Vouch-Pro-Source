@@ -123,7 +123,7 @@ class BuyPanelView(discord.ui.View):
             custom_id=f"buy:start{suffix}",
             emoji="💳",
         )
-        buy_btn.callback = self._buy
+        buy_btn.callback = self._on_buy_click
         self.add_item(buy_btn)
 
         cart_btn = discord.ui.Button(
@@ -132,7 +132,7 @@ class BuyPanelView(discord.ui.View):
             custom_id=f"buy:cart{suffix}",
             emoji="🧺",
         )
-        cart_btn.callback = self._cart
+        cart_btn.callback = self._on_cart_click
         self.add_item(cart_btn)
 
         info_btn = discord.ui.Button(
@@ -141,8 +141,17 @@ class BuyPanelView(discord.ui.View):
             custom_id=f"buy:info{suffix}",
             emoji="ℹ️",
         )
-        info_btn.callback = self._info
+        info_btn.callback = self._on_info_click
         self.add_item(info_btn)
+
+    async def _on_buy_click(self, interaction: discord.Interaction) -> None:
+        await self._buy(interaction)
+
+    async def _on_cart_click(self, interaction: discord.Interaction) -> None:
+        await self._cart(interaction)
+
+    async def _on_info_click(self, interaction: discord.Interaction) -> None:
+        await self._info(interaction)
 
     async def _buy(self, interaction: discord.Interaction) -> None:
         try:
