@@ -157,7 +157,7 @@ async def get_panel_filter_for_slot(
     return PanelFilter.from_slot_row(row), row.get("title")
 
 
-async def register_buy_panel_views(bot: "ShopBot") -> None:
+async def register_buy_panel_views(bot: "ShopBot", *, force: bool = False) -> None:
     """Registriert persistente Buy-Panel-Views (allgemein + pro Kategorie + Slots 1/2)."""
     registered: set[str] = getattr(bot, "_buy_panel_registered", set())
 
@@ -165,7 +165,7 @@ async def register_buy_panel_views(bot: "ShopBot") -> None:
         from views.shop_views import BuyPanelView
 
         suffix = buy_panel_suffix(category_id)
-        if suffix in registered:
+        if not force and suffix in registered:
             return
         bot.add_view(BuyPanelView(bot, category_id=category_id))
         registered.add(suffix)
@@ -174,10 +174,11 @@ async def register_buy_panel_views(bot: "ShopBot") -> None:
         from views.shop_views import BuyPanelView
 
         suffix = buy_panel_slot_suffix(slot)
-        if suffix in registered:
+        if not force and suffix in registered:
             return
         bot.add_view(BuyPanelView(bot, panel_slot=slot))
         registered.add(suffix)
+        print(f"[BuyPanel] View registriert: slot {slot} (buy:start:slot:{slot})")
 
     _register(None)
     _register_slot(1)

@@ -112,6 +112,13 @@ class ShopBot(commands.Bot):
                             f"{result.get('categories', 0)} Kategorien, "
                             f"{result.get('items', 0)} Produkte"
                         )
+                from utils.panels import register_buy_panel_views
+
+                await register_buy_panel_views(self, force=True)
+        else:
+            from utils.panels import register_buy_panel_views
+
+            await register_buy_panel_views(self, force=True)
         print("Bot ist bereit.")
 
 

@@ -145,6 +145,11 @@ class BuyPanelView(discord.ui.View):
         self.add_item(info_btn)
 
     async def _on_buy_click(self, interaction: discord.Interaction) -> None:
+        custom_id = interaction.data.get("custom_id") if interaction.data else "?"
+        print(
+            f"[BuyPanel] Kaufen geklickt: {custom_id} "
+            f"(slot={self.panel_slot}, cat={self.category_id})"
+        )
         await self._buy(interaction)
 
     async def _on_cart_click(self, interaction: discord.Interaction) -> None:

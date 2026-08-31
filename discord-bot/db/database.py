@@ -129,6 +129,8 @@ class Database:
                 filter_mode TEXT NOT NULL DEFAULT 'all',
                 category_ids TEXT NOT NULL DEFAULT '[]',
                 title TEXT,
+                channel_id INTEGER,
+                message_id INTEGER,
                 PRIMARY KEY (guild_id, slot)
             );
             """
@@ -161,6 +163,8 @@ class Database:
             ("orders", "order_number", "INTEGER"),
             ("categories", "api_id", "INTEGER"),
             ("items", "api_id", "INTEGER"),
+            ("buy_panel_slots", "channel_id", "INTEGER"),
+            ("buy_panel_slots", "message_id", "INTEGER"),
         ):
             try:
                 await self.db.execute(
@@ -329,18 +333,41 @@ class Database:
         filter_mode: str,
         category_ids: list[int],
         title: str | None = None,
+        channel_id: int | None = None,
+        message_id: int | None = None,
     ) -> None:
         ids_json = json.dumps(sorted({int(i) for i in category_ids}))
+        existing = await self.get_buy_panel_slot(guild_id, slot)
+        if channel_id is None and existing:
+            channel_id = existing.get("channel_id")
+        if message_id is None and existing:
+            message_id = existing.get("message_id")
         await self.db.execute(
             """
-            INSERT INTO buy_panel_slots (guild_id, slot, filter_mode, category_ids, title)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO buy_panel_slots (guild_id, slot, filter_mode, category_ids, title, channel_id, message_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(guild_id, slot) DO UPDATE SET
                 filter_mode = excluded.filter_mode,
                 category_ids = excluded.category_ids,
-                title = COALESCE(excluded.title, buy_panel_slots.title)
+                title = COALESCE(excluded.title, buy_panel_slots.title),
+                channel_id = COALESCE(excluded.channel_id, buy_panel_slots.channel_id),
+                message_id = COALESCE(excluded.message_id, buy_panel_slots.message_id)
             """,
-            (guild_id, slot, filter_mode, ids_json, title),
+            (guild_id, slot, filter_mode, ids_json, title, channel_id, message_id),
+        )
+        await self.db.commit()
+
+    async def update_buy_panel_message(
+        self, guild_id: int, slot: int, *, channel_id: int, message_id: int
+    ) -> None:
+        await self.ensure_buy_panel_slot(guild_id, slot)
+        await self.db.execute(
+            """
+            UPDATE buy_panel_slots
+            SET channel_id = ?, message_id = ?
+            WHERE guild_id = ? AND slot = ?
+            """,
+            (channel_id, message_id, guild_id, slot),
         )
         await self.db.commit()
 
