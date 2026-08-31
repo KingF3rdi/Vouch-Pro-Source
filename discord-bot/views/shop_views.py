@@ -1,15 +1,39 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import discord
 
 from utils.embeds import cart_embed, error_embed, format_price, success_embed
 from utils.view_helpers import SafeView
+from utils.panels import PanelFilter, apply_panel_filter
 from config import DEFAULT_PAYEE, PAYMENT_NOTICE
 
 if TYPE_CHECKING:
     from bot import ShopBot
+
+
+@dataclass
+class BrowseContext:
+    """Kontext für Kategorie-Browsing (Panel-Slot oder Legacy-Kategorie)."""
+
+    panel_slot: int | None = None
+    category_id: int | None = None
+    panel_filter: PanelFilter | None = None
+
+    async def resolve_filter(self, bot: ShopBot, guild_id: int) -> PanelFilter:
+        if self.panel_filter is not None:
+            return self.panel_filter
+        if self.panel_slot is not None:
+            from utils.panels import get_panel_filter_for_slot
+
+            pf, _ = await get_panel_filter_for_slot(bot, guild_id, self.panel_slot)
+            self.panel_filter = pf
+            return pf
+        if self.category_id is not None:
+            return PanelFilter.single(self.category_id)
+        return PanelFilter.all_categories()
 
 
 class ShopPanelView(discord.ui.View):
@@ -45,13 +69,25 @@ class ShopPanelView(discord.ui.View):
 
 
 class BuyPanelView(discord.ui.View):
-    """Persistentes Buy-Panel — optional auf eine Kategorie beschränkt."""
+    """Persistentes Buy-Panel — Kategorie, Slot (1/2) oder alle Kategorien."""
 
-    def __init__(self, bot: ShopBot, category_id: int | None = None) -> None:
+    def __init__(
+        self,
+        bot: ShopBot,
+        category_id: int | None = None,
+        panel_slot: int | None = None,
+    ) -> None:
         super().__init__(timeout=None)
         self.bot = bot
         self.category_id = category_id
-        suffix = f":{category_id}" if category_id is not None else ":all"
+        self.panel_slot = panel_slot
+        if panel_slot is not None:
+            suffix = f":slot:{panel_slot}"
+        else:
+            suffix = f":{category_id}" if category_id is not None else ":all"
+        self.browse_ctx = BrowseContext(
+            panel_slot=panel_slot, category_id=category_id
+        )
 
         buy_btn = discord.ui.Button(
             label="Kaufen",
@@ -83,13 +119,15 @@ class BuyPanelView(discord.ui.View):
     async def _buy(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ) -> None:
-        await _browse_categories(self.bot, interaction, category_id=self.category_id)
+        await _browse_categories(self.bot, interaction, ctx=self.browse_ctx)
 
     async def _cart(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ) -> None:
         assert interaction.guild is not None
-        view = CartView(self.bot, interaction.user.id, interaction.guild.id)
+        view = CartView(
+            self.bot, interaction.user.id, interaction.guild.id, self.browse_ctx
+        )
         await view.refresh(interaction)
 
     async def _info(
@@ -121,6 +159,7 @@ async def _browse_categories(
     bot: ShopBot,
     interaction: discord.Interaction,
     category_id: int | None = None,
+    ctx: BrowseContext | None = None,
 ) -> None:
     from views.selectors import CategorySearchView
     from integrations.catalog_sync import maybe_sync_shop_catalog
@@ -128,22 +167,34 @@ async def _browse_categories(
     assert interaction.guild is not None
     await maybe_sync_shop_catalog(bot, interaction.guild.id)
 
-    if category_id is not None:
-        cat = await bot.db.get_category(category_id)
+    browse_ctx = ctx or BrowseContext(category_id=category_id)
+    if category_id is not None and ctx is None:
+        browse_ctx.category_id = category_id
+
+    panel_filter = await browse_ctx.resolve_filter(bot, interaction.guild.id)
+    cats = await bot.db.list_categories(interaction.guild.id)
+    filtered = apply_panel_filter(cats, panel_filter)
+
+    # Legacy / single-category: direkt zu Items
+    if panel_filter.mode == "single" and panel_filter.category_ids:
+        single_id = panel_filter.category_ids[0]
+        cat = await bot.db.get_category(single_id)
         if not cat or int(cat["guild_id"]) != interaction.guild.id:
             await interaction.response.send_message(
                 embed=error_embed("Kategorie nicht gefunden"),
                 ephemeral=True,
             )
             return
-        items = await bot.db.list_items(interaction.guild.id, category_id=category_id)
+        items = await bot.db.list_items(
+            interaction.guild.id, category_id=single_id
+        )
         if not items:
             await interaction.response.send_message(
                 embed=error_embed("Leer", "Diese Kategorie hat keine Items."),
                 ephemeral=True,
             )
             return
-        view = ItemSelectView(bot, items, cat["name"])
+        view = ItemSelectView(bot, items, cat["name"], browse_ctx)
         await interaction.response.send_message(
             f"**{cat['name']}** — Item wählen:",
             view=view,
@@ -152,12 +203,37 @@ async def _browse_categories(
         view.message = await interaction.original_response()
         return
 
-    cats = await bot.db.list_categories(interaction.guild.id)
-    if not cats:
+    if not filtered:
         await interaction.response.send_message(
-            embed=error_embed("Shop leer", "Es gibt noch keine Kategorien."),
+            embed=error_embed(
+                "Shop leer",
+                "Für dieses Panel sind keine Kategorien verfügbar. "
+                "Admin: `/buypanelconfig`.",
+            ),
             ephemeral=True,
         )
+        return
+
+    # Genau eine Kategorie im Filter → direkt Items
+    if len(filtered) == 1:
+        cat = filtered[0]
+        category_id_one = int(cat["id"])
+        items = await bot.db.list_items(
+            interaction.guild.id, category_id=category_id_one
+        )
+        if not items:
+            await interaction.response.send_message(
+                embed=error_embed("Leer", "Diese Kategorie hat keine Items."),
+                ephemeral=True,
+            )
+            return
+        view = ItemSelectView(bot, items, cat["name"], browse_ctx)
+        await interaction.response.send_message(
+            f"**{cat['name']}** — Item wählen:",
+            view=view,
+            ephemeral=True,
+        )
+        view.message = await interaction.original_response()
         return
 
     async def on_pick(inter: discord.Interaction, cat: dict) -> None:
@@ -170,7 +246,7 @@ async def _browse_categories(
                 ephemeral=True,
             )
             return
-        view = ItemSelectView(bot, items, cat["name"])
+        view = ItemSelectView(bot, items, cat["name"], browse_ctx)
         await inter.response.send_message(
             f"**{cat['name']}** — Item wählen:",
             view=view,
@@ -181,7 +257,7 @@ async def _browse_categories(
     view = CategorySearchView(
         bot,
         interaction.guild.id,
-        cats,
+        filtered,
         on_pick=on_pick,
         placeholder="Kategorie suchen / wählen…",
     )
@@ -277,11 +353,18 @@ class CategorySelectView(discord.ui.View):
 class ItemSelectView(SafeView):
     """Mehrfachauswahl von Items (Checkboxen) mit Bestätigen + Zurück-Button."""
 
-    def __init__(self, bot: ShopBot, items: list[dict], category_name: str) -> None:
+    def __init__(
+        self,
+        bot: ShopBot,
+        items: list[dict],
+        category_name: str,
+        browse_ctx: BrowseContext | None = None,
+    ) -> None:
         super().__init__(timeout=180)
         self.bot = bot
         self.items = items
         self.category_name = category_name
+        self.browse_ctx = browse_ctx or BrowseContext()
         self.selected_ids: set[int] = set()
         self._build()
 
@@ -378,7 +461,7 @@ class ItemSelectView(SafeView):
             )
             return
 
-        view = PostAddToCartView(self.bot)
+        view = PostAddToCartView(self.bot, self.browse_ctx)
         await interaction.response.send_message(
             embed=success_embed(
                 "Zum Warenkorb hinzugefügt",
@@ -393,12 +476,14 @@ class ItemSelectView(SafeView):
 
     async def _back(self, interaction: discord.Interaction) -> None:
         await self._add_selected(interaction)
-        await _browse_categories(self.bot, interaction)
+        await _browse_categories(self.bot, interaction, ctx=self.browse_ctx)
 
     async def _open_cart(self, interaction: discord.Interaction) -> None:
         await self._add_selected(interaction)
         assert interaction.guild is not None
-        view = CartView(self.bot, interaction.user.id, interaction.guild.id)
+        view = CartView(
+            self.bot, interaction.user.id, interaction.guild.id, self.browse_ctx
+        )
         await view.refresh(interaction)
 
     async def _buy(self, interaction: discord.Interaction) -> None:
@@ -409,9 +494,12 @@ class ItemSelectView(SafeView):
 class PostAddToCartView(SafeView):
     """Buttons nach dem Hinzufügen: weiter einkaufen, Warenkorb oder kaufen."""
 
-    def __init__(self, bot: ShopBot) -> None:
+    def __init__(
+        self, bot: ShopBot, browse_ctx: BrowseContext | None = None
+    ) -> None:
         super().__init__(timeout=180)
         self.bot = bot
+        self.browse_ctx = browse_ctx or BrowseContext()
 
     @discord.ui.button(
         label="Weiter einkaufen", style=discord.ButtonStyle.primary, emoji="🛍️"
@@ -419,7 +507,7 @@ class PostAddToCartView(SafeView):
     async def continue_shopping(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ) -> None:
-        await _browse_categories(self.bot, interaction)
+        await _browse_categories(self.bot, interaction, ctx=self.browse_ctx)
 
     @discord.ui.button(
         label="Warenkorb", style=discord.ButtonStyle.secondary, emoji="🧺"
@@ -428,7 +516,9 @@ class PostAddToCartView(SafeView):
         self, interaction: discord.Interaction, button: discord.ui.Button
     ) -> None:
         assert interaction.guild is not None
-        view = CartView(self.bot, interaction.user.id, interaction.guild.id)
+        view = CartView(
+            self.bot, interaction.user.id, interaction.guild.id, self.browse_ctx
+        )
         await view.refresh(interaction)
 
     @discord.ui.button(
@@ -467,11 +557,18 @@ class AddToCartView(SafeView):
 
 
 class CartView(SafeView):
-    def __init__(self, bot: ShopBot, user_id: int, guild_id: int) -> None:
+    def __init__(
+        self,
+        bot: ShopBot,
+        user_id: int,
+        guild_id: int,
+        browse_ctx: BrowseContext | None = None,
+    ) -> None:
         super().__init__(timeout=180)
         self.bot = bot
         self.user_id = user_id
         self.guild_id = guild_id
+        self.browse_ctx = browse_ctx or BrowseContext()
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.user_id:
@@ -551,7 +648,7 @@ class CartView(SafeView):
         )
 
     async def _continue(self, interaction: discord.Interaction) -> None:
-        await _browse_categories(self.bot, interaction)
+        await _browse_categories(self.bot, interaction, ctx=self.browse_ctx)
 
     async def _buy(self, interaction: discord.Interaction) -> None:
         await start_checkout(self.bot, interaction)
