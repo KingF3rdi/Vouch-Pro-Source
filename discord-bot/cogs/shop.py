@@ -511,11 +511,11 @@ class ShopCog(commands.Cog):
             from utils.embeds import error_embed
 
             hint = (
-                "Keine Kategorien auf der Website gefunden."
-                if shop_api.enabled
-                else "Lege Kategorien an (`/adminpanel` oder `/category add`) "
-                "oder konfiguriere `SHOP_API_URL` + `BOT_API_KEY`."
+                "Keine Kategorien gefunden. "
+                "Lege welche an mit `/adminpanel` oder `/category add`."
             )
+            if shop_api.enabled:
+                hint += " Optional: `/syncshop` für Website-Sync."
             await interaction.response.send_message(
                 embed=error_embed("Keine Kategorien", hint),
                 ephemeral=True,
@@ -588,7 +588,7 @@ class ShopCog(commands.Cog):
         else:
             embed.add_field(
                 name="Hinweis",
-                value="Noch keine Kategorien — Website-Sync mit `/syncshop` oder Admin-Panel.",
+                value="Noch keine Kategorien — `/adminpanel` oder `/category add`.",
                 inline=False,
             )
         await interaction.response.send_message(

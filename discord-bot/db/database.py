@@ -784,6 +784,23 @@ class Database:
         )
         return dict(row) if row else None
 
+    async def get_unused_vouch_order_for_user(
+        self, user_id: int, guild_id: int | None = None
+    ) -> dict[str, Any] | None:
+        """Offene Vouch-Bestellung — optional auf eine Guild beschränkt."""
+        if guild_id is not None:
+            return await self.get_unused_vouch_order(guild_id, user_id)
+        row = await self.fetchone(
+            """
+            SELECT * FROM orders
+            WHERE user_id = ? AND status = 'completed' AND vouch_used = 0
+            ORDER BY completed_at ASC, id ASC
+            LIMIT 1
+            """,
+            (user_id,),
+        )
+        return dict(row) if row else None
+
     async def mark_vouch_used(self, order_id: int) -> None:
         await self.update_order(order_id, vouch_used=1)
 
