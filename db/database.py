@@ -139,6 +139,22 @@ class Database:
 
     async def _ensure_columns(self) -> None:
         """Adds columns for DBs created before pack_file existed."""
+        try:
+            await self.db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS buy_panel_slots (
+                    guild_id INTEGER NOT NULL,
+                    slot INTEGER NOT NULL CHECK (slot IN (1, 2)),
+                    filter_mode TEXT NOT NULL DEFAULT 'all',
+                    category_ids TEXT NOT NULL DEFAULT '[]',
+                    title TEXT,
+                    PRIMARY KEY (guild_id, slot)
+                )
+                """
+            )
+            await self.db.commit()
+        except Exception:
+            pass
         for table, column, typedef in (
             ("items", "pack_file", "TEXT NOT NULL DEFAULT ''"),
             ("order_items", "pack_file", "TEXT NOT NULL DEFAULT ''"),
@@ -331,12 +347,14 @@ class Database:
     async def ensure_buy_panel_slot(self, guild_id: int, slot: int) -> dict[str, Any]:
         row = await self.get_buy_panel_slot(guild_id, slot)
         if row:
-            return row
+            return dict(row)
         await self.set_buy_panel_slot(
             guild_id, slot, filter_mode="all", category_ids=[], title=None
         )
         row = await self.get_buy_panel_slot(guild_id, slot)
-        return dict(row)  # type: ignore[arg-type]
+        if not row:
+            raise RuntimeError(f"buy_panel_slots konnte nicht erstellt werden (slot {slot})")
+        return dict(row)
 
     async def get_category_by_api_id(
         self, guild_id: int, api_id: int
