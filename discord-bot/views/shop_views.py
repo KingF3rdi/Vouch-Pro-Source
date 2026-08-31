@@ -26,14 +26,42 @@ class BrowseContext:
         if self.panel_filter is not None:
             return self.panel_filter
         if self.panel_slot is not None:
-            from utils.panels import get_panel_filter_for_slot
+            try:
+                from utils.panels import get_panel_filter_for_slot
 
-            pf, _ = await get_panel_filter_for_slot(bot, guild_id, self.panel_slot)
+                pf, _ = await get_panel_filter_for_slot(
+                    bot, guild_id, self.panel_slot
+                )
+            except Exception as exc:
+                print(
+                    f"[BuyPanel] Slot {self.panel_slot} Filter laden fehlgeschlagen: {exc!r}"
+                )
+                pf = PanelFilter.all_categories()
             self.panel_filter = pf
             return pf
         if self.category_id is not None:
             return PanelFilter.single(self.category_id)
         return PanelFilter.all_categories()
+
+
+async def _reply_ephemeral(
+    interaction: discord.Interaction,
+    *,
+    content: str | None = None,
+    embed: discord.Embed | None = None,
+    view: discord.ui.View | None = None,
+) -> discord.Message:
+    kwargs: dict = {"ephemeral": True}
+    if content is not None:
+        kwargs["content"] = content
+    if embed is not None:
+        kwargs["embed"] = embed
+    if view is not None:
+        kwargs["view"] = view
+    if interaction.response.is_done():
+        return await interaction.followup.send(**kwargs, wait=True)
+    await interaction.response.send_message(**kwargs)
+    return await interaction.original_response()
 
 
 class ShopPanelView(discord.ui.View):
@@ -116,23 +144,46 @@ class BuyPanelView(discord.ui.View):
         info_btn.callback = self._info
         self.add_item(info_btn)
 
-    async def _buy(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ) -> None:
-        await _browse_categories(self.bot, interaction, ctx=self.browse_ctx)
+    async def _buy(self, interaction: discord.Interaction) -> None:
+        try:
+            await _browse_categories(self.bot, interaction, ctx=self.browse_ctx)
+        except Exception as exc:
+            print(
+                f"[BuyPanel] Kaufen fehlgeschlagen "
+                f"(slot={self.panel_slot}, cat={self.category_id}): {exc!r}"
+            )
+            await _reply_ephemeral(
+                interaction,
+                embed=error_embed(
+                    "Fehler",
+                    "Kaufen konnte nicht gestartet werden. "
+                    "Bitte Bot neu starten oder Admin kontaktieren.",
+                ),
+            )
 
-    async def _cart(
-        self, interaction: discord.Interaction, button: discord.ui.Button
+    async def on_error(
+        self,
+        interaction: discord.Interaction,
+        error: Exception,
+        item: discord.ui.Item,
     ) -> None:
+        print(f"[BuyPanel] View-Fehler ({getattr(item, 'custom_id', item)}): {error!r}")
+        try:
+            await _reply_ephemeral(
+                interaction,
+                embed=error_embed("Fehler", "Diese Aktion ist fehlgeschlagen."),
+            )
+        except discord.HTTPException:
+            pass
+
+    async def _cart(self, interaction: discord.Interaction) -> None:
         assert interaction.guild is not None
         view = CartView(
             self.bot, interaction.user.id, interaction.guild.id, self.browse_ctx
         )
         await view.refresh(interaction)
 
-    async def _info(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ) -> None:
+    async def _info(self, interaction: discord.Interaction) -> None:
         assert interaction.guild is not None
         settings = await self.bot.db.ensure_guild(interaction.guild.id)
         name = settings.get("payee_a_label") or DEFAULT_PAYEE
@@ -164,8 +215,20 @@ async def _browse_categories(
     from views.selectors import CategorySearchView
     from integrations.catalog_sync import maybe_sync_shop_catalog
 
-    assert interaction.guild is not None
-    await maybe_sync_shop_catalog(bot, interaction.guild.id)
+    if interaction.guild is None:
+        await _reply_ephemeral(
+            interaction,
+            embed=error_embed("Nur auf dem Server", "Bitte im Server-Channel kaufen."),
+        )
+        return
+
+    if not interaction.response.is_done():
+        await interaction.response.defer(ephemeral=True)
+
+    try:
+        await maybe_sync_shop_catalog(bot, interaction.guild.id)
+    except Exception as exc:
+        print(f"[browse] Katalog-Sync fehlgeschlagen: {exc!r}")
 
     browse_ctx = ctx or BrowseContext(category_id=category_id)
     if category_id is not None and ctx is None:
@@ -180,37 +243,37 @@ async def _browse_categories(
         single_id = panel_filter.category_ids[0]
         cat = await bot.db.get_category(single_id)
         if not cat or int(cat["guild_id"]) != interaction.guild.id:
-            await interaction.response.send_message(
+            await _reply_ephemeral(
+                interaction,
                 embed=error_embed("Kategorie nicht gefunden"),
-                ephemeral=True,
             )
             return
         items = await bot.db.list_items(
             interaction.guild.id, category_id=single_id
         )
         if not items:
-            await interaction.response.send_message(
+            await _reply_ephemeral(
+                interaction,
                 embed=error_embed("Leer", "Diese Kategorie hat keine Items."),
-                ephemeral=True,
             )
             return
         view = ItemSelectView(bot, items, cat["name"], browse_ctx)
-        await interaction.response.send_message(
-            f"**{cat['name']}** — Item wählen:",
+        msg = await _reply_ephemeral(
+            interaction,
+            content=f"**{cat['name']}** — Item wählen:",
             view=view,
-            ephemeral=True,
         )
-        view.message = await interaction.original_response()
+        view.message = msg
         return
 
     if not filtered:
-        await interaction.response.send_message(
+        await _reply_ephemeral(
+            interaction,
             embed=error_embed(
                 "Shop leer",
                 "Für dieses Panel sind keine Kategorien verfügbar. "
-                "Admin: `/buypanelconfig`.",
+                "Admin: `/buypanelconfig` oder `/syncshop`.",
             ),
-            ephemeral=True,
         )
         return
 
@@ -222,18 +285,18 @@ async def _browse_categories(
             interaction.guild.id, category_id=category_id_one
         )
         if not items:
-            await interaction.response.send_message(
+            await _reply_ephemeral(
+                interaction,
                 embed=error_embed("Leer", "Diese Kategorie hat keine Items."),
-                ephemeral=True,
             )
             return
         view = ItemSelectView(bot, items, cat["name"], browse_ctx)
-        await interaction.response.send_message(
-            f"**{cat['name']}** — Item wählen:",
+        msg = await _reply_ephemeral(
+            interaction,
+            content=f"**{cat['name']}** — Item wählen:",
             view=view,
-            ephemeral=True,
         )
-        view.message = await interaction.original_response()
+        view.message = msg
         return
 
     async def on_pick(inter: discord.Interaction, cat: dict) -> None:
@@ -261,10 +324,10 @@ async def _browse_categories(
         on_pick=on_pick,
         placeholder="Kategorie suchen / wählen…",
     )
-    await interaction.response.send_message(
+    await _reply_ephemeral(
+        interaction,
         content="Wähle eine Kategorie (Suche möglich):",
         view=view,
-        ephemeral=True,
     )
 
 
