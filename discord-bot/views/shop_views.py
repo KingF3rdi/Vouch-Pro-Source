@@ -144,13 +144,14 @@ class BuyPanelView(discord.ui.View):
         info_btn.callback = self._info
         self.add_item(info_btn)
 
-    async def _buy(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ) -> None:
+    async def _buy(self, interaction: discord.Interaction) -> None:
         try:
             await _browse_categories(self.bot, interaction, ctx=self.browse_ctx)
         except Exception as exc:
-            print(f"[BuyPanel] Kaufen fehlgeschlagen ({button.custom_id}): {exc!r}")
+            print(
+                f"[BuyPanel] Kaufen fehlgeschlagen "
+                f"(slot={self.panel_slot}, cat={self.category_id}): {exc!r}"
+            )
             await _reply_ephemeral(
                 interaction,
                 embed=error_embed(
@@ -175,18 +176,14 @@ class BuyPanelView(discord.ui.View):
         except discord.HTTPException:
             pass
 
-    async def _cart(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ) -> None:
+    async def _cart(self, interaction: discord.Interaction) -> None:
         assert interaction.guild is not None
         view = CartView(
             self.bot, interaction.user.id, interaction.guild.id, self.browse_ctx
         )
         await view.refresh(interaction)
 
-    async def _info(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ) -> None:
+    async def _info(self, interaction: discord.Interaction) -> None:
         assert interaction.guild is not None
         settings = await self.bot.db.ensure_guild(interaction.guild.id)
         name = settings.get("payee_a_label") or DEFAULT_PAYEE
