@@ -93,6 +93,57 @@ class ShopBot(commands.Bot):
         await self.db.close()
         await super().close()
 
+    async def on_interaction(self, interaction: discord.Interaction) -> None:
+        """Fallback für Buy-Panel-Buttons wenn keine persistente View registriert ist."""
+        if interaction.type != discord.InteractionType.component:
+            return
+        data = interaction.data or {}
+        custom_id = data.get("custom_id") or ""
+        if not custom_id.startswith("buy:"):
+            return
+
+        component_type = data.get("component_type")
+        key = (component_type, custom_id)
+        store = self._connection._view_store
+        message_id = interaction.message.id if interaction.message else None
+        if message_id is not None and store._views.get(message_id, {}).get(key):
+            return
+        if store._views.get(None, {}).get(key):
+            return
+
+        from views.shop_views import handle_buy_panel_interaction
+
+        try:
+            await handle_buy_panel_interaction(self, interaction)
+        except Exception as exc:
+            import traceback
+
+            print(f"[BuyPanel] Fallback-Handler fehlgeschlagen ({custom_id}): {exc!r}")
+            traceback.print_exc()
+            from utils.embeds import error_embed
+
+            try:
+                if interaction.response.is_done():
+                    await interaction.followup.send(
+                        embed=error_embed(
+                            "Fehler",
+                            "Diese Aktion ist fehlgeschlagen. "
+                            "Bitte `/panelsetup` oder Bot neu starten.",
+                        ),
+                        ephemeral=True,
+                    )
+                else:
+                    await interaction.response.send_message(
+                        embed=error_embed(
+                            "Fehler",
+                            "Diese Aktion ist fehlgeschlagen. "
+                            "Bitte `/panelsetup` oder Bot neu starten.",
+                        ),
+                        ephemeral=True,
+                    )
+            except discord.HTTPException:
+                pass
+
     async def on_ready(self) -> None:
         print(f"Eingeloggt als {self.user} (ID: {self.user.id})")  # type: ignore[union-attr]
         if config.GUILD_ID:

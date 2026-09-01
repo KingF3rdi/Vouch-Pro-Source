@@ -7,7 +7,7 @@ import discord
 
 from utils.embeds import cart_embed, error_embed, format_price, success_embed
 from utils.view_helpers import SafeView
-from utils.panels import PanelFilter, apply_panel_filter, parse_buy_custom_id
+from utils.panels import PanelFilter, apply_panel_filter, parse_buy_custom_id, parse_buy_panel_custom_id
 from config import DEFAULT_PAYEE, PAYMENT_NOTICE
 
 if TYPE_CHECKING:
@@ -162,6 +162,8 @@ class BuyPanelView(discord.ui.View):
             self.browse_ctx.panel_filter = None
 
     async def _on_buy_click(self, interaction: discord.Interaction) -> None:
+        if not interaction.response.is_done():
+            await interaction.response.defer(ephemeral=True)
         self._sync_ctx_from_interaction(interaction)
         custom_id = interaction.data.get("custom_id") if interaction.data else "?"
         print(
@@ -171,10 +173,14 @@ class BuyPanelView(discord.ui.View):
         await self._buy(interaction)
 
     async def _on_cart_click(self, interaction: discord.Interaction) -> None:
+        if not interaction.response.is_done():
+            await interaction.response.defer(ephemeral=True)
         self._sync_ctx_from_interaction(interaction)
         await self._cart(interaction)
 
     async def _on_info_click(self, interaction: discord.Interaction) -> None:
+        if not interaction.response.is_done():
+            await interaction.response.defer(ephemeral=True)
         self._sync_ctx_from_interaction(interaction)
         await self._info(interaction)
 
@@ -215,8 +221,12 @@ class BuyPanelView(discord.ui.View):
             pass
 
     async def _cart(self, interaction: discord.Interaction) -> None:
-        assert interaction.guild is not None
-        self._sync_ctx_from_interaction(interaction)
+        if interaction.guild is None:
+            await _reply_ephemeral(
+                interaction,
+                embed=error_embed("Nur auf dem Server", "Bitte im Server-Channel."),
+            )
+            return
         ctx = BrowseContext(
             panel_slot=self.panel_slot,
             category_id=self.category_id,
@@ -227,14 +237,19 @@ class BuyPanelView(discord.ui.View):
         await view.refresh(interaction)
 
     async def _info(self, interaction: discord.Interaction) -> None:
-        assert interaction.guild is not None
+        if interaction.guild is None:
+            await _reply_ephemeral(
+                interaction,
+                embed=error_embed("Nur auf dem Server", "Bitte im Server-Channel."),
+            )
+            return
         settings = await self.bot.db.ensure_guild(interaction.guild.id)
         name = settings.get("payee_a_label") or DEFAULT_PAYEE
         details = (settings.get("payee_a_details") or "").strip()
         pay_line = f"4. **Gesamten Betrag** an **{name}** überweisen"
         if details:
             pay_line += f"\n{details}"
-        await interaction.response.send_message(
+        await interaction.followup.send(
             embed=success_embed(
                 "So funktioniert der Kauf",
                 "1. **Kaufen** → Kategorie & Item wählen\n"
@@ -247,6 +262,31 @@ class BuyPanelView(discord.ui.View):
             ),
             ephemeral=True,
         )
+
+
+async def handle_buy_panel_interaction(
+    bot: "ShopBot", interaction: discord.Interaction
+) -> bool:
+    """Fallback-Handler wenn persistente View nicht registriert ist."""
+    if interaction.type != discord.InteractionType.component:
+        return False
+    data = interaction.data or {}
+    custom_id = data.get("custom_id") or ""
+    if not custom_id.startswith("buy:"):
+        return False
+    action, slot, category_id = parse_buy_panel_custom_id(custom_id)
+    if not action:
+        return False
+    view = BuyPanelView(bot, category_id=category_id, panel_slot=slot)
+    if action == "start":
+        await view._on_buy_click(interaction)
+    elif action == "cart":
+        await view._on_cart_click(interaction)
+    elif action == "info":
+        await view._on_info_click(interaction)
+    else:
+        return False
+    return True
 
 
 async def _browse_categories(

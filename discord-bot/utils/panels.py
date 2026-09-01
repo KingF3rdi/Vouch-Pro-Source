@@ -104,6 +104,29 @@ def parse_buy_custom_id(custom_id: str | None) -> tuple[int | None, int | None]:
     return None, None
 
 
+def parse_buy_panel_custom_id(
+    custom_id: str | None,
+) -> tuple[str | None, int | None, int | None]:
+    """Liest Aktion (start/cart/info), Slot und Legacy-Kategorie aus custom_id."""
+    if not custom_id or not custom_id.startswith("buy:"):
+        return None, None, None
+    parts = custom_id.split(":")
+    action = parts[1] if len(parts) > 1 else None
+    if len(parts) >= 4 and parts[2] == "slot":
+        try:
+            return action, int(parts[3]), None
+        except ValueError:
+            return action, None, None
+    if len(parts) >= 3 and parts[2] == "all":
+        return action, None, None
+    if len(parts) >= 3:
+        try:
+            return action, None, int(parts[2])
+        except ValueError:
+            return action, None, None
+    return action, None, None
+
+
 def build_buy_panel_embed(
     *,
     categories: list[dict],
