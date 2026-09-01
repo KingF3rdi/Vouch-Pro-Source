@@ -45,12 +45,12 @@ python bot.py
 | `/item add/list/delete` | Items (Preis, Pack-DM, Pack-Link, Autorole) |
 | `/ticketlimit` | Max. offene Kauf-Tickets |
 | `/shoppanel` | Shop-Panel posten |
-| `/buypanel` | Buy-Panel posten (`slot:1` oder `slot:2`) |
+| `/buypanel` | Buy Panel 1 oder 2 posten (**slot Pflicht**) |
 | `/buypanelboth` | Buy Panel 1 und 2 posten/aktualisieren |
-| `/buypanelconfig` | Panel 1/2 konfigurieren (Kategorien / alle außer) |
+| `/buypanelconfig` | Kategorien für Panel 1/2 einstellen (interaktive Auswahl) |
 | `/buypanelstatus` | Panel-Konfiguration anzeigen |
 | `/buypanelrefresh` | Gespeicherte Panels aktualisieren |
-| `/panelsetup` | Beide Panels posten + Status |
+| `/panelsetup` | **Empfohlen:** Beide Panels posten + Status |
 | `/syncshop` | Kategorien und Produkte manuell von der Website synchronisieren |
 | `/cart` | Warenkorb öffnen |
 | `/vouch` | Einmalig pro bestätigtem Kauf |

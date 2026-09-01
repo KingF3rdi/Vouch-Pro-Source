@@ -215,6 +215,8 @@ class PanelCategoryConfigView(SafeView):
             )
             return
         self.stop()
+        if not interaction.response.is_done():
+            await interaction.response.defer(ephemeral=True)
         await self.on_confirm(interaction, self._selected_categories())
 
     async def _cancel(self, interaction: discord.Interaction) -> None:
