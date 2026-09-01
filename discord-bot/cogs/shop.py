@@ -218,11 +218,19 @@ class ShopCog(commands.Cog):
             header = (
                 f"**{mode_label}** — Buy Panel **{slot}**\n"
                 f"{action}\n"
-                "Im Dropdown **mehrere** Kategorien wählen (erneut klicken = abwählen). "
-                "Mit **Suchen** weitere finden. Danach **Speichern**."
+                "Oben **hinzufügen** (Häkchen setzen/entfernen), unten **abwählen**, "
+                "oder **Auswahl leeren**. Danach **Speichern**."
             )
             if title:
                 header += f"\n\n_Titel: {title}_"
+
+            row = await self.bot.db.ensure_buy_panel_slot(interaction.guild.id, slot)
+            pf = PanelFilter.from_slot_row(row)
+            initial_ids = (
+                set(pf.category_ids)
+                if pf.mode == filter_mode and pf.category_ids
+                else set()
+            )
 
             async def on_confirm(
                 inter: discord.Interaction, selected: list[dict]
@@ -236,7 +244,8 @@ class ShopCog(commands.Cog):
                 cats,
                 on_confirm=on_confirm,
                 header=header,
-                placeholder="Eine oder mehrere Kategorien wählen…",
+                placeholder="Kategorien hinzufügen…",
+                initial_selected_ids=initial_ids,
             )
             await interaction.response.send_message(
                 content=view._status_text(),

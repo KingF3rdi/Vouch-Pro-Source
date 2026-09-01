@@ -269,8 +269,9 @@ class CategoryMultiSelectView(SafeView):
         *,
         on_confirm: CategoryMultiConfirmCallback,
         header: str = "Kategorien wählen",
-        placeholder: str = "Kategorien auswählen…",
+        placeholder: str = "Kategorien hinzufügen…",
         min_selected: int = 1,
+        initial_selected_ids: set[int] | list[int] | None = None,
         timeout: float = 300,
     ) -> None:
         super().__init__(timeout=timeout)
@@ -279,7 +280,9 @@ class CategoryMultiSelectView(SafeView):
         self.header = header
         self.placeholder = placeholder
         self.min_selected = min_selected
-        self.selected_ids: set[int] = set()
+        self.selected_ids: set[int] = {
+            int(i) for i in (initial_selected_ids or ())
+        }
         self.message: discord.Message | None = None
         self._visible_categories = categories[:25]
         self._rebuild(self._visible_categories)
@@ -335,21 +338,46 @@ class CategoryMultiSelectView(SafeView):
             select = discord.ui.Select(
                 placeholder=self.placeholder,
                 options=safe_options,
-                min_values=1,
+                min_values=0,
                 max_values=max_vals,
                 row=0,
             )
-            select.callback = self._selected  # type: ignore[method-assign]
+            select.callback = self._add_selected  # type: ignore[method-assign]
             self.add_item(select)
 
+        if self.selected_ids:
+            remove_options: list[discord.SelectOption] = []
+            by_id = {int(c["id"]): c for c in self.all_categories}
+            for cat_id in sorted(self.selected_ids):
+                cat = by_id.get(cat_id)
+                if not cat:
+                    continue
+                remove_options.append(
+                    discord.SelectOption(
+                        label=f"✖ {cat['name']}"[:100],
+                        value=str(cat_id),
+                        description="Aus Auswahl entfernen",
+                    )
+                )
+            if remove_options:
+                remove_select = discord.ui.Select(
+                    placeholder="Kategorie abwählen…",
+                    options=remove_options[:25],
+                    min_values=1,
+                    max_values=1,
+                    row=1,
+                )
+                remove_select.callback = self._remove_selected  # type: ignore[method-assign]
+                self.add_item(remove_select)
+
         search_btn = discord.ui.Button(
-            label="Suchen…", style=discord.ButtonStyle.secondary, emoji="🔍", row=1
+            label="Suchen…", style=discord.ButtonStyle.secondary, emoji="🔍", row=2
         )
         search_btn.callback = self._open_search  # type: ignore[method-assign]
         self.add_item(search_btn)
 
         show_all = discord.ui.Button(
-            label="Alle anzeigen", style=discord.ButtonStyle.secondary, row=1
+            label="Alle anzeigen", style=discord.ButtonStyle.secondary, row=2
         )
         show_all.callback = self._show_all  # type: ignore[method-assign]
         self.add_item(show_all)
@@ -357,7 +385,7 @@ class CategoryMultiSelectView(SafeView):
         clear_btn = discord.ui.Button(
             label="Auswahl leeren",
             style=discord.ButtonStyle.secondary,
-            row=2,
+            row=3,
             disabled=not self.selected_ids,
         )
         clear_btn.callback = self._clear_selection  # type: ignore[method-assign]
@@ -366,28 +394,41 @@ class CategoryMultiSelectView(SafeView):
         save_btn = discord.ui.Button(
             label="Speichern",
             style=discord.ButtonStyle.success,
-            row=2,
+            row=3,
             disabled=len(self.selected_ids) < self.min_selected,
         )
         save_btn.callback = self._save  # type: ignore[method-assign]
         self.add_item(save_btn)
 
         cancel_btn = discord.ui.Button(
-            label="Abbrechen", style=discord.ButtonStyle.danger, row=2
+            label="Abbrechen", style=discord.ButtonStyle.danger, row=3
         )
         cancel_btn.callback = self._cancel  # type: ignore[method-assign]
         self.add_item(cancel_btn)
 
-    async def _selected(self, interaction: discord.Interaction) -> None:
+    async def _add_selected(self, interaction: discord.Interaction) -> None:
         select: discord.ui.Select = next(
-            c for c in self.children if isinstance(c, discord.ui.Select)
+            c
+            for c in self.children
+            if isinstance(c, discord.ui.Select) and c.placeholder == self.placeholder
         )
-        for val in select.values:
-            cat_id = int(val)
-            if cat_id in self.selected_ids:
-                self.selected_ids.discard(cat_id)
-            else:
-                self.selected_ids.add(cat_id)
+        visible_ids = {int(c["id"]) for c in self._visible_categories}
+        chosen = {int(v) for v in select.values}
+        self.selected_ids = (self.selected_ids - visible_ids) | chosen
+        self.message = interaction.message
+        self._rebuild(self._visible_categories)
+        await interaction.response.edit_message(
+            content=self._status_text(), view=self
+        )
+
+    async def _remove_selected(self, interaction: discord.Interaction) -> None:
+        select: discord.ui.Select = next(
+            c
+            for c in self.children
+            if isinstance(c, discord.ui.Select)
+            and c.placeholder == "Kategorie abwählen…"
+        )
+        self.selected_ids.discard(int(select.values[0]))
         self.message = interaction.message
         self._rebuild(self._visible_categories)
         await interaction.response.edit_message(
