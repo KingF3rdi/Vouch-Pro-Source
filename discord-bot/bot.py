@@ -29,12 +29,13 @@ class ShopBot(commands.Bot):
             await self.load_extension(ext)
 
         # Persistent views
-        from utils.panels import register_buy_panel_views
+        from utils.panels import register_slot_panel_views, register_category_panel_views
         from views.shop_views import ShopPanelView
         from views.ticket_views import TicketOrderView
 
         self.add_view(ShopPanelView(self))
-        await register_buy_panel_views(self)
+        register_slot_panel_views(self)
+        await register_category_panel_views(self)
         self.add_view(TicketOrderView(self))
 
         try:
@@ -43,6 +44,9 @@ class ShopBot(commands.Bot):
                 self.tree.copy_global_to(guild=guild)
                 await self.tree.sync(guild=guild)
                 print(f"Slash-Commands synced für Guild {config.GUILD_ID}")
+                # Global sync damit /vouch auch per DM funktioniert
+                await self.tree.sync()
+                print("Slash-Commands global synced (DM: /vouch)")
             else:
                 await self.tree.sync()
                 print("Slash-Commands global synced")
@@ -112,6 +116,27 @@ class ShopBot(commands.Bot):
                             f"{result.get('categories', 0)} Kategorien, "
                             f"{result.get('items', 0)} Produkte"
                         )
+                from utils.panels import (
+                    refresh_all_saved_buy_panels,
+                    register_category_panel_views,
+                    register_slot_panel_views,
+                )
+
+                register_slot_panel_views(self, force=True)
+                await register_category_panel_views(self, force=True)
+                for line in await refresh_all_saved_buy_panels(self, config.GUILD_ID):
+                    print(f"[BuyPanel] {line}")
+        else:
+            from utils.panels import (
+                refresh_all_saved_buy_panels,
+                register_category_panel_views,
+                register_slot_panel_views,
+            )
+
+            register_slot_panel_views(self, force=True)
+            await register_category_panel_views(self, force=True)
+            for line in await refresh_all_saved_buy_panels(self):
+                print(f"[BuyPanel] {line}")
         print("Bot ist bereit.")
 
 

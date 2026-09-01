@@ -84,6 +84,26 @@ def buy_panel_slot_suffix(slot: int) -> str:
     return f"slot:{slot}"
 
 
+def parse_buy_custom_id(custom_id: str | None) -> tuple[int | None, int | None]:
+    """Liest Panel-Slot oder Legacy-Kategorie aus einem Buy-Button-custom_id."""
+    if not custom_id or not custom_id.startswith("buy:"):
+        return None, None
+    parts = custom_id.split(":")
+    if len(parts) >= 4 and parts[2] == "slot":
+        try:
+            return int(parts[3]), None
+        except ValueError:
+            return None, None
+    if len(parts) >= 3 and parts[2] == "all":
+        return None, None
+    if len(parts) >= 3:
+        try:
+            return None, int(parts[2])
+        except ValueError:
+            return None, None
+    return None, None
+
+
 def build_buy_panel_embed(
     *,
     categories: list[dict],
@@ -157,36 +177,102 @@ async def get_panel_filter_for_slot(
     return PanelFilter.from_slot_row(row), row.get("title")
 
 
-async def register_buy_panel_views(bot: "ShopBot") -> None:
-    """Registriert persistente Buy-Panel-Views (allgemein + pro Kategorie + Slots 1/2)."""
+def register_slot_panel_views(bot: "ShopBot", *, force: bool = False) -> None:
+    """Registriert Slot-Panel-Views (1/2) und Legacy-All-Panel."""
     registered: set[str] = getattr(bot, "_buy_panel_registered", set())
-
-    def _register(category_id: int | None) -> None:
-        from views.shop_views import BuyPanelView
-
-        suffix = buy_panel_suffix(category_id)
-        if suffix in registered:
-            return
-        bot.add_view(BuyPanelView(bot, category_id=category_id))
-        registered.add(suffix)
+    from views.shop_views import BuyPanelView
 
     def _register_slot(slot: int) -> None:
-        from views.shop_views import BuyPanelView
-
         suffix = buy_panel_slot_suffix(slot)
-        if suffix in registered:
+        if not force and suffix in registered:
             return
         bot.add_view(BuyPanelView(bot, panel_slot=slot))
         registered.add(suffix)
+        print(f"[BuyPanel] View registriert: slot {slot} (buy:start:slot:{slot})")
 
-    _register(None)
+    legacy = buy_panel_suffix(None)
+    if force or legacy not in registered:
+        bot.add_view(BuyPanelView(bot, category_id=None))
+        registered.add(legacy)
+        print("[BuyPanel] View registriert: all (buy:start:all)")
+
     _register_slot(1)
     _register_slot(2)
+    bot._buy_panel_registered = registered
+
+
+async def register_category_panel_views(bot: "ShopBot", *, force: bool = False) -> None:
+    """Registriert Kategorie-Panels (nach Katalog-Sync)."""
+    registered: set[str] = getattr(bot, "_buy_panel_registered", set())
+    from views.shop_views import BuyPanelView
+
     rows = await bot.db.list_all_categories()
     for row in rows:
-        _register(int(row["id"]))
+        category_id = int(row["id"])
+        suffix = buy_panel_suffix(category_id)
+        if not force and suffix in registered:
+            continue
+        bot.add_view(BuyPanelView(bot, category_id=category_id))
+        registered.add(suffix)
 
     bot._buy_panel_registered = registered
+
+
+async def register_buy_panel_views(bot: "ShopBot", *, force: bool = False) -> None:
+    """Registriert alle Buy-Panel-Views (Slots + Kategorien)."""
+    register_slot_panel_views(bot)
+    await register_category_panel_views(bot, force=force)
+
+
+async def refresh_slot_panel(bot: "ShopBot", guild: discord.Guild, slot: int) -> str:
+    """Aktualisiert eine gespeicherte Panel-Nachricht mit aktuellem Embed und Buttons."""
+    row = await bot.db.ensure_buy_panel_slot(guild.id, slot)
+    channel_id = row.get("channel_id")
+    message_id = row.get("message_id")
+    if not channel_id or not message_id:
+        return f"Panel {slot}: keine gespeicherte Nachricht — bitte `/buypanel slot:{slot}`"
+    channel = guild.get_channel(int(channel_id))
+    if not isinstance(channel, discord.TextChannel):
+        return f"Panel {slot}: Channel nicht gefunden"
+    try:
+        msg = await channel.fetch_message(int(message_id))
+    except discord.NotFound:
+        return f"Panel {slot}: Nachricht gelöscht — bitte neu posten"
+    cats = await bot.db.list_categories(guild.id)
+    settings = await bot.db.ensure_guild(guild.id)
+    panel_filter, stored_title = await get_panel_filter_for_slot(bot, guild.id, slot)
+    filtered = apply_panel_filter(cats, panel_filter)
+    embed = build_buy_panel_embed(
+        categories=filtered,
+        settings=settings,
+        title=stored_title,
+        panel_filter=panel_filter,
+        slot=slot,
+    )
+    await ensure_buy_panel_slot_view(bot, slot)
+    from views.shop_views import BuyPanelView
+
+    await msg.edit(embed=embed, view=BuyPanelView(bot, panel_slot=slot))
+    return f"Panel {slot}: aktualisiert in {channel.mention}"
+
+
+async def refresh_all_saved_buy_panels(bot: "ShopBot", guild_id: int | None = None) -> list[str]:
+    """Aktualisiert gespeicherte Buy Panels nach Bot-Start oder Config."""
+    if guild_id is not None:
+        guild = bot.get_guild(guild_id)
+        if guild is None:
+            return [f"Guild {guild_id} nicht gefunden"]
+        return [await refresh_slot_panel(bot, guild, slot) for slot in (1, 2)]
+
+    results: list[str] = []
+    guild_ids = await bot.db.list_guilds_with_panel_messages()
+    for gid in guild_ids:
+        guild = bot.get_guild(gid)
+        if guild is None:
+            continue
+        for slot in (1, 2):
+            results.append(await refresh_slot_panel(bot, guild, slot))
+    return results
 
 
 async def ensure_buy_panel_view(bot: "ShopBot", category_id: int | None) -> None:

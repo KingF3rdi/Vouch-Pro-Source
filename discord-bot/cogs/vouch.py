@@ -6,6 +6,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+import config
 from integrations.shop_api import shop_api
 from utils.embeds import error_embed, format_price, order_ref, success_embed
 
@@ -16,6 +17,36 @@ if TYPE_CHECKING:
 def _stars(rating: int) -> str:
     rating = max(1, min(5, int(rating)))
     return "★" * rating + "☆" * (5 - rating)
+
+
+def _resolve_guild_id(interaction: discord.Interaction) -> int | None:
+    if interaction.guild is not None:
+        return interaction.guild.id
+    if config.GUILD_ID:
+        return config.GUILD_ID
+    return None
+
+
+async def _get_vouch_channel(
+    bot: ShopBot, guild_id: int
+) -> discord.TextChannel | None:
+    guild = bot.get_guild(guild_id)
+    if guild is None:
+        try:
+            guild = await bot.fetch_guild(guild_id)
+        except discord.HTTPException:
+            return None
+    settings = await bot.db.ensure_guild(guild_id)
+    channel_id = settings.get("vouch_channel_id")
+    if not channel_id:
+        return None
+    channel = guild.get_channel(int(channel_id))
+    if channel is None:
+        try:
+            channel = await guild.fetch_channel(int(channel_id))
+        except discord.HTTPException:
+            return None
+    return channel if isinstance(channel, discord.TextChannel) else None
 
 
 async def _post_local_vouch_embed(
@@ -68,13 +99,69 @@ async def _submit_website_vouch(
     )
 
 
+async def _submit_local_vouch(
+    bot: ShopBot,
+    interaction: discord.Interaction,
+    rating: int,
+    message: str,
+) -> bool:
+    """Discord-Ticket-Vouch (funktioniert im Server und per DM)."""
+    guild_id = _resolve_guild_id(interaction)
+    if guild_id is None:
+        return False
+
+    order = await bot.db.get_unused_vouch_order_for_user(
+        interaction.user.id, guild_id
+    )
+    if not order:
+        return False
+
+    channel = await _get_vouch_channel(bot, int(order["guild_id"]))
+    if channel is None:
+        await interaction.response.send_message(
+            embed=error_embed(
+                "Vouch-Channel fehlt",
+                "Admin muss `/setup` mit einem Vouch-Channel ausführen.",
+            ),
+            ephemeral=True,
+        )
+        return True
+
+    await bot.db.mark_vouch_used(int(order["id"]))
+    await _post_local_vouch_embed(
+        channel,
+        interaction=interaction,
+        rating=rating,
+        message=message,
+        order=order,
+    )
+
+    if shop_api.enabled:
+        stars = _stars(rating)
+        await shop_api.sync_vouch(
+            giver_name=str(interaction.user),
+            message=f"{stars} — {message[:500]}",
+            is_positive=rating >= 4,
+            external_id=int(order["id"]),
+        )
+
+    await interaction.response.send_message(
+        embed=success_embed(
+            "Vouch gesendet",
+            f"Danke! Dein Vouch zu Bestellung {order_ref(order)} wurde gepostet.",
+        ),
+        ephemeral=True,
+    )
+    return True
+
+
 class VouchCog(commands.Cog):
     def __init__(self, bot: ShopBot) -> None:
         self.bot = bot
 
     @app_commands.command(
         name="vouch",
-        description="Einmalig pro Kauf eine Bewertung hinterlassen (Server, DM oder Website)",
+        description="Einmalig pro Kauf eine Bewertung hinterlassen (Server oder DM)",
     )
     @app_commands.describe(
         rating="Bewertung 1–5 Sterne",
@@ -94,78 +181,39 @@ class VouchCog(commands.Cog):
             )
             return
 
-        # Discord-Ticket-Bestellungen (nur im Server)
-        if interaction.guild is not None:
-            order = await self.bot.db.get_unused_vouch_order(
-                interaction.guild.id, interaction.user.id
-            )
-            if order:
-                settings = await self.bot.db.ensure_guild(interaction.guild.id)
-                channel_id = settings.get("vouch_channel_id")
-                channel = (
-                    interaction.guild.get_channel(int(channel_id)) if channel_id else None
-                )
-                if not isinstance(channel, discord.TextChannel):
-                    await interaction.response.send_message(
-                        embed=error_embed(
-                            "Vouch-Channel fehlt",
-                            "Admin muss `/setup` mit einem Vouch-Channel ausführen.",
-                        ),
-                        ephemeral=True,
-                    )
-                    return
+        # Discord-Shop (lokal, ohne Website) — Server + DM
+        if await _submit_local_vouch(self.bot, interaction, int(rating), text):
+            return
 
-                await self.bot.db.mark_vouch_used(int(order["id"]))
-                await _post_local_vouch_embed(
-                    channel,
-                    interaction=interaction,
-                    rating=int(rating),
-                    message=text,
-                    order=order,
-                )
-
-                if shop_api.enabled:
-                    stars = _stars(int(rating))
-                    await shop_api.sync_vouch(
-                        giver_name=str(interaction.user),
-                        message=f"{stars} — {text[:500]}",
-                        is_positive=int(rating) >= 4,
-                        external_id=int(order["id"]),
-                    )
-
+        # Website-Bestellungen (nur wenn API konfiguriert)
+        if shop_api.enabled:
+            result = await _submit_website_vouch(interaction, int(rating), text)
+            if result:
+                product = result.get("product_name") or "dein Kauf"
                 await interaction.response.send_message(
                     embed=success_embed(
                         "Vouch gesendet",
-                        f"Danke! Dein Vouch zu Bestellung {order_ref(order)} wurde gepostet.",
+                        f"Danke! Dein Vouch zu **{product}** "
+                        f"(Bestellung #{result.get('order_id')}) wurde gespeichert.",
                     ),
                     ephemeral=True,
                 )
                 return
 
-        # Website-Bestellungen (DM oder Server-Fallback)
-        result = await _submit_website_vouch(interaction, int(rating), text)
-        if not result:
             hint = (
-                "Du brauchst einen bestätigten Kauf ohne bereits genutzten Vouch.\n\n"
-                "Alternativ auf der Website: Profil → Vouch abgeben."
+                "Du brauchst einen **bestätigten Discord-Kauf** ohne bereits genutzten Vouch.\n"
+                "Nach Staff-Bestätigung im Ticket kannst du hier oder per DM `/vouch` nutzen."
             )
-            if not shop_api.enabled:
-                hint = "Website-API ist nicht konfiguriert (SHOP_API_URL / BOT_API_KEY)."
+            if interaction.guild is None and not config.GUILD_ID:
+                hint += (
+                    "\n\n_DM-Vouch:_ `GUILD_ID` in der Bot-`.env` setzen und Bot neu starten."
+                )
+            elif shop_api.enabled:
+                hint += f"\n\nWebsite-Käufe: {config.FRONTEND_URL.rstrip('/')}/account"
             await interaction.response.send_message(
                 embed=error_embed("Kein Vouch verfügbar", hint),
                 ephemeral=True,
             )
-            return
-
-        product = result.get("product_name") or "dein Kauf"
-        await interaction.response.send_message(
-            embed=success_embed(
-                "Vouch gesendet",
-                f"Danke! Dein Vouch zu **{product}** (Bestellung #{result.get('order_id')}) "
-                "wurde gespeichert und erscheint auf der Website.",
-            ),
-            ephemeral=True,
-        )
 
 
 async def setup(bot: ShopBot) -> None:
