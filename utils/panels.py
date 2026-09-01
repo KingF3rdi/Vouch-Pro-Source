@@ -84,6 +84,18 @@ def buy_panel_slot_suffix(slot: int) -> str:
     return f"slot:{slot}"
 
 
+def is_valid_buy_panel_message(message: discord.Message, slot: int) -> bool:
+    """Prüft ob eine Nachricht die drei Buy-Panel-Buttons für den Slot hat."""
+    required = {f"buy:{action}:slot:{slot}" for action in ("start", "cart", "info")}
+    found: set[str] = set()
+    for row in message.components:
+        for item in row.children:
+            cid = getattr(item, "custom_id", None)
+            if cid in required:
+                found.add(cid)
+    return found == required
+
+
 def parse_buy_custom_id(custom_id: str | None) -> tuple[int | None, int | None]:
     """Liest Panel-Slot oder Legacy-Kategorie aus einem Buy-Button-custom_id."""
     if not custom_id or not custom_id.startswith("buy:"):
@@ -253,14 +265,11 @@ async def refresh_slot_panel(bot: "ShopBot", guild: discord.Guild, slot: int) ->
     channel_id = row.get("channel_id")
     message_id = row.get("message_id")
     if not channel_id or not message_id:
-        return f"Panel {slot}: keine gespeicherte Nachricht — bitte `/buypanel slot:{slot}`"
+        return f"Panel {slot}: keine gespeicherte Nachricht — bitte `/panelsetup`"
     channel = guild.get_channel(int(channel_id))
     if not isinstance(channel, discord.TextChannel):
         return f"Panel {slot}: Channel nicht gefunden"
-    try:
-        msg = await channel.fetch_message(int(message_id))
-    except discord.NotFound:
-        return f"Panel {slot}: Nachricht gelöscht — bitte neu posten"
+
     cats = await bot.db.list_categories(guild.id)
     settings = await bot.db.ensure_guild(guild.id)
     panel_filter, stored_title = await get_panel_filter_for_slot(bot, guild.id, slot)
@@ -275,7 +284,30 @@ async def refresh_slot_panel(bot: "ShopBot", guild: discord.Guild, slot: int) ->
     await ensure_buy_panel_slot_view(bot, slot)
     from views.shop_views import BuyPanelView
 
-    await msg.edit(embed=embed, view=BuyPanelView(bot, panel_slot=slot))
+    view = BuyPanelView(bot, panel_slot=slot)
+    try:
+        msg = await channel.fetch_message(int(message_id))
+    except discord.NotFound:
+        new_msg = await channel.send(embed=embed, view=view)
+        await bot.db.update_buy_panel_message(
+            guild.id, slot, channel_id=channel.id, message_id=new_msg.id
+        )
+        return f"Panel {slot}: neu gepostet in {channel.mention}"
+
+    if not is_valid_buy_panel_message(msg, slot):
+        try:
+            await msg.delete()
+        except discord.HTTPException:
+            pass
+        new_msg = await channel.send(embed=embed, view=view)
+        await bot.db.update_buy_panel_message(
+            guild.id, slot, channel_id=channel.id, message_id=new_msg.id
+        )
+        return (
+            f"Panel {slot}: kaputte Nachricht ersetzt (neu gepostet) in {channel.mention}"
+        )
+
+    await msg.edit(embed=embed, view=view)
     return f"Panel {slot}: aktualisiert in {channel.mention}"
 
 

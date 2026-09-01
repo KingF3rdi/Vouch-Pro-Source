@@ -16,6 +16,7 @@ from utils.panels import (
     ensure_buy_panel_slot_view,
     ensure_buy_panel_view,
     get_panel_filter_for_slot,
+    is_valid_buy_panel_message,
     panel_filter_summary,
     refresh_slot_panel,
 )
@@ -51,6 +52,7 @@ async def _post_slot_panel(
     slot: int,
     *,
     title: str | None = None,
+    force_repost: bool = False,
 ) -> discord.Message:
     cats = await bot.db.list_categories(guild.id)
     settings = await bot.db.ensure_guild(guild.id)
@@ -72,8 +74,16 @@ async def _post_slot_panel(
     if channel_id and message_id and int(channel_id) == target.id:
         try:
             old = await target.fetch_message(int(message_id))
-            await old.edit(embed=embed, view=view)
-            return old
+            if (
+                not force_repost
+                and is_valid_buy_panel_message(old, slot)
+            ):
+                await old.edit(embed=embed, view=view)
+                return old
+            try:
+                await old.delete()
+            except discord.HTTPException:
+                pass
         except discord.NotFound:
             pass
     msg = await target.send(embed=embed, view=view)
@@ -408,7 +418,11 @@ class ShopCog(commands.Cog):
         posted: list[str] = []
         for slot in (1, 2):
             msg = await _post_slot_panel(
-                self.bot, interaction.guild, target, slot
+                self.bot,
+                interaction.guild,
+                target,
+                slot,
+                force_repost=True,
             )
             posted.append(f"**Panel {slot}** → {msg.jump_url}")
         cats = await self.bot.db.list_categories(interaction.guild.id)
@@ -427,7 +441,8 @@ class ShopCog(commands.Cog):
                 "\n".join(posted)
                 + "\n\n"
                 + "\n".join(status_lines)
-                + "\n\nKategorien ändern: `/buypanelconfig` → Buy Panel 1 oder 2",
+                + "\n\nKategorien ändern: `/buypanelconfig` → Buy Panel 1 oder 2"
+                + "\n\n_Alte kaputte „Buy Panel“-Nachrichten (nur „Weiter einkaufen“) bitte manuell löschen._",
             ),
             ephemeral=True,
         )
