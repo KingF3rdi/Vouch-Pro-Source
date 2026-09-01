@@ -5,6 +5,7 @@ from __future__ import annotations
 import discord
 
 import config
+from integrations.shop_api import shop_api
 
 
 async def send_vouch_request_dm(
@@ -14,7 +15,6 @@ async def send_vouch_request_dm(
     order_ref_text: str,
     product_hint: str = "dein Kauf",
 ) -> bool:
-    frontend = (config.FRONTEND_URL or "http://localhost:3000").rstrip("/")
     embed = discord.Embed(
         title="⭐ Vouch abgeben",
         description=(
@@ -29,10 +29,17 @@ async def send_vouch_request_dm(
         inline=False,
     )
     embed.add_field(
-        name="Auf der Website",
-        value=f"[Profil öffnen]({frontend}/account)",
+        name="Im Discord-Server",
+        value="Gleicher Befehl `/vouch` im Server-Channel",
         inline=False,
     )
+    if shop_api.enabled:
+        frontend = (config.FRONTEND_URL or "http://localhost:3000").rstrip("/")
+        embed.add_field(
+            name="Auf der Website",
+            value=f"[Profil öffnen]({frontend}/account)",
+            inline=False,
+        )
     embed.set_footer(text="Einmalig pro Kauf · TxTEmpire Shop")
 
     try:
