@@ -119,15 +119,24 @@ class ShopBot(commands.Bot):
                 from utils.panels import (
                     refresh_all_saved_buy_panels,
                     register_category_panel_views,
+                    register_slot_panel_views,
                 )
 
+                register_slot_panel_views(self, force=True)
                 await register_category_panel_views(self, force=True)
                 for line in await refresh_all_saved_buy_panels(self, config.GUILD_ID):
                     print(f"[BuyPanel] {line}")
         else:
-            from utils.panels import register_category_panel_views
+            from utils.panels import (
+                refresh_all_saved_buy_panels,
+                register_category_panel_views,
+                register_slot_panel_views,
+            )
 
+            register_slot_panel_views(self, force=True)
             await register_category_panel_views(self, force=True)
+            for line in await refresh_all_saved_buy_panels(self):
+                print(f"[BuyPanel] {line}")
         print("Bot ist bereit.")
 
 

@@ -383,6 +383,15 @@ class Database:
             raise RuntimeError(f"buy_panel_slots konnte nicht erstellt werden (slot {slot})")
         return dict(row)
 
+    async def list_guilds_with_panel_messages(self) -> list[int]:
+        rows = await self.fetchall(
+            """
+            SELECT DISTINCT guild_id FROM buy_panel_slots
+            WHERE message_id IS NOT NULL AND channel_id IS NOT NULL
+            """
+        )
+        return [int(r["guild_id"]) for r in rows]
+
     async def get_category_by_api_id(
         self, guild_id: int, api_id: int
     ) -> dict[str, Any] | None:

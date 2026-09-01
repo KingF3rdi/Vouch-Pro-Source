@@ -177,21 +177,21 @@ async def get_panel_filter_for_slot(
     return PanelFilter.from_slot_row(row), row.get("title")
 
 
-def register_slot_panel_views(bot: "ShopBot") -> None:
-    """Registriert Slot-Panel-Views (1/2) und Legacy-All-Panel — einmal beim Start."""
+def register_slot_panel_views(bot: "ShopBot", *, force: bool = False) -> None:
+    """Registriert Slot-Panel-Views (1/2) und Legacy-All-Panel."""
     registered: set[str] = getattr(bot, "_buy_panel_registered", set())
     from views.shop_views import BuyPanelView
 
     def _register_slot(slot: int) -> None:
         suffix = buy_panel_slot_suffix(slot)
-        if suffix in registered:
+        if not force and suffix in registered:
             return
         bot.add_view(BuyPanelView(bot, panel_slot=slot))
         registered.add(suffix)
         print(f"[BuyPanel] View registriert: slot {slot} (buy:start:slot:{slot})")
 
     legacy = buy_panel_suffix(None)
-    if legacy not in registered:
+    if force or legacy not in registered:
         bot.add_view(BuyPanelView(bot, category_id=None))
         registered.add(legacy)
         print("[BuyPanel] View registriert: all (buy:start:all)")
@@ -256,12 +256,23 @@ async def refresh_slot_panel(bot: "ShopBot", guild: discord.Guild, slot: int) ->
     return f"Panel {slot}: aktualisiert in {channel.mention}"
 
 
-async def refresh_all_saved_buy_panels(bot: "ShopBot", guild_id: int) -> list[str]:
-    """Aktualisiert alle gespeicherten Buy Panels 1 und 2 nach Bot-Start oder Config."""
-    guild = bot.get_guild(guild_id)
-    if guild is None:
-        return [f"Guild {guild_id} nicht gefunden"]
-    return [await refresh_slot_panel(bot, guild, slot) for slot in (1, 2)]
+async def refresh_all_saved_buy_panels(bot: "ShopBot", guild_id: int | None = None) -> list[str]:
+    """Aktualisiert gespeicherte Buy Panels nach Bot-Start oder Config."""
+    if guild_id is not None:
+        guild = bot.get_guild(guild_id)
+        if guild is None:
+            return [f"Guild {guild_id} nicht gefunden"]
+        return [await refresh_slot_panel(bot, guild, slot) for slot in (1, 2)]
+
+    results: list[str] = []
+    guild_ids = await bot.db.list_guilds_with_panel_messages()
+    for gid in guild_ids:
+        guild = bot.get_guild(gid)
+        if guild is None:
+            continue
+        for slot in (1, 2):
+            results.append(await refresh_slot_panel(bot, guild, slot))
+    return results
 
 
 async def ensure_buy_panel_view(bot: "ShopBot", category_id: int | None) -> None:

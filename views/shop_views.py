@@ -180,7 +180,11 @@ class BuyPanelView(discord.ui.View):
 
     async def _buy(self, interaction: discord.Interaction) -> None:
         try:
-            await _browse_categories(self.bot, interaction, ctx=self.browse_ctx)
+            ctx = BrowseContext(
+                panel_slot=self.panel_slot,
+                category_id=self.category_id,
+            )
+            await _browse_categories(self.bot, interaction, ctx=ctx)
         except Exception as exc:
             print(
                 f"[BuyPanel] Kaufen fehlgeschlagen "
@@ -212,8 +216,13 @@ class BuyPanelView(discord.ui.View):
 
     async def _cart(self, interaction: discord.Interaction) -> None:
         assert interaction.guild is not None
+        self._sync_ctx_from_interaction(interaction)
+        ctx = BrowseContext(
+            panel_slot=self.panel_slot,
+            category_id=self.category_id,
+        )
         view = CartView(
-            self.bot, interaction.user.id, interaction.guild.id, self.browse_ctx
+            self.bot, interaction.user.id, interaction.guild.id, ctx
         )
         await view.refresh(interaction)
 

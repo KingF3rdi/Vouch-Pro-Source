@@ -65,7 +65,18 @@ async def _post_slot_panel(
         panel_filter=panel_filter,
         slot=slot,
     )
-    msg = await target.send(embed=embed, view=BuyPanelView(bot, panel_slot=slot))
+    view = BuyPanelView(bot, panel_slot=slot)
+    row = await bot.db.ensure_buy_panel_slot(guild.id, slot)
+    channel_id = row.get("channel_id")
+    message_id = row.get("message_id")
+    if channel_id and message_id and int(channel_id) == target.id:
+        try:
+            old = await target.fetch_message(int(message_id))
+            await old.edit(embed=embed, view=view)
+            return old
+        except discord.NotFound:
+            pass
+    msg = await target.send(embed=embed, view=view)
     await bot.db.update_buy_panel_message(
         guild.id, slot, channel_id=target.id, message_id=msg.id
     )
@@ -156,7 +167,7 @@ class ShopCog(commands.Cog):
     ) -> None:
         assert interaction.guild is not None
         from utils.embeds import error_embed
-        from views.selectors import CategoryMultiSelectView
+        from views.panel_config import PanelCategoryConfigView
 
         filter_mode = mode.value
         category_ids: list[int] = []
@@ -218,8 +229,8 @@ class ShopCog(commands.Cog):
             header = (
                 f"**{mode_label}** — Buy Panel **{slot}**\n"
                 f"{action}\n"
-                "Oben **hinzufügen** (Häkchen setzen/entfernen), unten **abwählen**, "
-                "oder **Auswahl leeren**. Danach **Speichern**."
+                "Klicke Kategorien zum **An-/Abwählen** (✅ = aktiv). "
+                "Danach **Speichern**."
             )
             if title:
                 header += f"\n\n_Titel: {title}_"
@@ -240,18 +251,18 @@ class ShopCog(commands.Cog):
                     inter, slot, filter_mode, ids, title, edit=True
                 )
 
-            view = CategoryMultiSelectView(
+            view = PanelCategoryConfigView(
                 cats,
                 on_confirm=on_confirm,
                 header=header,
-                placeholder="Kategorien hinzufügen…",
                 initial_selected_ids=initial_ids,
             )
-            await interaction.response.send_message(
+            msg = await interaction.response.send_message(
                 content=view._status_text(),
                 view=view,
                 ephemeral=True,
             )
+            view.message = msg
             return
 
         await self._save_buy_panel_config(
@@ -391,7 +402,62 @@ class ShopCog(commands.Cog):
             embed=success_embed(
                 "Beide Panels gepostet",
                 "\n".join(posted)
-                + "\n\n_Tipp: `/buypanelconfig` pro Slot konfigurieren._",
+                + "\n\n**Nächste Schritte:**\n"
+                "1. `/buypanelconfig slot:1 mode:…` — Kategorien für Panel 1\n"
+                "2. `/buypanelconfig slot:2 mode:…` — Kategorien für Panel 2\n"
+                "3. `/buypanelstatus` — prüfen",
+            ),
+            ephemeral=True,
+        )
+
+    @app_commands.command(
+        name="panelsetup",
+        description="Buy Panel 1+2 posten/aktualisieren und Status anzeigen",
+    )
+    @app_commands.describe(
+        channel="Optional: Ziel-Channel (Standard: aktueller Channel)",
+    )
+    @app_commands.default_permissions(manage_guild=True)
+    async def panelsetup(
+        self,
+        interaction: discord.Interaction,
+        channel: discord.TextChannel | None = None,
+    ) -> None:
+        """Alles-in-einem: Panels posten/aktualisieren + Kurzstatus."""
+        assert interaction.guild is not None
+        target = await _resolve_target_channel(interaction, channel)
+        if target is None:
+            from utils.embeds import error_embed
+
+            await interaction.response.send_message(
+                embed=error_embed("Kein Channel", "Bitte einen Text-Channel wählen."),
+                ephemeral=True,
+            )
+            return
+        await interaction.response.defer(ephemeral=True)
+        posted: list[str] = []
+        for slot in (1, 2):
+            msg = await _post_slot_panel(
+                self.bot, interaction.guild, target, slot
+            )
+            posted.append(f"**Panel {slot}** → {msg.jump_url}")
+        cats = await self.bot.db.list_categories(interaction.guild.id)
+        status_lines: list[str] = []
+        for slot in (1, 2):
+            pf, _ = await get_panel_filter_for_slot(
+                self.bot, interaction.guild.id, slot
+            )
+            filtered = apply_panel_filter(cats, pf)
+            status_lines.append(
+                f"Panel {slot}: {panel_filter_summary(pf)} ({len(filtered)} sichtbar)"
+            )
+        await interaction.followup.send(
+            embed=success_embed(
+                "Panel-Setup abgeschlossen",
+                "\n".join(posted)
+                + "\n\n"
+                + "\n".join(status_lines)
+                + "\n\nKategorien ändern: `/buypanelconfig slot:1` oder `slot:2`",
             ),
             ephemeral=True,
         )
