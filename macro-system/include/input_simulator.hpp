@@ -24,6 +24,8 @@ public:
     void leftClickWithMidSwap(WORD slotKey, int holdMinMs = 15, int holdMaxMs = 35,
                               int swapAtMinMs = 6, int swapAtMaxMs = 16);
     void rightClick(int holdMinMs = 5, int holdMaxMs = 15);
+    /// Slotwechsel + Rechtsklick im selben Tick (schnelles Place: Obsidian/Crystal)
+    void fastSlotRightClick(WORD slotKey, int holdMinMs = 0, int holdMaxMs = 1);
     void doubleRightClick(int holdMinMs = 5, int holdMaxMs = 15, int gapMinMs = 5,
                           int gapMaxMs = 12);
     void shiftLeftClick();

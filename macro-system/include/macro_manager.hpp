@@ -2,6 +2,7 @@
 
 #include "anchor_macros.hpp"
 #include "app_config.hpp"
+#include "hit_crystal_macros.hpp"
 
 #include "common.hpp"
 #include "game_state_guard.hpp"
@@ -30,6 +31,7 @@ public:
     StunslamBot& stunslam();
     PearlcatchMacros& pearlcatch();
     AnchorMacros& anchor();
+    HitCrystalMacros& hitCrystal();
     ElytraUnequipBot& elytra();
     AutoTotemBot& autoTotem();
     GameStateGuard& gameState();
@@ -43,6 +45,7 @@ private:
     StunslamBot stunslam_;
     PearlcatchMacros pearlcatch_;
     AnchorMacros anchor_;
+    HitCrystalMacros hitCrystal_;
     ElytraUnequipBot elytra_;
     AutoTotemBot autoTotem_;
     bool running_{false};

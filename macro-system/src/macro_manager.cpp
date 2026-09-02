@@ -8,6 +8,7 @@ MacroManager::MacroManager(AppConfig config)
       stunslam_(config.stunslam, rng_, guard_),
       pearlcatch_(config.pearlcatch, rng_, guard_, bindings_),
       anchor_(config.anchor, rng_, guard_, bindings_),
+      hitCrystal_(config.hitCrystal, rng_, guard_, bindings_),
       elytra_(config.elytra, rng_, guard_, bindings_),
       autoTotem_(config.autoTotem, rng_, guard_) {}
 
@@ -17,6 +18,7 @@ void MacroManager::setConfig(const AppConfig& config) {
     stunslam_.setConfig(config.stunslam);
     pearlcatch_.setConfig(config.pearlcatch);
     anchor_.setConfig(config.anchor);
+    hitCrystal_.setConfig(config.hitCrystal);
     elytra_.setConfig(config.elytra);
     autoTotem_.setConfig(config.autoTotem);
 }
@@ -34,6 +36,7 @@ void MacroManager::startAll() {
     stunslam_.start();
     pearlcatch_.start();
     anchor_.start();
+    hitCrystal_.start();
     elytra_.start();
     autoTotem_.start();
     running_ = true;
@@ -46,6 +49,7 @@ void MacroManager::stopAll() {
     stunslam_.stop();
     pearlcatch_.stop();
     anchor_.stop();
+    hitCrystal_.stop();
     elytra_.stop();
     autoTotem_.stop();
     running_ = false;
@@ -68,6 +72,8 @@ StunslamBot& MacroManager::stunslam() { return stunslam_; }
 PearlcatchMacros& MacroManager::pearlcatch() { return pearlcatch_; }
 
 AnchorMacros& MacroManager::anchor() { return anchor_; }
+
+HitCrystalMacros& MacroManager::hitCrystal() { return hitCrystal_; }
 
 ElytraUnequipBot& MacroManager::elytra() { return elytra_; }
 

@@ -86,6 +86,27 @@ void InputSimulator::rightClick(int holdMinMs, int holdMaxMs) {
     sendMouse(MOUSEEVENTF_RIGHTUP);
 }
 
+void InputSimulator::fastSlotRightClick(WORD slotKey, int holdMinMs, int holdMaxMs) {
+    const int hold = std::max(0, rng_.uniformInt(holdMinMs, holdMaxMs));
+    INPUT inputs[4]{};
+    inputs[0].type = INPUT_KEYBOARD;
+    inputs[0].ki.wVk = slotKey;
+    inputs[1].type = INPUT_KEYBOARD;
+    inputs[1].ki.wVk = slotKey;
+    inputs[1].ki.dwFlags = KEYEVENTF_KEYUP;
+    inputs[2].type = INPUT_MOUSE;
+    inputs[2].mi.dwFlags = MOUSEEVENTF_RIGHTDOWN;
+    inputs[3].type = INPUT_MOUSE;
+    inputs[3].mi.dwFlags = MOUSEEVENTF_RIGHTUP;
+    if (hold == 0) {
+        SendInput(4, inputs, sizeof(INPUT));
+        return;
+    }
+    SendInput(3, inputs, sizeof(INPUT));
+    std::this_thread::sleep_for(std::chrono::milliseconds(hold));
+    sendMouse(MOUSEEVENTF_RIGHTUP);
+}
+
 void InputSimulator::doubleRightClick(int holdMinMs, int holdMaxMs, int gapMinMs, int gapMaxMs) {
     rightClick(holdMinMs, holdMaxMs);
     sleepMs(gapMinMs, gapMaxMs);
