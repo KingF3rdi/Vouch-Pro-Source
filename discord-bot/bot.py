@@ -31,12 +31,13 @@ class ShopBot(commands.Bot):
         # Persistent views
         from utils.panels import register_slot_panel_views, register_category_panel_views
         from views.shop_views import ShopPanelView
-        from views.ticket_views import TicketOrderView
+        from views.ticket_views import SupportTicketView, TicketOrderView
 
         self.add_view(ShopPanelView(self))
         register_slot_panel_views(self)
         await register_category_panel_views(self)
         self.add_view(TicketOrderView(self))
+        self.add_view(SupportTicketView(self))
 
         try:
             if config.GUILD_ID:
