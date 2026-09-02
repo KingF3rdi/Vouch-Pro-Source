@@ -53,6 +53,8 @@ private:
     bool createWindow(HINSTANCE instance);
     void createControls(HWND hwnd);
     void paintBackground(HDC hdc, const RECT& clientRect);
+    bool isStatusControlActive(int controlId) const;
+    bool isStatusControlWarning(int controlId) const;
     void startModules();
     void stopModules();
     void applyConfigFromUi();

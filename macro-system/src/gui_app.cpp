@@ -21,8 +21,42 @@ constexpr int kWindowWidth = 480;
 constexpr int kWindowHeight = 820;
 constexpr int kCornerRadius = 26;
 constexpr int kTitleBarHeight = 58;
-COLORREF kWhite = RGB(245, 248, 255);
+
+// Theme — sRGB, hoher Kontrast auf Karte + Gradient
+constexpr COLORREF kTextOnCard = RGB(15, 23, 42);       // slate-900
+constexpr COLORREF kTextMuted = RGB(71, 85, 105);       // slate-600
+constexpr COLORREF kEditBg = RGB(248, 250, 252);        // slate-50
+
 ULONG_PTR gdiplusToken = 0;
+
+void makeRoundRectPath(Gdiplus::GraphicsPath& path, int x, int y, int w, int h, int radius) {
+    path.Reset();
+    const int d = radius * 2;
+    path.AddArc(x, y, d, d, 180, 90);
+    path.AddArc(x + w - d, y, d, d, 270, 90);
+    path.AddArc(x + w - d, y + h - d, d, d, 0, 90);
+    path.AddArc(x, y + h - d, d, d, 90, 90);
+    path.CloseFigure();
+}
+
+void setupGraphicsQuality(Gdiplus::Graphics& graphics) {
+    graphics.SetCompositingMode(Gdiplus::CompositingModeSourceOver);
+    graphics.SetCompositingQuality(Gdiplus::CompositingQualityHighQuality);
+    graphics.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic);
+    graphics.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHighQuality);
+    graphics.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+    graphics.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);
+}
+
+COLORREF statusTextColor(bool active, bool warning = false) {
+    if (active) {
+        return RGB(21, 128, 61);   // green-700
+    }
+    if (warning) {
+        return RGB(180, 83, 9);    // amber-700
+    }
+    return RGB(100, 116, 139);     // slate-500
+}
 
 HWND createLabel(HWND parent, HFONT font, const wchar_t* text, int x, int y, int w, int h) {
     HWND label = CreateWindowExW(0, L"STATIC", text, WS_CHILD | WS_VISIBLE, x, y, w, h, parent,
@@ -103,7 +137,8 @@ bool GuiApp::createWindow(HINSTANCE instance) {
     wc.lpszClassName = L"MacroSystemGuiWindow";
     RegisterClassExW(&wc);
 
-    hwnd_ = CreateWindowExW(WS_EX_APPWINDOW, wc.lpszClassName, L"Macro System",
+    hwnd_ = CreateWindowExW(WS_EX_APPWINDOW | WS_EX_COMPOSITED, wc.lpszClassName,
+                            L"Macro System",
                             WS_POPUP | WS_VISIBLE | WS_SYSMENU | WS_MINIMIZEBOX | WS_CLIPCHILDREN,
                             CW_USEDEFAULT, CW_USEDEFAULT, kWindowWidth, kWindowHeight, nullptr,
                             nullptr, instance, this);
@@ -127,7 +162,7 @@ void GuiApp::createControls(HWND hwnd) {
     bodyFont_ = CreateFontW(16, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
                             OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
                             DEFAULT_PITCH | FF_SWISS, L"Segoe UI");
-    editBrush_ = CreateSolidBrush(kWhite);
+    editBrush_ = CreateSolidBrush(kEditBg);
 
     const struct FieldSpec {
         int id;
@@ -192,35 +227,88 @@ void GuiApp::createControls(HWND hwnd) {
 
 void GuiApp::paintBackground(HDC hdc, const RECT& clientRect) {
     Gdiplus::Graphics graphics(hdc);
-    graphics.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+    setupGraphicsQuality(graphics);
 
-    Gdiplus::LinearGradientBrush brush(
-        Gdiplus::Point(0, 0), Gdiplus::Point(0, clientRect.bottom),
-        Gdiplus::Color(255, 37, 99, 235), Gdiplus::Color(255, 29, 78, 216));
-    graphics.FillRectangle(&brush, 0, 0, clientRect.right, clientRect.bottom);
+    // Mehrstufiger Verlauf
+    const Gdiplus::Color gradTop(255, 30, 64, 175);
+    const Gdiplus::Color gradMid(255, 67, 56, 202);
+    const Gdiplus::Color gradBottom(255, 109, 40, 217);
+    Gdiplus::Rect gradRect(0, 0, clientRect.right, clientRect.bottom);
+    Gdiplus::LinearGradientBrush gradBrush(gradRect, gradTop, gradBottom,
+                                           Gdiplus::LinearGradientModeVertical);
+    Gdiplus::REAL positions[] = {0.0f, 0.45f, 1.0f};
+    Gdiplus::Color colors[] = {gradTop, gradMid, gradBottom};
+    gradBrush.SetInterpolationColors(colors, positions, 3);
+    graphics.FillRectangle(&gradBrush, gradRect);
 
-    Gdiplus::SolidBrush cardBrush(Gdiplus::Color(175, 255, 255, 255));
-    Gdiplus::GraphicsPath path;
     const int cardX = 18;
     const int cardY = 64;
     const int cardW = clientRect.right - 36;
     const int cardH = clientRect.bottom - 150;
     const int radius = 18;
-    path.AddArc(cardX, cardY, radius * 2, radius * 2, 180, 90);
-    path.AddArc(cardX + cardW - radius * 2, cardY, radius * 2, radius * 2, 270, 90);
-    path.AddArc(cardX + cardW - radius * 2, cardY + cardH - radius * 2, radius * 2, radius * 2, 0,
-                90);
-    path.AddArc(cardX, cardY + cardH - radius * 2, radius * 2, radius * 2, 90, 90);
-    path.CloseFigure();
-    graphics.FillPath(&cardBrush, &path);
+    const int shadowOffset = 4;
 
-    SetBkMode(hdc, TRANSPARENT);
-    SetTextColor(hdc, RGB(255, 255, 255));
-    SelectObject(hdc, titleFont_);
-    RECT titleRect{24, 18, clientRect.right - 24, 58};
-    DrawTextW(hdc, L"Macro System", -1, &titleRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
-    SelectObject(hdc, bodyFont_);
-    DrawTextW(hdc, L"Extern | No Memory Read", -1, &titleRect, DT_RIGHT | DT_VCENTER | DT_SINGLELINE);
+    // Schatten
+    {
+        Gdiplus::GraphicsPath shadowPath;
+        makeRoundRectPath(shadowPath, cardX + shadowOffset, cardY + shadowOffset, cardW, cardH,
+                          radius);
+        Gdiplus::SolidBrush shadowBrush(Gdiplus::Color(72, 15, 23, 42));
+        graphics.FillPath(&shadowBrush, &shadowPath);
+    }
+
+    Gdiplus::GraphicsPath cardPath;
+    makeRoundRectPath(cardPath, cardX, cardY, cardW, cardH, radius);
+    Gdiplus::SolidBrush cardBrush(Gdiplus::Color(242, 255, 255, 255));
+    graphics.FillPath(&cardBrush, &cardPath);
+
+    Gdiplus::Pen borderPen(Gdiplus::Color(90, 255, 255, 255), 1.5f);
+    graphics.DrawPath(&borderPen, &cardPath);
+
+    // Titel auf Gradient
+    Gdiplus::FontFamily fontFamily(L"Segoe UI");
+    Gdiplus::Font titleFont(&fontFamily, 26, Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
+    Gdiplus::Font subFont(&fontFamily, 14, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
+    Gdiplus::SolidBrush titleBrush(Gdiplus::Color(255, 255, 255, 255));
+    Gdiplus::SolidBrush subBrush(Gdiplus::Color(210, 224, 231, 255));
+
+    Gdiplus::RectF titleRect(24.0f, 14.0f, static_cast<Gdiplus::REAL>(clientRect.right - 48), 34.0f);
+    graphics.DrawString(L"Macro System", -1, &titleFont, titleRect, nullptr, &titleBrush);
+
+    Gdiplus::StringFormat rightFormat;
+    rightFormat.SetAlignment(Gdiplus::StringAlignmentFar);
+    Gdiplus::RectF subRect(24.0f, 38.0f, static_cast<Gdiplus::REAL>(clientRect.right - 48), 22.0f);
+    graphics.DrawString(L"Extern · No Memory Read", -1, &subFont, subRect, &rightFormat, &subBrush);
+}
+
+bool GuiApp::isStatusControlActive(int controlId) const {
+    if (!manager_ || !manager_->isRunning()) {
+        return false;
+    }
+    switch (controlId) {
+        case ControlIds::StatusFall:
+            return manager_->isInFreeFall();
+        case ControlIds::StatusShield:
+            return manager_->isShieldActive();
+        case ControlIds::StatusEnemy:
+            return manager_->isEnemyInRange();
+        case ControlIds::StatusChat:
+            return manager_->isChatOpen();
+        case ControlIds::StatusInventory:
+            return manager_->isInventoryOpen();
+        default:
+            return false;
+    }
+}
+
+bool GuiApp::isStatusControlWarning(int controlId) const {
+    if (!manager_ || !manager_->isRunning()) {
+        return false;
+    }
+    if (controlId == ControlIds::StatusChat || controlId == ControlIds::StatusInventory) {
+        return manager_->isChatOpen() || manager_->isInventoryOpen();
+    }
+    return false;
 }
 
 int GuiApp::readInt(int controlId, int fallback) const {
@@ -400,16 +488,31 @@ LRESULT CALLBACK GuiApp::WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpar
 
         case WM_CTLCOLORSTATIC: {
             HDC hdcStatic = reinterpret_cast<HDC>(wparam);
-            SetTextColor(hdcStatic, RGB(20, 35, 75));
+            const int id = GetDlgCtrlID(reinterpret_cast<HWND>(lparam));
             SetBkMode(hdcStatic, TRANSPARENT);
+            if (id == ControlIds::StatusFall || id == ControlIds::StatusShield ||
+                id == ControlIds::StatusEnemy || id == ControlIds::StatusChat ||
+                id == ControlIds::StatusInventory) {
+                SetTextColor(hdcStatic, statusTextColor(app->isStatusControlActive(id),
+                                                         app->isStatusControlWarning(id)));
+            } else {
+                SetTextColor(hdcStatic, kTextOnCard);
+            }
             return reinterpret_cast<LRESULT>(GetStockObject(HOLLOW_BRUSH));
         }
 
         case WM_CTLCOLOREDIT: {
             HDC hdcEdit = reinterpret_cast<HDC>(wparam);
-            SetTextColor(hdcEdit, RGB(20, 35, 75));
-            SetBkColor(hdcEdit, kWhite);
+            SetTextColor(hdcEdit, kTextOnCard);
+            SetBkColor(hdcEdit, kEditBg);
             return reinterpret_cast<LRESULT>(app->editBrush_);
+        }
+
+        case WM_CTLCOLORBTN: {
+            HDC hdcBtn = reinterpret_cast<HDC>(wparam);
+            SetTextColor(hdcBtn, kTextOnCard);
+            SetBkMode(hdcBtn, TRANSPARENT);
+            return reinterpret_cast<LRESULT>(GetStockObject(HOLLOW_BRUSH));
         }
 
         case WM_COMMAND:
@@ -433,7 +536,19 @@ LRESULT CALLBACK GuiApp::WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpar
             HDC hdc = BeginPaint(hwnd, &ps);
             RECT clientRect{};
             GetClientRect(hwnd, &clientRect);
-            app->paintBackground(hdc, clientRect);
+
+            const int w = clientRect.right - clientRect.left;
+            const int h = clientRect.bottom - clientRect.top;
+            HDC memDC = CreateCompatibleDC(hdc);
+            HBITMAP memBitmap = CreateCompatibleBitmap(hdc, w, h);
+            HGDIOBJ oldBitmap = SelectObject(memDC, memBitmap);
+
+            app->paintBackground(memDC, clientRect);
+            BitBlt(hdc, 0, 0, w, h, memDC, 0, 0, SRCCOPY);
+
+            SelectObject(memDC, oldBitmap);
+            DeleteObject(memBitmap);
+            DeleteDC(memDC);
             EndPaint(hwnd, &ps);
             return 0;
         }
