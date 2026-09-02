@@ -1,5 +1,6 @@
 #pragma once
 
+#include "anchor_macros.hpp"
 #include "app_config.hpp"
 
 #include "common.hpp"
@@ -28,6 +29,7 @@ public:
 
     StunslamBot& stunslam();
     PearlcatchMacros& pearlcatch();
+    AnchorMacros& anchor();
     ElytraUnequipBot& elytra();
     AutoTotemBot& autoTotem();
     GameStateGuard& gameState();
@@ -40,6 +42,7 @@ private:
     GlobalBindings bindings_;
     StunslamBot stunslam_;
     PearlcatchMacros pearlcatch_;
+    AnchorMacros anchor_;
     ElytraUnequipBot elytra_;
     AutoTotemBot autoTotem_;
     bool running_{false};

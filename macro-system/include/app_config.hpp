@@ -1,5 +1,6 @@
 #pragma once
 
+#include "anchor_macros.hpp"
 #include "auto_totem_bot.hpp"
 #include "elytra_unequip.hpp"
 #include "global_bindings.hpp"
@@ -12,6 +13,7 @@ struct AppConfig {
     GlobalBindings bindings{};
     StunslamBotConfig stunslam{};
     PearlcatchMacrosConfig pearlcatch{};
+    AnchorMacrosConfig anchor{};
     ElytraUnequipConfig elytra{};
     AutoTotemConfig autoTotem{};
 };

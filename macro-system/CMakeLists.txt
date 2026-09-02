@@ -12,6 +12,7 @@ set(MACRO_CORE_SOURCES
     src/fall_detector.cpp
     src/stunslam_bot.cpp
     src/pearlcatch_macros.cpp
+    src/anchor_macros.cpp
     src/elytra_unequip.cpp
     src/auto_totem_bot.cpp
     src/game_state_guard.cpp
