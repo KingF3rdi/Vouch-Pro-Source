@@ -55,6 +55,8 @@ python bot.py
 | `/cart` | Warenkorb öffnen |
 | `/vouch` | Einmalig pro bestätigtem Kauf |
 
+Gespeicherte Buy Panels werden **automatisch alle 30 Minuten** aktualisiert (Katalog-Sync + Embed/Buttons). Intervall über `BUY_PANEL_REFRESH_MINUTES` in `.env` anpassbar.
+
 ## Kauf-Flow
 
 1. User wählt Kategorie → Item → Warenkorb → **Kaufen**
@@ -66,7 +68,7 @@ python bot.py
 
 Wenn `SHOP_API_URL` und `BOT_API_KEY` gesetzt sind:
 
-- **Kategorien und Produkte** werden beim Bot-Start und vor `/buypanels` automatisch von der Website übernommen
+- **Kategorien und Produkte** werden beim Bot-Start, alle 30 Minuten (Buy-Panel Auto-Refresh) und vor `/buypanel*` automatisch von der Website übernommen
 - Manueller Sync: `/syncshop`
 - **Vouches** werden an die Website gesendet
 
