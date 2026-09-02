@@ -57,6 +57,8 @@ python bot.py
 
 Gespeicherte Buy Panels werden **automatisch alle 30 Minuten** aktualisiert (Katalog-Sync + Embed/Buttons). Intervall über `BUY_PANEL_REFRESH_MINUTES` in `.env` anpassbar.
 
+Buy Panel Buttons: **Kaufen**, **Warenkorb**, **Info**, **Support** (öffnet privates Support-Ticket).
+
 ## Kauf-Flow
 
 1. User wählt Kategorie → Item → Warenkorb → **Kaufen**

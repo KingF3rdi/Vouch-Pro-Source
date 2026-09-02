@@ -85,8 +85,11 @@ def buy_panel_slot_suffix(slot: int) -> str:
 
 
 def is_valid_buy_panel_message(message: discord.Message, slot: int) -> bool:
-    """Prüft ob eine Nachricht die drei Buy-Panel-Buttons für den Slot hat."""
-    required = {f"buy:{action}:slot:{slot}" for action in ("start", "cart", "info")}
+    """Prüft ob eine Nachricht die Buy-Panel-Buttons für den Slot hat."""
+    required = {
+        f"buy:{action}:slot:{slot}"
+        for action in ("start", "cart", "info", "support")
+    }
     found: set[str] = set()
     for row in message.components:
         for item in row.children:
@@ -157,7 +160,8 @@ def build_buy_panel_embed(
             or f"Kaufe Artikel aus **{category['name']}**.\n\n"
             "• **Kaufen** — Items dieser Kategorie wählen\n"
             "• **Warenkorb** — Überblick & Checkout\n"
-            "• **Info** — Zahlungsablauf"
+            "• **Info** — Zahlungsablauf\n"
+            "• **Support** — privates Hilfs-Ticket öffnen"
         )
         embed = base_embed(panel_title, description)
         emoji = (category.get("emoji") or "").strip() or "•"
@@ -173,7 +177,8 @@ def build_buy_panel_embed(
             "Hier kannst du Artikel kaufen.\n\n"
             "• **Kaufen** — Kategorie & Item wählen, in den Warenkorb legen\n"
             "• **Warenkorb** — Überblick, Gesamtpreis, Checkout\n"
-            "• **Info** — Zahlungsablauf"
+            "• **Info** — Zahlungsablauf\n"
+            "• **Support** — privates Hilfs-Ticket öffnen"
         )
         embed = base_embed(panel_title, description)
         pf = panel_filter or PanelFilter.all_categories()

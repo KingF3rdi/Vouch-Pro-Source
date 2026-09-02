@@ -144,6 +144,15 @@ class BuyPanelView(discord.ui.View):
         info_btn.callback = self._on_info_click
         self.add_item(info_btn)
 
+        support_btn = discord.ui.Button(
+            label="Support",
+            style=discord.ButtonStyle.danger,
+            custom_id=f"buy:support{suffix}",
+            emoji="🆘",
+        )
+        support_btn.callback = self._on_support_click
+        self.add_item(support_btn)
+
     def _sync_ctx_from_interaction(self, interaction: discord.Interaction) -> None:
         """Slot/Kategorie aus custom_id lesen — wichtig für parallele Panels 1/2."""
         custom_id = interaction.data.get("custom_id") if interaction.data else None
@@ -183,6 +192,12 @@ class BuyPanelView(discord.ui.View):
             await interaction.response.defer(ephemeral=True)
         self._sync_ctx_from_interaction(interaction)
         await self._info(interaction)
+
+    async def _on_support_click(self, interaction: discord.Interaction) -> None:
+        if not interaction.response.is_done():
+            await interaction.response.defer(ephemeral=True)
+        self._sync_ctx_from_interaction(interaction)
+        await self._support(interaction)
 
     async def _buy(self, interaction: discord.Interaction) -> None:
         try:
@@ -258,10 +273,56 @@ class BuyPanelView(discord.ui.View):
                 f"{pay_line}\n"
                 "5. Payment beweisen (Bild + IGN)\n"
                 "6. Staff bestätigt → Pack + Rollen\n\n"
+                "Bei Fragen: **Support**-Button auf dem Panel.\n\n"
                 f"**{PAYMENT_NOTICE}**",
             ),
             ephemeral=True,
         )
+
+    async def _support(self, interaction: discord.Interaction) -> None:
+        if interaction.guild is None:
+            await _reply_ephemeral(
+                interaction,
+                embed=error_embed("Nur auf dem Server", "Bitte im Server-Channel."),
+            )
+            return
+        try:
+            from cogs.tickets import create_support_ticket
+
+            channel, existed = await create_support_ticket(self.bot, interaction)
+        except ValueError as exc:
+            await _reply_ephemeral(
+                interaction,
+                embed=error_embed("Support nicht möglich", str(exc)[:500]),
+            )
+            return
+        except discord.HTTPException as exc:
+            print(f"[BuyPanel] Support-Ticket fehlgeschlagen: {exc!r}")
+            await _reply_ephemeral(
+                interaction,
+                embed=error_embed(
+                    "Support fehlgeschlagen",
+                    "Ticket konnte nicht erstellt werden. Bitte Admin kontaktieren.",
+                ),
+            )
+            return
+
+        if existed:
+            await _reply_ephemeral(
+                interaction,
+                embed=success_embed(
+                    "Offenes Support-Ticket",
+                    f"Du hast bereits ein Ticket: {channel.mention}",
+                ),
+            )
+        else:
+            await _reply_ephemeral(
+                interaction,
+                embed=success_embed(
+                    "Support-Ticket erstellt",
+                    f"Schreib dein Anliegen hier: {channel.mention}",
+                ),
+            )
 
 
 async def handle_buy_panel_interaction(
@@ -284,6 +345,8 @@ async def handle_buy_panel_interaction(
         await view._on_cart_click(interaction)
     elif action == "info":
         await view._on_info_click(interaction)
+    elif action == "support":
+        await view._on_support_click(interaction)
     else:
         return False
     return True

@@ -394,6 +394,73 @@ async def action_close_ticket(
         )
 
 
+async def action_close_support_ticket(
+    bot: ShopBot, interaction: discord.Interaction
+) -> None:
+    """User oder Staff schließt ein Support-Ticket."""
+    channel = interaction.channel
+    if not isinstance(channel, discord.TextChannel):
+        await interaction.response.send_message(
+            embed=error_embed("Nur in einem Support-Channel nutzbar."),
+            ephemeral=True,
+        )
+        return
+
+    topic = channel.topic or ""
+    if not topic.startswith("support:"):
+        await interaction.response.send_message(
+            embed=error_embed("Kein Support-Ticket", "Dieser Channel ist kein Support-Ticket."),
+            ephemeral=True,
+        )
+        return
+
+    owner_id = 0
+    try:
+        owner_id = int(topic.split(":", 1)[1])
+    except (IndexError, ValueError):
+        pass
+
+    is_owner = interaction.user.id == owner_id
+    if not is_owner and not await is_staff(bot, interaction):
+        await interaction.response.send_message(
+            embed=error_embed("Keine Berechtigung", "Nur Ticket-Ersteller oder Staff."),
+            ephemeral=True,
+        )
+        return
+
+    await interaction.response.defer(ephemeral=True)
+    await interaction.followup.send(
+        embed=success_embed("Support geschlossen", "Channel wird gelöscht."),
+        ephemeral=True,
+    )
+    try:
+        await channel.delete(reason=f"Support geschlossen von {interaction.user}")
+    except discord.HTTPException as e:
+        await interaction.followup.send(
+            embed=error_embed("Löschen fehlgeschlagen", str(e)[:500]),
+            ephemeral=True,
+        )
+
+
+class SupportTicketView(discord.ui.View):
+    """Persistente Buttons für Support-Tickets."""
+
+    def __init__(self, bot: ShopBot) -> None:
+        super().__init__(timeout=None)
+        self.bot = bot
+
+    @discord.ui.button(
+        label="Schließen",
+        style=discord.ButtonStyle.danger,
+        custom_id="support:close",
+        emoji="🔒",
+    )
+    async def close_ticket(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ) -> None:
+        await action_close_support_ticket(self.bot, interaction)
+
+
 class TicketOrderView(discord.ui.View):
     """Persistente Ticket-Buttons für Bestellungen."""
 

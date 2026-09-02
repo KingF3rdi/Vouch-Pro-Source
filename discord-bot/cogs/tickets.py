@@ -38,6 +38,117 @@ async def _send_with_retry(
     raise last_err
 
 
+SUPPORT_TOPIC_PREFIX = "support:"
+
+
+def _support_topic(user_id: int) -> str:
+    return f"{SUPPORT_TOPIC_PREFIX}{user_id}"
+
+
+def find_open_support_channel(
+    guild: discord.Guild, user_id: int, category: discord.CategoryChannel | None
+) -> discord.TextChannel | None:
+    topic = _support_topic(user_id)
+    channels = category.channels if category is not None else guild.text_channels
+    for ch in channels:
+        if isinstance(ch, discord.TextChannel) and (ch.topic or "") == topic:
+            return ch
+    return None
+
+
+async def create_support_ticket(
+    bot: ShopBot, interaction: discord.Interaction
+) -> tuple[discord.TextChannel, bool]:
+    """Erstellt ein privates Support-Ticket. Returns (channel, already_existed)."""
+    guild = interaction.guild
+    if guild is None:
+        raise ValueError("Nur auf einem Server nutzbar.")
+
+    me = guild.me
+    if me is None:
+        raise ValueError("Bot-Mitgliedschaft auf dem Server nicht gefunden.")
+
+    settings = await bot.db.ensure_guild(guild.id)
+    category_id = settings.get("ticket_category_id")
+    category = guild.get_channel(int(category_id)) if category_id else None
+    if category is not None and not isinstance(category, discord.CategoryChannel):
+        category = None
+
+    existing = find_open_support_channel(guild, interaction.user.id, category)
+    if existing is not None:
+        return existing, True
+
+    staff_role_id = settings.get("staff_role_id")
+    staff_role = guild.get_role(int(staff_role_id)) if staff_role_id else None
+
+    bot_perms = discord.PermissionOverwrite(
+        view_channel=True,
+        send_messages=True,
+        embed_links=True,
+        attach_files=True,
+        read_message_history=True,
+        manage_channels=True,
+        manage_messages=True,
+    )
+    user_perms = discord.PermissionOverwrite(
+        view_channel=True,
+        send_messages=True,
+        attach_files=True,
+        embed_links=True,
+        read_message_history=True,
+    )
+    staff_perms = discord.PermissionOverwrite(
+        view_channel=True,
+        send_messages=True,
+        attach_files=True,
+        embed_links=True,
+        read_message_history=True,
+        manage_messages=True,
+    )
+
+    overwrites: dict[
+        discord.Role | discord.Member | discord.Object,
+        discord.PermissionOverwrite,
+    ] = {
+        guild.default_role: discord.PermissionOverwrite(view_channel=False),
+        me: bot_perms,
+    }
+    if isinstance(interaction.user, discord.Member):
+        overwrites[interaction.user] = user_perms
+    if staff_role:
+        overwrites[staff_role] = staff_perms
+
+    safe_name = "".join(
+        c if c.isalnum() or c in "-_" else "-"
+        for c in interaction.user.name.lower()
+    )[:20]
+    channel = await guild.create_text_channel(
+        name=f"support-{safe_name}"[:100],
+        category=category,
+        overwrites=overwrites,
+        topic=_support_topic(interaction.user.id),
+        reason=f"Support-Ticket für {interaction.user}",
+    )
+
+    from utils.embeds import base_embed
+    from views.ticket_views import SupportTicketView
+
+    staff_mention = staff_role.mention if staff_role else "Staff"
+    embed = base_embed(
+        "Support-Ticket",
+        f"Hallo {interaction.user.mention} — beschreibe kurz dein Anliegen.\n\n"
+        f"{staff_mention} hilft dir hier weiter.\n\n"
+        "Mit **Schließen** kannst du das Ticket beenden.",
+    )
+    await _send_with_retry(
+        channel,
+        content=f"{interaction.user.mention} {staff_mention}",
+        embed=embed,
+        view=SupportTicketView(bot),
+    )
+    return channel, False
+
+
 async def create_order_ticket(
     bot: ShopBot, interaction: discord.Interaction
 ) -> discord.TextChannel:
