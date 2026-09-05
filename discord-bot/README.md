@@ -55,6 +55,9 @@ python bot.py
 | `/cart` | Warenkorb öffnen |
 | `/vouch` | Einmalig pro bestätigtem Kauf |
 
+Der Vouch-Channel wird **automatisch** auf `⭐・vouches・{Anzahl}` umbenannt (beim Bot-Start und nach jedem neuen Vouch).
+Bot braucht dafür das Recht **Kanäle verwalten**.
+
 ## Kauf-Flow
 
 1. User wählt Kategorie → Item → Warenkorb → **Kaufen**

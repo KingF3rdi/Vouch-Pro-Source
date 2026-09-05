@@ -136,6 +136,10 @@ async def _submit_local_vouch(
         order=order,
     )
 
+    from utils.vouch_channel import rename_vouch_channel
+
+    await rename_vouch_channel(bot, int(order["guild_id"]))
+
     if shop_api.enabled:
         stars = _stars(rating)
         await shop_api.sync_vouch(

@@ -59,6 +59,10 @@ async def bot_sync_sale(body: BotSaleSync, db: AsyncSession = Depends(get_db)):
 @router.post("/vouches/sync")
 async def bot_sync_vouch(body: BotVouchSync, db: AsyncSession = Depends(get_db)):
     vouch = await services.sync_vouch(db, body.model_dump())
+    from app.discord_notify import rename_vouch_channel
+
+    stats = await services.get_stats(db)
+    await rename_vouch_channel(int(stats["total_vouches"]))
     return {"success": True, "vouch_id": vouch.id}
 
 
@@ -98,6 +102,7 @@ async def bot_submit_vouch(body: BotVouchSubmit, db: AsyncSession = Depends(get_
 
     from app.discord_notify import notify_vouch_submitted
 
+    stats = await services.get_stats(db)
     await notify_vouch_submitted(
         giver_name=body.giver_name,
         message=vouch.message,
@@ -106,6 +111,7 @@ async def bot_submit_vouch(body: BotVouchSubmit, db: AsyncSession = Depends(get_
         product_name=order.product.name if order.product else None,
         amount=order.amount,
         ign=order.ign,
+        vouch_count=int(stats["total_vouches"]),
     )
 
     return {
