@@ -18,7 +18,6 @@ from utils.panels import (
     ensure_buy_panel_slot_view,
     ensure_buy_panel_view,
     get_panel_filter_for_slot,
-    is_valid_buy_panel_message,
     panel_filter_summary,
     refresh_all_saved_buy_panels,
     refresh_slot_panel,
