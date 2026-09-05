@@ -84,16 +84,29 @@ def buy_panel_slot_suffix(slot: int) -> str:
     return f"slot:{slot}"
 
 
-def is_valid_buy_panel_message(message: discord.Message, slot: int) -> bool:
-    """Prüft ob eine Nachricht die drei Buy-Panel-Buttons für den Slot hat."""
-    required = {f"buy:{action}:slot:{slot}" for action in ("start", "cart", "info")}
+def collect_buy_panel_custom_ids(message: discord.Message) -> set[str]:
     found: set[str] = set()
     for row in message.components:
         for item in row.children:
             cid = getattr(item, "custom_id", None)
-            if cid in required:
+            if isinstance(cid, str) and cid.startswith("buy:"):
                 found.add(cid)
-    return found == required
+    return found
+
+
+def is_valid_buy_panel_message(message: discord.Message, slot: int) -> bool:
+    """Prüft ob eine Nachricht alle Buy-Panel-Buttons für den Slot hat."""
+    required = {
+        f"buy:{action}:slot:{slot}"
+        for action in ("start", "cart", "info", "support")
+    }
+    return required.issubset(collect_buy_panel_custom_ids(message))
+
+
+def is_same_slot_buy_panel_message(message: discord.Message, slot: int) -> bool:
+    """True wenn die Nachricht irgendwelche Buy-Buttons für diesen Slot hat."""
+    marker = f":slot:{slot}"
+    return any(cid.endswith(marker) for cid in collect_buy_panel_custom_ids(message))
 
 
 def parse_buy_custom_id(custom_id: str | None) -> tuple[int | None, int | None]:
@@ -157,7 +170,8 @@ def build_buy_panel_embed(
             or f"Kaufe Artikel aus **{category['name']}**.\n\n"
             "• **Kaufen** — Items dieser Kategorie wählen\n"
             "• **Warenkorb** — Überblick & Checkout\n"
-            "• **Info** — Zahlungsablauf"
+            "• **Info** — Zahlungsablauf\n"
+            "• **Support** — privates Hilfs-Ticket öffnen"
         )
         embed = base_embed(panel_title, description)
         emoji = (category.get("emoji") or "").strip() or "•"
@@ -173,7 +187,8 @@ def build_buy_panel_embed(
             "Hier kannst du Artikel kaufen.\n\n"
             "• **Kaufen** — Kategorie & Item wählen, in den Warenkorb legen\n"
             "• **Warenkorb** — Überblick, Gesamtpreis, Checkout\n"
-            "• **Info** — Zahlungsablauf"
+            "• **Info** — Zahlungsablauf\n"
+            "• **Support** — privates Hilfs-Ticket öffnen"
         )
         embed = base_embed(panel_title, description)
         pf = panel_filter or PanelFilter.all_categories()
@@ -260,7 +275,11 @@ async def register_buy_panel_views(bot: "ShopBot", *, force: bool = False) -> No
 
 
 async def refresh_slot_panel(bot: "ShopBot", guild: discord.Guild, slot: int) -> str:
-    """Aktualisiert eine gespeicherte Panel-Nachricht mit aktuellem Embed und Buttons."""
+    """Aktualisiert eine gespeicherte Panel-Nachricht mit aktuellem Embed und Buttons.
+
+    Kaputte/veraltete Buttons werden per Edit repariert (kein Delete), damit das
+    Panel nicht „springt“ oder als zweites/verwaisstes Panel liegen bleibt.
+    """
     row = await bot.db.ensure_buy_panel_slot(guild.id, slot)
     channel_id = row.get("channel_id")
     message_id = row.get("message_id")
@@ -292,9 +311,21 @@ async def refresh_slot_panel(bot: "ShopBot", guild: discord.Guild, slot: int) ->
         await bot.db.update_buy_panel_message(
             guild.id, slot, channel_id=channel.id, message_id=new_msg.id
         )
+        await _cleanup_orphan_buy_panels(channel, slot, keep_message_id=new_msg.id)
         return f"Panel {slot}: neu gepostet in {channel.mention}"
 
-    if not is_valid_buy_panel_message(msg, slot):
+    found = collect_buy_panel_custom_ids(msg)
+    was_valid = is_valid_buy_panel_message(msg, slot)
+    if not was_valid:
+        print(
+            f"[BuyPanel] Panel {slot} Nachricht {msg.id} unvollständig "
+            f"(gefunden={sorted(found) or 'keine'}) — repariere per Edit"
+        )
+
+    try:
+        await msg.edit(embed=embed, view=view)
+    except discord.HTTPException as exc:
+        print(f"[BuyPanel] Panel {slot} Edit fehlgeschlagen: {exc!r} — reposte")
         try:
             await msg.delete()
         except discord.HTTPException:
@@ -303,12 +334,42 @@ async def refresh_slot_panel(bot: "ShopBot", guild: discord.Guild, slot: int) ->
         await bot.db.update_buy_panel_message(
             guild.id, slot, channel_id=channel.id, message_id=new_msg.id
         )
+        await _cleanup_orphan_buy_panels(channel, slot, keep_message_id=new_msg.id)
         return (
-            f"Panel {slot}: kaputte Nachricht ersetzt (neu gepostet) in {channel.mention}"
+            f"Panel {slot}: nach Edit-Fehler neu gepostet in {channel.mention}"
         )
 
-    await msg.edit(embed=embed, view=view)
-    return f"Panel {slot}: aktualisiert in {channel.mention}"
+    await _cleanup_orphan_buy_panels(channel, slot, keep_message_id=msg.id)
+    if was_valid:
+        return f"Panel {slot}: aktualisiert in {channel.mention}"
+    return f"Panel {slot}: Buttons repariert (Edit) in {channel.mention}"
+
+
+async def _cleanup_orphan_buy_panels(
+    channel: discord.TextChannel,
+    slot: int,
+    *,
+    keep_message_id: int,
+) -> None:
+    """Löscht alte Buy-Panel-Nachrichten desselben Slots (nicht die aktuelle)."""
+    marker = f":slot:{slot}"
+    try:
+        async for message in channel.history(limit=40):
+            if message.id == keep_message_id:
+                continue
+            if message.author.id != channel.guild.me.id:
+                continue
+            ids = collect_buy_panel_custom_ids(message)
+            if any(cid.endswith(marker) for cid in ids):
+                try:
+                    await message.delete()
+                    print(
+                        f"[BuyPanel] Orphan Panel {slot} Nachricht {message.id} gelöscht"
+                    )
+                except discord.HTTPException:
+                    pass
+    except discord.HTTPException as exc:
+        print(f"[BuyPanel] Orphan-Cleanup fehlgeschlagen: {exc!r}")
 
 
 async def refresh_all_saved_buy_panels(bot: "ShopBot", guild_id: int | None = None) -> list[str]:

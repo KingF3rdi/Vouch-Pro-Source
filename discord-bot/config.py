@@ -26,3 +26,6 @@ EMBED_WARN = 0xD69E2E
 
 DEFAULT_PAYEE = "TxtEmpire"
 PAYMENT_NOTICE = "Das gesamte Geld geht an TxtEmpire."
+
+# Buy-Panel: automatische Aktualisierung (Katalog + Embed/Buttons)
+BUY_PANEL_REFRESH_MINUTES = int(os.getenv("BUY_PANEL_REFRESH_MINUTES", "30") or "30")

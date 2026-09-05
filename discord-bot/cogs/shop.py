@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING
 
 import discord
 from discord import app_commands
-from discord.ext import commands
+from discord.ext import commands, tasks
 
+import config
 from integrations.catalog_sync import sync_shop_catalog
 from integrations.shop_api import shop_api
 from utils.embeds import base_embed, success_embed
@@ -16,8 +18,8 @@ from utils.panels import (
     ensure_buy_panel_slot_view,
     ensure_buy_panel_view,
     get_panel_filter_for_slot,
-    is_valid_buy_panel_message,
     panel_filter_summary,
+    refresh_all_saved_buy_panels,
     refresh_slot_panel,
 )
 from views.shop_views import BuyPanelView, CartView, ShopPanelView
@@ -74,12 +76,21 @@ async def _post_slot_panel(
     if channel_id and message_id and int(channel_id) == target.id:
         try:
             old = await target.fetch_message(int(message_id))
-            if (
-                not force_repost
-                and is_valid_buy_panel_message(old, slot)
-            ):
-                await old.edit(embed=embed, view=view)
-                return old
+            if not force_repost:
+                # Immer per Edit aktualisieren/reparieren — kein Delete bei
+                # fehlendem Support-Button o.ä., sonst „springt“ ein Panel.
+                try:
+                    await old.edit(embed=embed, view=view)
+                    from utils.panels import _cleanup_orphan_buy_panels
+
+                    await _cleanup_orphan_buy_panels(
+                        target, slot, keep_message_id=old.id
+                    )
+                    return old
+                except discord.HTTPException as exc:
+                    print(
+                        f"[BuyPanel] Panel {slot} Edit fehlgeschlagen: {exc!r}"
+                    )
             try:
                 await old.delete()
             except discord.HTTPException:
@@ -90,6 +101,9 @@ async def _post_slot_panel(
     await bot.db.update_buy_panel_message(
         guild.id, slot, channel_id=target.id, message_id=msg.id
     )
+    from utils.panels import _cleanup_orphan_buy_panels
+
+    await _cleanup_orphan_buy_panels(target, slot, keep_message_id=msg.id)
     return msg
 
 
@@ -100,6 +114,58 @@ async def _refresh_slot_panel(bot: ShopBot, guild: discord.Guild, slot: int) -> 
 class ShopCog(commands.Cog):
     def __init__(self, bot: ShopBot) -> None:
         self.bot = bot
+        minutes = max(1, int(config.BUY_PANEL_REFRESH_MINUTES or 30))
+        self.buy_panel_auto_refresh.change_interval(minutes=minutes)
+        self.buy_panel_auto_refresh.start()
+
+    def cog_unload(self) -> None:
+        self.buy_panel_auto_refresh.cancel()
+
+    @tasks.loop(minutes=30)
+    async def buy_panel_auto_refresh(self) -> None:
+        """Aktualisiert gespeicherte Buy Panels regelmäßig (Katalog + Embed)."""
+        try:
+            guild_ids: list[int]
+            if config.GUILD_ID:
+                guild_ids = [config.GUILD_ID]
+            else:
+                guild_ids = await self.bot.db.list_guilds_with_panel_messages()
+
+            for guild_id in guild_ids:
+                if shop_api.enabled and self.bot.get_guild(guild_id) is not None:
+                    result = await sync_shop_catalog(self.bot, guild_id)
+                    if result.get("error"):
+                        print(
+                            f"[BuyPanel] Auto-Refresh Katalog-Sync fehlgeschlagen "
+                            f"(guild={guild_id})"
+                        )
+                    elif not result.get("skipped"):
+                        print(
+                            f"[BuyPanel] Auto-Refresh Katalog: "
+                            f"{result.get('categories', 0)} Kategorien, "
+                            f"{result.get('items', 0)} Produkte "
+                            f"(guild={guild_id})"
+                        )
+
+            if config.GUILD_ID:
+                lines = await refresh_all_saved_buy_panels(self.bot, config.GUILD_ID)
+            else:
+                lines = await refresh_all_saved_buy_panels(self.bot)
+
+            if lines:
+                for line in lines:
+                    print(f"[BuyPanel] Auto-Refresh: {line}")
+            else:
+                print("[BuyPanel] Auto-Refresh: keine gespeicherten Panels")
+        except Exception as exc:
+            print(f"[BuyPanel] Auto-Refresh fehlgeschlagen: {exc!r}")
+
+    @buy_panel_auto_refresh.before_loop
+    async def before_buy_panel_auto_refresh(self) -> None:
+        await self.bot.wait_until_ready()
+        # Start-Refresh läuft in on_ready — erstes Intervall abwarten
+        minutes = max(1, int(config.BUY_PANEL_REFRESH_MINUTES or 30))
+        await asyncio.sleep(minutes * 60)
 
     @app_commands.command(
         name="syncshop",
