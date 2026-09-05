@@ -77,12 +77,21 @@ async def _post_slot_panel(
     if channel_id and message_id and int(channel_id) == target.id:
         try:
             old = await target.fetch_message(int(message_id))
-            if (
-                not force_repost
-                and is_valid_buy_panel_message(old, slot)
-            ):
-                await old.edit(embed=embed, view=view)
-                return old
+            if not force_repost:
+                # Immer per Edit aktualisieren/reparieren — kein Delete bei
+                # fehlendem Support-Button o.ä., sonst „springt“ ein Panel.
+                try:
+                    await old.edit(embed=embed, view=view)
+                    from utils.panels import _cleanup_orphan_buy_panels
+
+                    await _cleanup_orphan_buy_panels(
+                        target, slot, keep_message_id=old.id
+                    )
+                    return old
+                except discord.HTTPException as exc:
+                    print(
+                        f"[BuyPanel] Panel {slot} Edit fehlgeschlagen: {exc!r}"
+                    )
             try:
                 await old.delete()
             except discord.HTTPException:
@@ -93,6 +102,9 @@ async def _post_slot_panel(
     await bot.db.update_buy_panel_message(
         guild.id, slot, channel_id=target.id, message_id=msg.id
     )
+    from utils.panels import _cleanup_orphan_buy_panels
+
+    await _cleanup_orphan_buy_panels(target, slot, keep_message_id=msg.id)
     return msg
 
 
