@@ -36,6 +36,30 @@ async def _post_message(channel_id: str, content: str = "", embed: dict | None =
         return resp.status_code in (200, 201)
 
 
+def format_vouch_channel_name(count: int) -> str:
+    return f"⭐・vouches・{max(0, int(count))}"[:100]
+
+
+async def rename_vouch_channel(count: int) -> bool:
+    """Benennt den konfigurierten Vouch-Channel auf die Vouch-Anzahl um."""
+    headers = _headers()
+    channel_id = settings.discord_vouch_channel_id
+    if not headers or not channel_id:
+        return False
+    name = format_vouch_channel_name(count)
+    async with httpx.AsyncClient() as client:
+        resp = await client.patch(
+            f"{DISCORD_API}/channels/{channel_id}",
+            headers=headers,
+            json={"name": name},
+            timeout=15,
+        )
+        if resp.status_code in (200, 201):
+            return True
+        print(f"[Discord] Vouch-Channel umbenennen fehlgeschlagen: {resp.status_code} {resp.text[:200]}")
+        return False
+
+
 async def _dm_user(discord_user_id: str, content: str = "", embed: dict | None = None) -> bool:
     headers = _headers()
     if not headers or not discord_user_id:
@@ -205,6 +229,7 @@ async def notify_vouch_submitted(
     product_name: str | None,
     amount: float,
     ign: str | None,
+    vouch_count: int | None = None,
 ) -> None:
     await post_vouch_to_channel(
         giver_name=giver_name,
@@ -215,6 +240,8 @@ async def notify_vouch_submitted(
         amount=amount,
         ign=ign,
     )
+    if vouch_count is not None:
+        await rename_vouch_channel(vouch_count)
 
 
 # Re-export ticket creation from discord_tickets for backwards compatibility

@@ -813,6 +813,18 @@ class Database:
     async def mark_vouch_used(self, order_id: int) -> None:
         await self.update_order(order_id, vouch_used=1)
 
+    async def count_vouches(self, guild_id: int) -> int:
+        """Anzahl abgegebener Vouches (completed Orders mit vouch_used)."""
+        row = await self.fetchone(
+            """
+            SELECT COUNT(*) AS cnt
+            FROM orders
+            WHERE guild_id = ? AND vouch_used = 1 AND status = 'completed'
+            """,
+            (guild_id,),
+        )
+        return int(row["cnt"]) if row else 0
+
     # ── Helpers ─────────────────────────────────────────────────────
 
     async def fetchone(self, query: str, params: tuple[Any, ...] = ()) -> Any:

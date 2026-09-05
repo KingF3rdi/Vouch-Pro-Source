@@ -131,6 +131,7 @@ async def submit_vouch(
 
     from app.discord_notify import notify_vouch_submitted
 
+    vouch_total = await services.get_stats(db)
     await notify_vouch_submitted(
         giver_name=info["display_name"],
         message=vouch.message,
@@ -139,6 +140,7 @@ async def submit_vouch(
         product_name=order.product.name if order.product else None,
         amount=order.amount,
         ign=order.ign,
+        vouch_count=int(vouch_total["total_vouches"]),
     )
 
     return VouchSubmitOut(vouch_id=vouch.id)
