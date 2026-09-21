@@ -469,15 +469,6 @@ export function AgentWindow({
                         return null;
                       })}
                     </div>
-                    {busy && isLastAssistant && !(message.parts ?? []).some((p) => p.type === "text" || isToolUIPart(p) || isToolOrDynamicToolUIPart(p)) ? (
-                      <div className="agent-thinking-pulse">
-                        <LoaderCircle size={14} className="spin" />
-                        <span>Denkt nach…</span>
-                        <span className="thinking-dots" aria-hidden>
-                          <i /><i /><i />
-                        </span>
-                      </div>
-                    ) : null}
                     {!busy ? (
                       <div className="learn-actions">
                         <button
@@ -509,6 +500,26 @@ export function AgentWindow({
             <div className="agent-error">
               {error.message}
               <div className="muted">Check model settings in IDE, or set keys in `.env`.</div>
+            </div>
+          ) : null}
+
+          {busy &&
+          (!lastAssistant ||
+            !(lastAssistant.parts ?? []).some(
+              (p) =>
+                p.type === "text" ||
+                isToolUIPart(p) ||
+                isToolOrDynamicToolUIPart(p) ||
+                isReasoningUIPart(p)
+            )) ? (
+            <div className="agent-thinking-pulse">
+              <LoaderCircle size={14} className="spin" />
+              <span>{phaseLabel}</span>
+              <span className="thinking-dots" aria-hidden>
+                <i />
+                <i />
+                <i />
+              </span>
             </div>
           ) : null}
           <div ref={bottomRef} />
