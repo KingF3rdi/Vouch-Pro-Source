@@ -5,6 +5,7 @@ import { promisify } from "node:util";
 import { tool } from "ai";
 import { z } from "zod";
 import { glob } from "glob";
+import { buildProjectMap } from "./projectMap.js";
 
 const execAsync = promisify(exec);
 
@@ -22,6 +23,13 @@ function assertInsideWorkspace(workspace: string, targetPath: string): string {
 
 export function createAgentTools(workspace: string) {
   return {
+    project_map: tool({
+      description:
+        "Map the workspace structure, stack markers, and key files. Call this at the start of every project task.",
+      inputSchema: z.object({}),
+      execute: async () => buildProjectMap(workspace),
+    }),
+
     list_directory: tool({
       description: "List files and folders in a directory relative to the workspace.",
       inputSchema: z.object({

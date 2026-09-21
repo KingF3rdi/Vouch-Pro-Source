@@ -1,0 +1,210 @@
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport, isToolUIPart } from "ai";
+import { useEffect, useMemo, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import type { AgentMode, AgentSettings, PluginManifest, SkillSummary } from "../../shared/types";
+
+export function ChatPanel({
+  settings,
+  mode,
+  onModeChange,
+  skills,
+  plugins,
+  activeSkills,
+  onToggleSkill,
+}: {
+  settings: AgentSettings | null;
+  mode: AgentMode;
+  onModeChange: (mode: AgentMode) => void;
+  skills: SkillSummary[];
+  plugins: PluginManifest[];
+  activeSkills: string[];
+  onToggleSkill: (id: string) => void;
+}) {
+  const [input, setInput] = useState("");
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef({
+    skillIds: activeSkills,
+    provider: settings?.provider,
+    model: settings?.model,
+    workspace: settings?.workspace,
+    mode,
+  });
+
+  bodyRef.current = {
+    skillIds: activeSkills,
+    provider: settings?.provider,
+    model: settings?.model,
+    workspace: settings?.workspace,
+    mode,
+  };
+
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: "/api/chat",
+        body: () => bodyRef.current,
+      }),
+    []
+  );
+
+  const { messages, sendMessage, status, error } = useChat({ transport });
+  const busy = status === "submitted" || status === "streaming";
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, status]);
+
+  function submitPrompt(text: string) {
+    const trimmed = text.trim();
+    if (!trimmed || busy) return;
+    void sendMessage({ text: trimmed });
+    setInput("");
+  }
+
+  const starters =
+    mode === "bug-hunt"
+      ? [
+          "Hunt bugs in this project: map it, scan risky areas, and fix the highest-severity issue.",
+          "Find and fix TypeScript / runtime errors.",
+        ]
+      : [
+          "Map the project, research existing libraries online, then propose the best way to improve Helix.",
+          "Search GitHub for similar IDE agent UIs and adapt the best patterns here.",
+        ];
+
+  return (
+    <div className="chat-panel">
+      <div className="chat-toolbar">
+        <div className="mode-toggle">
+          <button
+            type="button"
+            className={mode === "chat" ? "active" : ""}
+            onClick={() => onModeChange("chat")}
+          >
+            Build
+          </button>
+          <button
+            type="button"
+            className={mode === "bug-hunt" ? "active" : ""}
+            onClick={() => onModeChange("bug-hunt")}
+          >
+            Bug hunt
+          </button>
+        </div>
+        {busy ? <div className="status-dot" title="Working" /> : null}
+      </div>
+
+      <div className="chat-skills">
+        {skills.map((skill) => {
+          const active = activeSkills.includes(skill.id);
+          return (
+            <button
+              key={skill.id}
+              type="button"
+              className={`skill-chip${active ? " active" : ""}`}
+              onClick={() => onToggleSkill(skill.id)}
+              title={skill.description}
+            >
+              {skill.name}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="chat-stage compact">
+        {messages.length === 0 ? (
+          <div className="empty-state compact">
+            <h2>{mode === "bug-hunt" ? "Bug hunt" : "Agent"}</h2>
+            <p>
+              Maps the project first, searches the web for reusable code, then edits like Cursor /
+              Claude. Plugins: {plugins.map((p) => p.name).join(", ") || "none"}.
+            </p>
+            <div className="prompt-chips">
+              {starters.map((prompt) => (
+                <button
+                  key={prompt}
+                  type="button"
+                  className="prompt-chip"
+                  onClick={() => submitPrompt(prompt)}
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          messages.map((message) => (
+            <article key={message.id} className="message">
+              <div className={`avatar ${message.role}`}>
+                {message.role === "user" ? "You" : "Hx"}
+              </div>
+              <div className="message-body">
+                <div className="role-label">{message.role === "user" ? "You" : "Helix"}</div>
+                <div className="markdown">
+                  {(message.parts ?? []).map((part, index) => {
+                    if (part.type === "text") {
+                      return (
+                        <ReactMarkdown key={`${message.id}-${index}`} remarkPlugins={[remarkGfm]}>
+                          {part.text}
+                        </ReactMarkdown>
+                      );
+                    }
+                    if (isToolUIPart(part)) {
+                      return (
+                        <pre key={`${message.id}-${index}`}>
+                          {part.type.replace("tool-", "")} · {part.state}
+                        </pre>
+                      );
+                    }
+                    return null;
+                  })}
+                </div>
+              </div>
+            </article>
+          ))
+        )}
+        {error ? (
+          <div className="pane-error">
+            {error.message}
+            <div className="muted">
+              Tip: use Ollama or set cloud API keys in <code>.env</code>.
+            </div>
+          </div>
+        ) : null}
+        <div ref={bottomRef} />
+      </div>
+
+      <form
+        className="composer compact"
+        onSubmit={(e) => {
+          e.preventDefault();
+          submitPrompt(input);
+        }}
+      >
+        <textarea
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder={
+            mode === "bug-hunt"
+              ? "Describe the bug or ask Helix to hunt…"
+              : "Ask Helix to map, research, and ship a change…"
+          }
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              submitPrompt(input);
+            }
+          }}
+        />
+        <div className="composer-footer">
+          <span className="hint">Enter send · Shift+Enter newline</span>
+          <button className="send-btn" type="submit" disabled={busy || !input.trim()}>
+            {busy ? "Working…" : "Send"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}

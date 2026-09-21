@@ -14,7 +14,12 @@ import {
   mergePluginTools,
   pluginSystemPrompt,
 } from "./plugins.js";
+import { buildProjectMap } from "./projectMap.js";
+import { createWebTools } from "./web.js";
+import { createGitTools, loadSecrets } from "./github.js";
 import type { ProviderKind } from "../shared/types.js";
+
+export type AgentMode = "chat" | "bug-hunt";
 
 export type RunAgentInput = {
   messages: ModelMessage[];
@@ -22,6 +27,7 @@ export type RunAgentInput = {
   skillIds?: string[];
   provider?: ProviderKind;
   model?: string;
+  mode?: AgentMode;
 };
 
 function resolveModel(provider: ProviderKind, modelName: string): LanguageModel {
@@ -70,20 +76,48 @@ export async function runAgentStream(input: RunAgentInput) {
   const provider = input.provider ?? defaults.provider;
   const modelName = input.model ?? defaults.model;
   const workspace = path.resolve(input.workspace ?? defaults.workspace);
+  const mode = input.mode ?? "chat";
 
-  const skills = await loadSkillBodies(input.skillIds);
-  const plugins = await loadPlugins();
+  const secrets = await loadSecrets(workspace);
+  if (secrets.githubToken) {
+    process.env.GITHUB_TOKEN = secrets.githubToken;
+  }
+
+  const skillIds =
+    input.skillIds?.length
+      ? input.skillIds
+      : mode === "bug-hunt"
+        ? ["bug-hunt", "coding", "research"]
+        : ["coding", "design", "research"];
+
+  const [skills, plugins, projectMap] = await Promise.all([
+    loadSkillBodies(skillIds),
+    loadPlugins(),
+    buildProjectMap(workspace),
+  ]);
+
   const tools = {
     ...createAgentTools(workspace),
+    ...createWebTools(),
+    ...createGitTools(workspace),
     ...mergePluginTools(plugins),
   };
 
+  const modeBlock =
+    mode === "bug-hunt"
+      ? "MODE: BUG HUNT. Prioritize finding and fixing defects. Reproduce, isolate, patch, verify."
+      : "MODE: BUILD. Map → research existing code on the web → implement → verify.";
+
   const system = [
-    "You are Helix, a local coding agent that runs on the user's machine.",
-    "You work like Cursor / Claude Code: inspect the workspace, edit files, run commands, and ship working changes.",
-    "Prefer precise, minimal edits. Explain briefly what you did.",
-    "Never invent file contents — read first when unsure.",
+    "You are Helix, a local IDE coding agent. Match the quality bar of Cursor and Claude Code.",
+    modeBlock,
+    "HARD RULES:",
+    "1) Before every project task, use the injected project map and call project_map / list_directory / read_file as needed.",
+    "2) Before building non-trivial features from scratch, search the web / GitHub for existing libraries or code to reuse.",
+    "3) Prefer precise edits. Never invent APIs — read files or docs first.",
+    "4) After meaningful work, offer or perform git_commit + git_push when GitHub is connected and the user wants it saved.",
     `Workspace root: ${workspace}`,
+    `Current project map:\n${projectMap.summary}`,
     pluginSystemPrompt(plugins),
     skills ? `Loaded skills:\n\n${skills}` : "",
   ]
@@ -95,6 +129,6 @@ export async function runAgentStream(input: RunAgentInput) {
     system,
     messages: input.messages,
     tools,
-    stopWhen: stepCountIs(12),
+    stopWhen: stepCountIs(24),
   });
 }

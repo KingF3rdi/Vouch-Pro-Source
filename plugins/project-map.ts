@@ -8,13 +8,13 @@ export const version = "0.1.0";
 export const enabled = true;
 
 export const systemPrompt =
-  "Use project_map early on unfamiliar codebases to orient before deep reads.";
+  "Use project_tree early on unfamiliar codebases to orient before deep reads.";
 
 export function createTools() {
   return {
-    project_map: tool({
+    project_tree: tool({
       description:
-        "List top-level files and important config markers in the workspace.",
+        "List top-level files and important config markers in the workspace (legacy plugin helper).",
       inputSchema: z.object({
         depth: z.number().int().min(1).max(3).default(2),
       }),

@@ -14,6 +14,10 @@ export type AgentSettings = {
   workspace: string;
 };
 
+export type AgentMode = "chat" | "bug-hunt";
+
+export type IdeTab = "editor" | "preview" | "browser" | "bugs" | "github";
+
 export type PluginManifest = {
   id: string;
   name: string;
