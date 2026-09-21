@@ -6,12 +6,14 @@ export type ChatMessage = {
   content: string;
 };
 
-export type ProviderKind = "ollama" | "openai" | "anthropic";
+export type ProviderKind = "ollama" | "openai" | "anthropic" | "gateway";
 
 export type AgentSettings = {
-  provider: ProviderKind;
+  provider: ProviderKind | string;
   model: string;
   workspace: string;
+  helixModelId?: string;
+  helixModelName?: string;
 };
 
 export type AgentMode = "chat" | "bug-hunt" | "ship";

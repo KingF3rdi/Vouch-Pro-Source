@@ -37,6 +37,12 @@ import {
   listBuildArtifacts,
   runFullShip,
 } from "../agent/build.js";
+import {
+  HELIX_MODELS,
+  getHelixModel,
+  loadHelixSettings,
+  saveHelixSettings,
+} from "../agent/models.js";
 import type { ProviderKind } from "../shared/types.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -61,8 +67,7 @@ async function loadEnvFile() {
 }
 
 function workspaceFromQuery(raw?: string) {
-  const defaults = getDefaultSettings();
-  return path.resolve(raw || defaults.workspace);
+  return path.resolve(raw || process.env.HELIX_WORKSPACE || process.cwd());
 }
 
 function assertInside(workspace: string, targetPath: string) {
@@ -81,16 +86,42 @@ app.use(cors());
 app.use(express.json({ limit: "8mb" }));
 
 // Warm MCP connections from .helix/mcp.json (disabled servers are skipped)
-void reconnectMcpServers(getDefaultSettings().workspace).catch((error) => {
-  console.warn("[helix] MCP startup:", error instanceof Error ? error.message : error);
-});
+void getDefaultSettings()
+  .then((settings) => reconnectMcpServers(settings.workspace))
+  .catch((error) => {
+    console.warn("[helix] MCP startup:", error instanceof Error ? error.message : error);
+  });
 
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, name: "helix-agent", version: "0.4.0" });
+  res.json({ ok: true, name: "helix-agent", version: "0.5.0" });
 });
 
-app.get("/api/settings", (_req, res) => {
-  res.json(getDefaultSettings());
+app.get("/api/settings", async (_req, res) => {
+  res.json(await getDefaultSettings());
+});
+
+app.get("/api/models", async (req, res) => {
+  const workspace = workspaceFromQuery(
+    typeof req.query.workspace === "string" ? req.query.workspace : undefined
+  );
+  const saved = await loadHelixSettings(workspace);
+  res.json({
+    models: HELIX_MODELS,
+    selected: saved.modelId,
+    gatewayConfigured: Boolean(
+      process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN
+    ),
+    anthropicConfigured: Boolean(process.env.ANTHROPIC_API_KEY),
+    openaiConfigured: Boolean(process.env.OPENAI_API_KEY),
+  });
+});
+
+app.put("/api/models/selected", async (req, res) => {
+  const workspace = workspaceFromQuery(req.body?.workspace);
+  const modelId = String(req.body?.modelId ?? "");
+  const profile = getHelixModel(modelId);
+  const saved = await saveHelixSettings(workspace, { modelId: profile.id });
+  res.json({ ok: true, selected: saved.modelId, profile });
 });
 
 app.get("/api/skills", async (_req, res) => {
@@ -416,6 +447,7 @@ app.post("/api/chat", async (req, res) => {
       model,
       workspace,
       mode,
+      helixModelId,
     }: {
       messages: UIMessage[];
       skillIds?: string[];
@@ -423,6 +455,7 @@ app.post("/api/chat", async (req, res) => {
       model?: string;
       workspace?: string;
       mode?: AgentMode;
+      helixModelId?: string;
     } = req.body ?? {};
 
     if (!Array.isArray(messages)) {
@@ -437,6 +470,7 @@ app.post("/api/chat", async (req, res) => {
       model,
       workspace,
       mode,
+      helixModelId,
     });
 
     result.pipeUIMessageStreamToResponse(res);
@@ -457,8 +491,11 @@ app.get(/^(?!\/api).*/, (_req, res, next) => {
 });
 
 app.listen(PORT, "127.0.0.1", () => {
-  const settings = getDefaultSettings();
-  console.log(`Helix agent listening on http://127.0.0.1:${PORT}`);
-  console.log(`Provider: ${settings.provider} · Model: ${settings.model}`);
-  console.log(`Workspace: ${settings.workspace}`);
+  void getDefaultSettings().then((settings) => {
+    console.log(`Helix agent listening on http://127.0.0.1:${PORT}`);
+    console.log(
+      `Helix model: ${settings.helixModelName} (${settings.helixModelId}) → ${settings.model}`
+    );
+    console.log(`Workspace: ${settings.workspace}`);
+  });
 });

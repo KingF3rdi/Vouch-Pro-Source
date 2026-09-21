@@ -9,6 +9,7 @@ import { GitHubPanel } from "./components/GitHubPanel";
 import { McpPanel } from "./components/McpPanel";
 import { ShipPanel } from "./components/ShipPanel";
 import { WindowControls, useIsDesktop } from "./components/WindowControls";
+import { ModelPicker } from "./components/ModelPicker";
 
 export function App() {
   const isDesktop = useIsDesktop();
@@ -16,6 +17,7 @@ export function App() {
   const [skills, setSkills] = useState<SkillSummary[]>([]);
   const [plugins, setPlugins] = useState<PluginManifest[]>([]);
   const [activeSkills, setActiveSkills] = useState(["coding", "design", "research", "ship"]);
+  const [helixModelId, setHelixModelId] = useState("helix-code");
   const [mode, setMode] = useState<AgentMode>("chat");
   const [tab, setTab] = useState<IdeTab>("editor");
   const [files, setFiles] = useState<OpenFile[]>([]);
@@ -35,11 +37,23 @@ export function App() {
       fetch("/api/project/map").then((r) => r.json()),
     ]).then(([settingsData, skillsData, pluginsData, mapData]) => {
       setSettings(settingsData);
+      if (settingsData.helixModelId) setHelixModelId(settingsData.helixModelId);
       setSkills(skillsData.skills ?? []);
       setPlugins(pluginsData.plugins ?? []);
       setMapSummary(mapData.summary ?? "");
     });
   }, []);
+
+  async function selectHelixModel(id: string) {
+    setHelixModelId(id);
+    await fetch("/api/models/selected", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ modelId: id }),
+    });
+    const settingsData = await fetch("/api/settings").then((r) => r.json());
+    setSettings(settingsData);
+  }
 
   async function openFile(path: string) {
     const existing = files.find((f) => f.path === path);
@@ -109,12 +123,7 @@ export function App() {
           </div>
         </div>
         <div className="meta-pills no-drag">
-          <span className="pill">
-            provider <strong>{settings?.provider ?? "…"}</strong>
-          </span>
-          <span className="pill">
-            model <strong>{settings?.model ?? "…"}</strong>
-          </span>
+          <ModelPicker selectedId={helixModelId} onSelect={(id) => void selectHelixModel(id)} />
           {isDesktop ? (
             <span className="pill">
               shell <strong>desktop</strong>
@@ -201,6 +210,7 @@ export function App() {
         <aside className="ide-right">
           <ChatPanel
             settings={settings}
+            helixModelId={helixModelId}
             mode={mode}
             onModeChange={setMode}
             skills={skills}

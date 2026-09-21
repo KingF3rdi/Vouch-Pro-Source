@@ -2,6 +2,19 @@
 
 Local coding AI **desktop IDE** — same UI in the Electron window as in the browser preview.
 
+## Helix models
+
+Helix ships with its **own model profiles** for coding:
+
+| Helix model | Role |
+| --- | --- |
+| **Helix Code** | Flagship coding agent (default) |
+| **Helix Astra** | GPT‑6 Astra–class deep coding |
+| **Helix Fable** | Claude Fable 5.1–class careful reasoning |
+| **Helix Local** | Offline via Ollama (`qwen2.5-coder`) |
+
+Pick them in the top bar. For Code / Astra / Fable set `AI_GATEWAY_API_KEY` (or OpenAI/Anthropic keys) in `.env`. For Local: `ollama pull qwen2.5-coder:14b`.
+
 ## Desktop (recommended)
 
 ```bash

@@ -15,6 +15,7 @@ type SessionSummary = {
 
 export function ChatPanel({
   settings,
+  helixModelId,
   mode,
   onModeChange,
   skills,
@@ -23,6 +24,7 @@ export function ChatPanel({
   onToggleSkill,
 }: {
   settings: AgentSettings | null;
+  helixModelId: string;
   mode: AgentMode;
   onModeChange: (mode: AgentMode) => void;
   skills: SkillSummary[];
@@ -41,6 +43,7 @@ export function ChatPanel({
     model: settings?.model,
     workspace: settings?.workspace,
     mode,
+    helixModelId,
   });
 
   bodyRef.current = {
@@ -49,6 +52,7 @@ export function ChatPanel({
     model: settings?.model,
     workspace: settings?.workspace,
     mode,
+    helixModelId,
   };
 
   const transport = useMemo(
