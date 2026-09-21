@@ -1,8 +1,21 @@
-__pycache__/
-*.pyc
-venv/
-.env
-*.db
 node_modules/
-.next/
-uploads/
+dist/
+release/
+.env
+*.log
+.DS_Store
+.playwright-mcp/
+.helix/secrets.json
+.helix/sessions/
+.helix/settings.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Training artifacts (keep dataset; ignore huge checkpoints)
+training/output/**/checkpoints/
+training/output/**/runs/
+training/output/**/checkpoints/
