@@ -1,6 +1,7 @@
 import {
   stepCountIs,
   streamText,
+  smoothStream,
   type ModelMessage,
 } from "ai";
 import path from "node:path";
@@ -198,11 +199,20 @@ export async function runAgentStream(input: RunAgentInput) {
     .filter(Boolean)
     .join("\n\n");
 
+  let stepCounter = 0;
   return streamText({
     model,
     system,
     messages: input.messages,
     tools,
     stopWhen: stepCountIs(maxSteps),
+    experimental_transform: smoothStream({ delayInMs: 18 }),
+    onStepFinish: ({ toolCalls, toolResults, finishReason }) => {
+      stepCounter += 1;
+      const toolsUsed = toolCalls.map((t) => t.toolName).join(", ") || "none";
+      console.log(
+        `[helix] step ${stepCounter} · tools=${toolsUsed} · results=${toolResults.length} · ${finishReason}`
+      );
+    },
   });
 }

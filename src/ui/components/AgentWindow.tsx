@@ -1,5 +1,11 @@
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport, isToolUIPart, type UIMessage } from "ai";
+import {
+  DefaultChatTransport,
+  isReasoningUIPart,
+  isToolOrDynamicToolUIPart,
+  isToolUIPart,
+  type UIMessage,
+} from "ai";
 import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -10,10 +16,14 @@ import {
   ThumbsDown,
   ThumbsUp,
   LoaderCircle,
-  ChevronRight,
 } from "lucide-react";
 import type { AgentSettings, PluginManifest, SkillSummary } from "../../shared/types";
 import { AgentSidebar, type AgentSessionItem } from "./AgentSidebar";
+import {
+  summarizeToolActivity,
+  ToolFeedbackCard,
+  type ToolPartLike,
+} from "./ToolFeedback";
 
 type LearningInfo = {
   enabled: boolean;
@@ -36,9 +46,9 @@ function messageText(message: {
     .join("\n");
 }
 
-function toolLabel(part: { type: string; state?: string }) {
-  const name = part.type.replace(/^tool-/, "");
-  return `${name} · ${part.state ?? "running"}`;
+function asToolPart(part: unknown): ToolPartLike {
+  const p = part as ToolPartLike;
+  return p;
 }
 
 const IDE_STARTERS = [
@@ -115,18 +125,30 @@ export function AgentWindow({
   });
   const busy = status === "submitted" || status === "streaming";
 
-  const activeTools = useMemo(() => {
-    const last = [...messages].reverse().find((m) => m.role === "assistant");
-    if (!last) return [] as string[];
-    return (last.parts ?? [])
-      .filter((p) => isToolUIPart(p))
-      .map((p) => toolLabel(p as { type: string; state?: string }));
-  }, [messages]);
+  const lastAssistant = useMemo(
+    () => [...messages].reverse().find((m) => m.role === "assistant"),
+    [messages]
+  );
+
+  const activity = useMemo(() => {
+    const parts = (lastAssistant?.parts ?? [])
+      .filter((p) => isToolOrDynamicToolUIPart(p) || isToolUIPart(p))
+      .map((p) => asToolPart(p));
+    return summarizeToolActivity(parts);
+  }, [lastAssistant]);
 
   const approxTokens = useMemo(() => {
     const chars = messages.reduce((n, m) => n + messageText(m).length, 0);
     return Math.max(0, Math.round(chars / 4));
   }, [messages]);
+
+  const phaseLabel = useMemo(() => {
+    if (!busy) return "Bereit";
+    if (status === "submitted" && !lastAssistant) return "Anfrage gesendet…";
+    if (activity.running.length) return activity.label;
+    if (lastAssistant && messageText(lastAssistant)) return "Schreibt Antwort…";
+    return activity.label || "Denkt nach…";
+  }, [busy, status, lastAssistant, activity]);
 
   useEffect(() => {
     if (busy && !startedAt) setStartedAt(Date.now());
@@ -312,7 +334,9 @@ export function AgentWindow({
   }
 
   const activeSession = sessions.find((s) => s.id === sessionId);
-  const runningLine = activeTools[activeTools.length - 1];
+  const toolCount =
+    (lastAssistant?.parts ?? []).filter((p) => isToolOrDynamicToolUIPart(p) || isToolUIPart(p))
+      .length;
 
   return (
     <div className="agent-window">
@@ -343,7 +367,16 @@ export function AgentWindow({
               IDE
             </button>
           </div>
-          <div className="agent-scope-pill no-drag">Build in IDE only</div>
+          <div className="agent-scope-pill no-drag">
+            {busy ? (
+              <>
+                <LoaderCircle size={12} className="spin" />
+                {phaseLabel}
+              </>
+            ) : (
+              "Build in IDE only"
+            )}
+          </div>
         </header>
 
         <div className="agent-stage">
@@ -372,7 +405,10 @@ export function AgentWindow({
               </p>
             </div>
           ) : (
-            messages.map((message) => (
+            messages.map((message, messageIndex) => {
+              const isLastAssistant =
+                message.role === "assistant" && messageIndex === messages.length - 1;
+              return (
               <article
                 key={message.id}
                 className={`agent-msg ${message.role === "user" ? "user" : "assistant"}`}
@@ -387,29 +423,61 @@ export function AgentWindow({
                   </div>
                 ) : (
                   <div className="agent-assistant-body">
-                    <div className="markdown">
+                    <div className="markdown agent-stream">
                       {(message.parts ?? []).map((part, index) => {
                         if (part.type === "text") {
+                          const streamingTail =
+                            busy && isLastAssistant && index === (message.parts?.length ?? 0) - 1;
                           return (
-                            <ReactMarkdown
-                              key={`${message.id}-${index}`}
-                              remarkPlugins={[remarkGfm]}
-                            >
-                              {part.text}
-                            </ReactMarkdown>
+                            <div key={`${message.id}-${index}`} className="agent-text-block">
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {part.text}
+                              </ReactMarkdown>
+                              {streamingTail ? <span className="stream-caret" aria-hidden /> : null}
+                            </div>
                           );
                         }
-                        if (isToolUIPart(part)) {
+                        if (isReasoningUIPart(part)) {
                           return (
-                            <div key={`${message.id}-${index}`} className="agent-tool-chip">
-                              <LoaderCircle size={12} className={part.state === "output-available" || part.state === "output-error" ? "" : "spin"} />
-                              {toolLabel(part as { type: string; state?: string })}
+                            <div key={`${message.id}-${index}`} className="agent-reasoning">
+                              <div className="agent-reasoning-label">Thinking</div>
+                              <pre>{part.text}</pre>
+                            </div>
+                          );
+                        }
+                        if (isToolOrDynamicToolUIPart(part) || isToolUIPart(part)) {
+                          return (
+                            <ToolFeedbackCard
+                              key={`${message.id}-${index}`}
+                              part={asToolPart(part)}
+                              defaultOpen={
+                                busy &&
+                                isLastAssistant &&
+                                (part.state === "input-streaming" ||
+                                  part.state === "input-available")
+                              }
+                            />
+                          );
+                        }
+                        if (part.type === "step-start") {
+                          return (
+                            <div key={`${message.id}-${index}`} className="agent-step-mark">
+                              Step
                             </div>
                           );
                         }
                         return null;
                       })}
                     </div>
+                    {busy && isLastAssistant && !(message.parts ?? []).some((p) => p.type === "text" || isToolUIPart(p) || isToolOrDynamicToolUIPart(p)) ? (
+                      <div className="agent-thinking-pulse">
+                        <LoaderCircle size={14} className="spin" />
+                        <span>Denkt nach…</span>
+                        <span className="thinking-dots" aria-hidden>
+                          <i /><i /><i />
+                        </span>
+                      </div>
+                    ) : null}
                     {!busy ? (
                       <div className="learn-actions">
                         <button
@@ -433,7 +501,8 @@ export function AgentWindow({
                   </div>
                 )}
               </article>
-            ))
+              );
+            })
           )}
 
           {error ? (
@@ -445,30 +514,37 @@ export function AgentWindow({
           <div ref={bottomRef} />
         </div>
 
-        {(busy || runningLine) && (
-          <div className="agent-status-bar">
-            {runningLine ? (
-              <div className="agent-running">
-                Läuft {runningLine.split(" · ")[0]}…
-                <ChevronRight size={14} />
-              </div>
-            ) : (
-              <div className="agent-running">
-                <LoaderCircle size={14} className="spin" />
-                Agent arbeitet…
-              </div>
-            )}
+        {busy || toolCount > 0 ? (
+          <div className={`agent-status-bar${busy ? " is-live" : ""}`}>
+            <div className="agent-running">
+              {busy ? <LoaderCircle size={14} className="spin" /> : null}
+              <span>{phaseLabel}</span>
+            </div>
             <div className="agent-stats">
               <span>{elapsed}</span>
               <span>·</span>
               <span>{approxTokens} Tokens</span>
               <span>·</span>
-              <span>{busy ? "1 laufende Aufgabe" : "Bereit"}</span>
+              <span>
+                {toolCount} Tool{toolCount === 1 ? "" : "s"}
+                {activity.done ? ` · ${activity.done} ok` : ""}
+                {activity.failed ? ` · ${activity.failed} fehlgeschlagen` : ""}
+              </span>
               <span>·</span>
-              <span>{busy ? "Tools werden ausgeführt…" : "Idle"}</span>
+              <span>{busy ? "1 laufende Aufgabe" : "Fertig"}</span>
             </div>
+            {activity.running.length ? (
+              <div className="agent-live-tools">
+                {activity.running.map((part, i) => (
+                  <span key={`${part.toolCallId ?? i}`} className="agent-live-chip">
+                    <LoaderCircle size={11} className="spin" />
+                    {(part.toolName || part.type.replace(/^tool-/, "")).slice(0, 28)}
+                  </span>
+                ))}
+              </div>
+            ) : null}
           </div>
-        )}
+        ) : null}
 
         <form
           className="agent-composer"

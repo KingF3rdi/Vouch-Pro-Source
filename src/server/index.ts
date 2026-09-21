@@ -768,7 +768,10 @@ app.post("/api/chat", async (req, res) => {
       helixModelId,
     });
 
-    result.pipeUIMessageStreamToResponse(res);
+    result.pipeUIMessageStreamToResponse(res, {
+      sendReasoning: true,
+      sendSources: false,
+    });
   } catch (error) {
     console.error("[helix] chat error", error);
     res.status(500).json({
