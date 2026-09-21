@@ -1665,8 +1665,46 @@ button {
   font-size: 0.8rem;
 }
 
-.agent-slash-item:hover {
+.agent-slash-item:hover,
+.agent-slash-item.active {
   background: #242424;
+}
+
+.agent-slash-head {
+  padding: 0.35rem 0.55rem 0.25rem;
+  font-size: 0.68rem;
+  color: var(--agent-muted);
+}
+
+.agent-cmd-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 0 0.85rem;
+}
+
+.agent-cmd-chip {
+  border: 1px solid var(--agent-line);
+  background: #1a1a1a;
+  color: var(--accent);
+  border-radius: 999px;
+  padding: 0.28rem 0.55rem;
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+}
+
+.agent-cmd-chip:hover {
+  border-color: rgba(62, 207, 142, 0.45);
+  background: var(--accent-dim);
+}
+
+.agent-cmd-chip.soft {
+  color: var(--agent-muted);
+}
+
+.befehle-chip {
+  cursor: pointer;
 }
 
 .agent-slash-item strong {

@@ -107,16 +107,18 @@ type SlashCommand = {
   value?: string;
   panel?: "ide" | "ship" | "host" | "trade";
   mode?: "chat" | "ship" | "bug-hunt";
-  action?: "new" | "clear";
+  action?: "new" | "clear" | "help";
 };
 
 const SLASH_COMMANDS: SlashCommand[] = [
+  { id: "help", label: "/help", hint: "Alle Befehle anzeigen", kind: "action", action: "help" },
   { id: "new", label: "/new", hint: "Neue Session", kind: "action", action: "new" },
   { id: "clear", label: "/clear", hint: "Chat leeren", kind: "action", action: "clear" },
   { id: "ide", label: "/ide", hint: "IDE öffnen", kind: "panel", panel: "ide" },
-  { id: "ship", label: "/ship", hint: "Ship-Panel + Build", kind: "panel", panel: "ship" },
-  { id: "host", label: "/host", hint: "Hosting", kind: "panel", panel: "host" },
-  { id: "trade", label: "/trade", hint: "Paper-Trading", kind: "panel", panel: "trade" },
+  { id: "ship", label: "/ship", hint: "Ship / compile Panel", kind: "panel", panel: "ship" },
+  { id: "host", label: "/host", hint: "Hosting Panel", kind: "panel", panel: "host" },
+  { id: "trade", label: "/trade", hint: "Memecoin Paper-Trading", kind: "panel", panel: "trade" },
+  { id: "build", label: "/build", hint: "Build-Modus", kind: "mode", mode: "chat" },
   { id: "bugs", label: "/bugs", hint: "Bug-Hunt Modus", kind: "mode", mode: "bug-hunt" },
   {
     id: "map",
@@ -134,14 +136,73 @@ const SLASH_COMMANDS: SlashCommand[] = [
       "Run quality_check and ship_project. Fix every failure until typecheck and production build succeed.",
   },
   {
+    id: "test",
+    label: "/test",
+    hint: "Tests ausführen",
+    kind: "prompt",
+    value: "Run the project tests with run_tests, fix failures, and re-run until green.",
+  },
+  {
     id: "scaffold",
     label: "/scaffold",
-    hint: "Neues Produkt scaffolden",
+    hint: "Produkt scaffolden",
     kind: "prompt",
     value:
       "Scaffold a product that fits my request (website, game-canvas, mod-fabric, electron-app, or fullstack-ts), create folders/files on disk, then make a runnable slice.",
   },
+  {
+    id: "website",
+    label: "/website",
+    hint: "Marketing-Website bauen",
+    kind: "prompt",
+    value:
+      "Scaffold a marketing website with hero, clear CTA, and responsive layout, then implement real content and run a production build.",
+  },
+  {
+    id: "game",
+    label: "/game",
+    hint: "Browser-Game scaffolden",
+    kind: "prompt",
+    value:
+      "Scaffold a playable browser game with TypeScript canvas, implement movement and scoring, then verify it runs.",
+  },
+  {
+    id: "app",
+    label: "/app",
+    hint: "Fullstack-App scaffolden",
+    kind: "prompt",
+    value:
+      "Scaffold a fullstack TypeScript app (API + React UI), implement a working vertical slice, and run typecheck.",
+  },
+  {
+    id: "mod",
+    label: "/mod",
+    hint: "Minecraft Fabric-Mod",
+    kind: "prompt",
+    value:
+      "Scaffold a Fabric mod project, create the package folders on disk, and implement a minimal working feature.",
+  },
+  {
+    id: "commit",
+    label: "/commit",
+    hint: "Git commit vorbereiten",
+    kind: "prompt",
+    value:
+      "Review git status and diffs, then create a clear commit with git_commit for the current changes.",
+  },
+  {
+    id: "status",
+    label: "/status",
+    hint: "Workspace-Status",
+    kind: "prompt",
+    value:
+      "Give a concise status of this workspace: project map summary, open risks, and recommended next steps.",
+  },
 ];
+
+const COMMAND_CHIPS = SLASH_COMMANDS.filter((c) =>
+  ["help", "ship", "host", "trade", "fix", "website", "game", "app", "mod"].includes(c.id)
+);
 
 export function AgentWindow({
   settings,
@@ -229,6 +290,7 @@ export function AgentWindow({
   clearErrorRef.current = clearError;
   const busy = status === "submitted" || status === "streaming";
   const [cmdOpen, setCmdOpen] = useState(false);
+  const [slashIndex, setSlashIndex] = useState(0);
   const recentlySwitched = Date.now() - switchedAtRef.current < 2500;
 
   const lastAssistant = useMemo(
@@ -526,6 +588,7 @@ export function AgentWindow({
 
   function runSlashCommand(cmd: SlashCommand) {
     setCmdOpen(false);
+    setSlashIndex(0);
     if (cmd.kind === "panel" && cmd.panel) {
       setInput("");
       onOpenPanel(cmd.panel);
@@ -538,6 +601,11 @@ export function AgentWindow({
     }
     if (cmd.kind === "action") {
       setInput("");
+      if (cmd.action === "help") {
+        setInput("/");
+        setCmdOpen(true);
+        return;
+      }
       if (cmd.action === "new" || cmd.action === "clear") {
         void createNewSession();
       }
@@ -549,7 +617,7 @@ export function AgentWindow({
     }
   }
 
-  const slashQuery = input.startsWith("/") ? input.slice(1).toLowerCase() : "";
+  const slashQuery = input.startsWith("/") ? input.slice(1).trim().toLowerCase() : "";
   const slashMatches =
     cmdOpen || input.startsWith("/")
       ? SLASH_COMMANDS.filter(
@@ -663,6 +731,31 @@ export function AgentWindow({
                   Project folder: <code>{settings.workspace}</code>
                 </p>
               ) : null}
+              <div className="agent-cmd-row">
+                <span className="muted">Befehle</span>
+                {COMMAND_CHIPS.map((cmd) => (
+                  <button
+                    key={cmd.id}
+                    type="button"
+                    className="agent-cmd-chip"
+                    title={cmd.hint}
+                    onClick={() => runSlashCommand(cmd)}
+                  >
+                    {cmd.label}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className="agent-cmd-chip soft"
+                  onClick={() => {
+                    setInput("/");
+                    setCmdOpen(true);
+                    setSlashIndex(0);
+                  }}
+                >
+                  Alle /
+                </button>
+              </div>
               <div className="agent-starters">
                 {STARTERS_BY_MODE[mode].map((prompt) => (
                   <button
@@ -676,7 +769,8 @@ export function AgentWindow({
                 ))}
               </div>
               <p className="agent-plugins muted">
-                Skills: {skills.filter((s) => activeSkills.includes(s.id)).map((s) => s.name).join(", ") || "coding"}
+                Tippe <code>/</code> im Composer für alle Befehle · Skills:{" "}
+                {skills.filter((s) => activeSkills.includes(s.id)).map((s) => s.name).join(", ") || "coding"}
                 {plugins.length ? ` · Plugins: ${plugins.map((p) => p.name).join(", ")}` : ""}
               </p>
             </div>
@@ -848,8 +942,9 @@ export function AgentWindow({
           className="agent-composer"
           onSubmit={(e) => {
             e.preventDefault();
-            if (slashMatches.length === 1 && input.trim().startsWith("/")) {
-              runSlashCommand(slashMatches[0]!);
+            if (slashMatches.length > 0 && input.trim().startsWith("/")) {
+              const pick = slashMatches[Math.min(slashIndex, slashMatches.length - 1)]!;
+              runSlashCommand(pick);
               return;
             }
             submitPrompt(input);
@@ -857,11 +952,15 @@ export function AgentWindow({
         >
           {slashMatches.length > 0 ? (
             <div className="agent-slash-menu" role="listbox" aria-label="Befehle">
-              {slashMatches.map((cmd) => (
+              <div className="agent-slash-head">Befehle — Enter auswählen · Esc schließen</div>
+              {slashMatches.map((cmd, i) => (
                 <button
                   key={cmd.id}
                   type="button"
-                  className="agent-slash-item"
+                  role="option"
+                  aria-selected={i === slashIndex}
+                  className={`agent-slash-item${i === slashIndex ? " active" : ""}`}
+                  onMouseEnter={() => setSlashIndex(i)}
                   onClick={() => runSlashCommand(cmd)}
                 >
                   <strong>{cmd.label}</strong>
@@ -876,29 +975,40 @@ export function AgentWindow({
               const next = e.target.value;
               setInput(next);
               setCmdOpen(next.startsWith("/"));
+              setSlashIndex(0);
             }}
-            placeholder={
-              mode === "bug-hunt"
-                ? "Describe the bug or ask Helix to hunt…  ·  / for commands"
-                : mode === "ship"
-                  ? "Ask Helix to compile and package…  ·  / for commands"
-                  : "Tippe / für Befehle — apps, sites, games, mods…"
-            }
+            placeholder="Nachricht oder / für Befehle (/ship /host /trade /fix /website …)"
             rows={2}
             onKeyDown={(e) => {
               if (e.key === "Escape" && (cmdOpen || input.startsWith("/"))) {
                 setCmdOpen(false);
-                if (input === "/") setInput("");
+                setSlashIndex(0);
+                if (input === "/" || /^\/[a-z-]*$/i.test(input.trim())) setInput("");
                 return;
+              }
+              if (slashMatches.length > 0 && input.startsWith("/")) {
+                if (e.key === "ArrowDown") {
+                  e.preventDefault();
+                  setSlashIndex((i) => (i + 1) % slashMatches.length);
+                  return;
+                }
+                if (e.key === "ArrowUp") {
+                  e.preventDefault();
+                  setSlashIndex((i) => (i - 1 + slashMatches.length) % slashMatches.length);
+                  return;
+                }
+                if (e.key === "Tab") {
+                  e.preventDefault();
+                  const pick = slashMatches[Math.min(slashIndex, slashMatches.length - 1)]!;
+                  setInput(pick.label);
+                  return;
+                }
               }
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
-                if (slashMatches.length === 1 && input.trim().startsWith("/")) {
-                  runSlashCommand(slashMatches[0]!);
-                  return;
-                }
-                if (slashMatches.length > 0 && input.trim().match(/^\/[a-z-]*$/i)) {
-                  runSlashCommand(slashMatches[0]!);
+                if (slashMatches.length > 0 && input.trim().startsWith("/")) {
+                  const pick = slashMatches[Math.min(slashIndex, slashMatches.length - 1)]!;
+                  runSlashCommand(pick);
                   return;
                 }
                 submitPrompt(input);
@@ -912,14 +1022,15 @@ export function AgentWindow({
               </button>
               <button
                 type="button"
-                className="agent-mode-chip"
-                title="Befehle"
+                className="agent-mode-chip befehle-chip"
+                title="Befehle öffnen"
                 onClick={() => {
                   setInput("/");
                   setCmdOpen(true);
+                  setSlashIndex(0);
                 }}
               >
-                /
+                / Befehle
               </button>
               <span className="agent-mode-chip soft">
                 {mode === "ship" ? "Ship" : mode === "bug-hunt" ? "Bug hunt" : "Build"}
