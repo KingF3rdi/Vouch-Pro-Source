@@ -216,6 +216,15 @@ export function ChatPanel({
   }, [workspace]);
 
   useEffect(() => {
+    function onPrefill(ev: Event) {
+      const detail = (ev as CustomEvent<{ prompt?: string }>).detail;
+      if (detail?.prompt) setInput(detail.prompt);
+    }
+    window.addEventListener("helix:prefill-chat", onPrefill);
+    return () => window.removeEventListener("helix:prefill-chat", onPrefill);
+  }, []);
+
+  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, status]);
 
@@ -284,7 +293,7 @@ export function ChatPanel({
             "Scaffold a playable browser game with TypeScript canvas, then make movement and scoring feel good.",
             "Build a marketing website for my product — hero, clear CTA, responsive, then production build.",
             "Create a fullstack app (API + React UI) for a simple task manager and verify typecheck.",
-            "Scaffold a Minecraft Fabric mod skeleton and add a tiny first feature with correct docs versions.",
+            "Set up this website on a host: recommend one, then use assisted mode so I log in and you click through.",
           ];
 
   return (

@@ -1062,6 +1062,33 @@ button {
   margin-top: 0.35rem;
 }
 
+.host-allow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.host-allow span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.host-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+}
+
+.host-steps {
+  margin: 0.5rem 0 0;
+  padding-left: 1.1rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
 .chat-toolbar {
   display: flex;
   align-items: center;

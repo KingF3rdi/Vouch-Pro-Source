@@ -11,6 +11,14 @@ export type HelixSecrets = {
   githubToken?: string;
   githubUser?: string;
   defaultBranch?: string;
+  hosting?: {
+    allowCredentialedSetup?: boolean;
+    preferredHost?: string;
+    vercelToken?: string;
+    netlifyToken?: string;
+    cloudflareToken?: string;
+    cloudflareAccountId?: string;
+  };
 };
 
 function secretsPath(workspace: string) {
