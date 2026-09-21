@@ -7,17 +7,6 @@ import { fileURLToPath } from "node:url";
 import type { UIMessage } from "ai";
 import { getDefaultSettings } from "../agent/settings.js";
 import { installOrUpdateProject, defaultWorkspacePath } from "../agent/projectInstall.js";
-import { listSkills } from "../agent/skills.js";
-import { loadPlugins } from "../agent/plugins.js";
-import { buildProjectMap } from "../agent/projectMap.js";
-import {
-  githubStatus,
-  gitCommit,
-  gitPush,
-  saveSecrets,
-  loadSecrets,
-} from "../agent/github.js";
-import { getFileDiff, getGitStatus } from "../agent/gitDiff.js";
 import {
   createSession,
   deleteSession,
@@ -26,15 +15,6 @@ import {
   saveSession,
   type StoredSession,
 } from "../agent/sessions.js";
-import {
-  ingestMessages,
-  learningStatus,
-  loadLearningSettings,
-  observeUserInput,
-  recordFeedback,
-  saveLearningSettings,
-  startRetrainJob,
-} from "../agent/learning.js";
 import {
   HELIX_MODELS,
   getHelixModel,
@@ -111,6 +91,13 @@ app.get("/api/health", (_req, res) => {
   });
 });
 
+// Accept connections immediately — remaining routes register on this same app.
+app.listen(PORT, "127.0.0.1", () => {
+  console.log(
+    `Helix agent listening on http://127.0.0.1:${PORT} (boot ${Date.now() - bootStarted}ms)`
+  );
+});
+
 app.get("/api/settings", async (_req, res) => {
   res.json(await getDefaultSettings());
 });
@@ -170,10 +157,12 @@ app.put("/api/models/selected", async (req, res) => {
 });
 
 app.get("/api/skills", async (_req, res) => {
+  const { listSkills } = await import("../agent/skills.js");
   res.json({ skills: await listSkills() });
 });
 
 app.get("/api/plugins", async (_req, res) => {
+  const { loadPlugins } = await import("../agent/plugins.js");
   const plugins = await loadPlugins();
   res.json({ plugins: plugins.map((plugin) => plugin.manifest) });
 });
@@ -183,6 +172,7 @@ app.get("/api/project/map", async (req, res) => {
     const workspace = workspaceFromQuery(
       typeof req.query.workspace === "string" ? req.query.workspace : undefined
     );
+    const { buildProjectMap } = await import("../agent/projectMap.js");
     res.json(await buildProjectMap(workspace));
   } catch (error) {
     res.status(500).json({
@@ -292,6 +282,7 @@ app.get("/api/git/status", async (req, res) => {
   const workspace = workspaceFromQuery(
     typeof req.query.workspace === "string" ? req.query.workspace : undefined
   );
+  const { getGitStatus } = await import("../agent/gitDiff.js");
   res.json({ files: await getGitStatus(workspace) });
 });
 
@@ -305,6 +296,7 @@ app.get("/api/git/diff", async (req, res) => {
       res.status(400).json({ error: "path required" });
       return;
     }
+    const { getFileDiff } = await import("../agent/gitDiff.js");
     res.json(await getFileDiff(workspace, relative));
   } catch (error) {
     res.status(400).json({
@@ -321,6 +313,7 @@ app.post("/api/git/diff", async (req, res) => {
       res.status(400).json({ error: "path required" });
       return;
     }
+    const { getFileDiff } = await import("../agent/gitDiff.js");
     res.json(await getFileDiff(workspace, relative, req.body?.content));
   } catch (error) {
     res.status(400).json({
@@ -372,7 +365,8 @@ app.put("/api/sessions/:id", async (req, res) => {
     id: existing.id,
   });
   // Continuous learning: ingest every saved conversation locally
-  const learn = await ingestMessages(workspace, next.messages, "session").catch((error) => {
+  const { ingestMessages } = await import("../agent/learning.js");
+  const learn = await ingestMessages(workspace, next.messages, "session").catch((error: unknown) => {
     console.warn("[helix] learning ingest:", error instanceof Error ? error.message : error);
     return null;
   });
@@ -383,11 +377,13 @@ app.get("/api/learning", async (req, res) => {
   const workspace = workspaceFromQuery(
     typeof req.query.workspace === "string" ? req.query.workspace : undefined
   );
+  const { learningStatus } = await import("../agent/learning.js");
   res.json(await learningStatus(workspace));
 });
 
 app.put("/api/learning/settings", async (req, res) => {
   const workspace = workspaceFromQuery(req.body?.workspace);
+  const { saveLearningSettings } = await import("../agent/learning.js");
   const settings = await saveLearningSettings(workspace, req.body ?? {});
   res.json({ settings });
 });
@@ -395,38 +391,42 @@ app.put("/api/learning/settings", async (req, res) => {
 app.post("/api/learning/ingest", async (req, res) => {
   const workspace = workspaceFromQuery(req.body?.workspace);
   const messages = Array.isArray(req.body?.messages) ? req.body.messages : [];
+  const { ingestMessages } = await import("../agent/learning.js");
   const result = await ingestMessages(workspace, messages, req.body?.source ?? "chat");
   res.json(result);
 });
 
 app.post("/api/learning/feedback", async (req, res) => {
   const workspace = workspaceFromQuery(req.body?.workspace);
-  const result = await recordFeedback(workspace, {
+  const learning = await import("../agent/learning.js");
+  const result = await learning.recordFeedback(workspace, {
     userText: String(req.body?.userText ?? ""),
     assistantText: String(req.body?.assistantText ?? ""),
     rating: req.body?.rating === "down" ? "down" : "up",
     correction: typeof req.body?.correction === "string" ? req.body.correction : undefined,
   });
-  const settings = await loadLearningSettings(workspace);
+  const settings = await learning.loadLearningSettings(workspace);
   let retrainStarted = false;
   if (
     result.added > 0 &&
     settings.autoRetrain &&
     settings.pendingSinceTrain >= settings.retrainEvery
   ) {
-    retrainStarted = startRetrainJob(workspace);
+    retrainStarted = learning.startRetrainJob(workspace);
   }
   res.json({ ...result, retrainStarted });
 });
 
 app.post("/api/learning/retrain", async (req, res) => {
   const workspace = workspaceFromQuery(req.body?.workspace);
+  const { startRetrainJob, learningStatus } = await import("../agent/learning.js");
   const started = startRetrainJob(workspace);
   res.json({ ok: true, started, status: await learningStatus(workspace) });
 });
 
 app.post("/api/learning/observe", async (req, res) => {
   const workspace = workspaceFromQuery(req.body?.workspace);
+  const { observeUserInput } = await import("../agent/learning.js");
   const result = await observeUserInput(workspace, {
     text: String(req.body?.text ?? ""),
     kind: typeof req.body?.kind === "string" ? req.body.kind : "user",
@@ -712,6 +712,7 @@ app.get("/api/github/status", async (req, res) => {
   const workspace = workspaceFromQuery(
     typeof req.query.workspace === "string" ? req.query.workspace : undefined
   );
+  const { githubStatus } = await import("../agent/github.js");
   res.json(await githubStatus(workspace));
 });
 
@@ -723,6 +724,7 @@ app.post("/api/github/connect", async (req, res) => {
       res.status(400).json({ error: "token required" });
       return;
     }
+    const { saveSecrets, githubStatus } = await import("../agent/github.js");
     const secrets = await saveSecrets(workspace, { githubToken: token });
     const status = await githubStatus(workspace);
     if (status.user) {
@@ -738,6 +740,7 @@ app.post("/api/github/connect", async (req, res) => {
 
 app.post("/api/github/disconnect", async (req, res) => {
   const workspace = workspaceFromQuery(req.body?.workspace);
+  const { saveSecrets, loadSecrets, githubStatus } = await import("../agent/github.js");
   await saveSecrets(workspace, { githubToken: "", githubUser: "" });
   const secrets = await loadSecrets(workspace);
   // clear empty strings
@@ -765,6 +768,7 @@ app.post("/api/github/commit", async (req, res) => {
       res.status(400).json({ error: "message required" });
       return;
     }
+    const { gitCommit } = await import("../agent/github.js");
     res.json(await gitCommit(workspace, message, req.body?.paths));
   } catch (error) {
     res.status(500).json({
@@ -776,6 +780,7 @@ app.post("/api/github/commit", async (req, res) => {
 app.post("/api/github/push", async (req, res) => {
   try {
     const workspace = workspaceFromQuery(req.body?.workspace);
+    const { gitPush } = await import("../agent/github.js");
     res.json(await gitPush(workspace, req.body?.setUpstream !== false));
   } catch (error) {
     res.status(500).json({
@@ -851,16 +856,11 @@ app.get(/^(?!\/api).*/, (_req, res, next) => {
   });
 });
 
-app.listen(PORT, "127.0.0.1", () => {
-  console.log(
-    `Helix agent listening on http://127.0.0.1:${PORT} (boot ${Date.now() - bootStarted}ms)`
-  );
-  void getDefaultSettings()
-    .then((settings) => {
-      console.log(
-        `Helix model: ${settings.helixModelName} (${settings.helixModelId}) → ${settings.model}`
-      );
-      console.log(`Workspace: ${settings.workspace}`);
-    })
-    .catch(() => undefined);
-});
+void getDefaultSettings()
+  .then((settings) => {
+    console.log(
+      `Helix model: ${settings.helixModelName} (${settings.helixModelId}) → ${settings.model}`
+    );
+    console.log(`Workspace: ${settings.workspace}`);
+  })
+  .catch(() => undefined);

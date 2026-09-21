@@ -222,6 +222,26 @@ export async function installOrUpdateProject(options?: {
   const upgraded = previousVersion !== HELIX_APP_VERSION;
 
   const name = path.basename(workspace);
+  const pkgPath = path.join(workspace, "package.json");
+
+  // Fast path: same Helix version + existing project — no rewrite on every start
+  if (
+    !upgraded &&
+    !options?.forceManaged &&
+    previousVersion &&
+    (await exists(pkgPath))
+  ) {
+    return {
+      workspace,
+      projectsRoot,
+      created: [],
+      updated: [],
+      skipped: [],
+      version: HELIX_APP_VERSION,
+      upgraded: false,
+    };
+  }
+
   const managed = managedTemplates(name);
   for (const [rel, content] of Object.entries(managed)) {
     await writeManaged(path.join(workspace, rel), content, updated, created);

@@ -200,6 +200,34 @@ button {
   flex-direction: column;
 }
 
+.pane-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  padding-right: 0.35rem;
+}
+
+.tree-actions {
+  display: inline-flex;
+  gap: 0.15rem;
+}
+
+.tree-action {
+  padding: 0.2rem 0.35rem !important;
+  min-width: 0;
+}
+
+.tree-root-path {
+  font-size: 0.65rem;
+  color: var(--muted);
+  padding: 0 0.65rem 0.35rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+}
+
 .tree-scroll {
   overflow: auto;
   padding-bottom: 0.75rem;

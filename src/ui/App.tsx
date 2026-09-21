@@ -1,16 +1,23 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { ArrowLeft, CandlestickChart, Package, Rocket, SquareCode } from "lucide-react";
 import type { AgentSettings, PluginManifest, SkillSummary } from "../shared/types";
 import { FileTree } from "./components/FileTree";
 import { EditorPane, type OpenFile } from "./components/EditorPane";
 import { AgentWindow } from "./components/AgentWindow";
-import { ShipPanel } from "./components/ShipPanel";
-import { HostingPanel } from "./components/HostingPanel";
-import { TradingPanel } from "./components/TradingPanel";
 import { WindowControls, useIsDesktop } from "./components/WindowControls";
 import { ModelPicker } from "./components/ModelPicker";
 import { WelcomeGate } from "./components/WelcomeGate";
 import type { AgentPanel } from "./components/AgentSidebar";
+
+const ShipPanel = lazy(() =>
+  import("./components/ShipPanel").then((m) => ({ default: m.ShipPanel }))
+);
+const HostingPanel = lazy(() =>
+  import("./components/HostingPanel").then((m) => ({ default: m.HostingPanel }))
+);
+const TradingPanel = lazy(() =>
+  import("./components/TradingPanel").then((m) => ({ default: m.TradingPanel }))
+);
 
 const ESSENTIAL_SKILLS = [
   "coding",
@@ -60,17 +67,19 @@ export function App() {
   useEffect(() => {
     let cancelled = false;
 
-    // Critical path first — unblock chat/workspace ASAP
-    void fetch("/api/project")
+    // Critical path: settings first so chat can start — project sync in parallel
+    void fetch("/api/settings")
       .then((r) => r.json())
-      .catch(() => null)
-      .then(() => fetch("/api/settings").then((r) => r.json()))
       .then((settingsData) => {
         if (cancelled || !settingsData) return;
         setSettings(settingsData);
         const savedId = settingsData.helixModelId || "helix-free";
         setHelixModelId(savedId);
       });
+
+    void fetch("/api/project")
+      .then((r) => r.json())
+      .catch(() => null);
 
     void fetch("/api/models")
       .then((r) => r.json())
@@ -336,48 +345,46 @@ export function App() {
             </div>
           ) : null}
 
-          {view === "ship" ? (
+          {view === "ship" || view === "host" || view === "trade" ? (
             <div className="ide-body ide-body-only panel-body">
-              <ShipPanel
-                onAskAgent={(prompt) => {
-                  setView("agent");
-                  window.dispatchEvent(
-                    new CustomEvent("helix:prefill-chat", {
-                      detail: {
-                        prompt:
-                          prompt ||
-                          "Detect the build pipeline, compile the project, package the final product, and list artifacts.",
-                      },
-                    })
-                  );
-                }}
-              />
-            </div>
-          ) : null}
-
-          {view === "host" ? (
-            <div className="ide-body ide-body-only panel-body">
-              <HostingPanel
-                onAskAgent={(prompt) => {
-                  setView("agent");
-                  window.dispatchEvent(
-                    new CustomEvent("helix:prefill-chat", { detail: { prompt } })
-                  );
-                }}
-              />
-            </div>
-          ) : null}
-
-          {view === "trade" ? (
-            <div className="ide-body ide-body-only panel-body">
-              <TradingPanel
-                onAskAgent={(prompt) => {
-                  setView("agent");
-                  window.dispatchEvent(
-                    new CustomEvent("helix:prefill-chat", { detail: { prompt } })
-                  );
-                }}
-              />
+              <Suspense fallback={<div className="muted">Loading panel…</div>}>
+                {view === "ship" ? (
+                  <ShipPanel
+                    onAskAgent={(prompt) => {
+                      setView("agent");
+                      window.dispatchEvent(
+                        new CustomEvent("helix:prefill-chat", {
+                          detail: {
+                            prompt:
+                              prompt ||
+                              "Detect the build pipeline, compile the project, package the final product, and list artifacts.",
+                          },
+                        })
+                      );
+                    }}
+                  />
+                ) : null}
+                {view === "host" ? (
+                  <HostingPanel
+                    onAskAgent={(prompt) => {
+                      setView("agent");
+                      window.dispatchEvent(
+                        new CustomEvent("helix:prefill-chat", { detail: { prompt } })
+                      );
+                    }}
+                  />
+                ) : null}
+                {view === "trade" ? (
+                  <TradingPanel
+                    onAskAgent={(prompt) => {
+                      setView("agent");
+                      window.dispatchEvent(
+                        new CustomEvent("helix:prefill-chat", { detail: { prompt } })
+                      );
+                    }}
+                  />
+                ) : null}
+              </Suspense>
             </div>
           ) : null}
         </div>

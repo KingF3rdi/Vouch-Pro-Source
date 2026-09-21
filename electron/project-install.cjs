@@ -102,6 +102,27 @@ function installOrUpdateProjectSync(options = {}) {
   }
   const upgraded = previousVersion !== HELIX_APP_VERSION;
   const name = path.basename(workspace);
+  const pkgPath = path.join(workspace, "package.json");
+
+  // Fast path: already installed at this version — skip disk writes on every launch
+  if (
+    !upgraded &&
+    !options.forceManaged &&
+    fs.existsSync(metaPath) &&
+    fs.existsSync(pkgPath)
+  ) {
+    return {
+      workspace,
+      projectsRoot,
+      created: [],
+      updated: [],
+      skipped: [],
+      version: HELIX_APP_VERSION,
+      upgraded: false,
+      npmInstall: null,
+      fastPath: true,
+    };
+  }
 
   writeManaged(
     path.join(workspace, "README.helix.md"),

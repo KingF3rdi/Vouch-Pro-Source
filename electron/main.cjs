@@ -33,7 +33,7 @@ function logLine(message) {
   console.log(message);
 }
 
-function waitForUrl(url, attempts = 300, intervalMs = 25) {
+function waitForUrl(url, attempts = 400, intervalMs = 15) {
   return new Promise((resolve, reject) => {
     let left = attempts;
     const tick = () => {
@@ -43,7 +43,7 @@ function waitForUrl(url, attempts = 300, intervalMs = 25) {
         else retry();
       });
       req.on("error", retry);
-      req.setTimeout(800, () => {
+      req.setTimeout(400, () => {
         req.destroy();
         retry();
       });
@@ -84,20 +84,30 @@ async function startPackagedServerInProcess(appRoot) {
     throw new Error(`Missing server entry:\n${entry}`);
   }
 
-  // Auto-install / update Documents/Helix/Projects/Helix Workspace
-  projectInfo = installOrUpdateProjectSync({ runNpmInstall: false });
+  // Fast path: only ensure workspace dir exists before importing the server.
+  // Full managed-file sync runs in the background after listen.
+  const workspace =
+    process.env.HELIX_WORKSPACE || defaultWorkspacePath();
+  fs.mkdirSync(workspace, { recursive: true });
   process.env.HELIX_PORT = String(PORT);
   process.env.HELIX_ROOT = appRoot;
-  process.env.HELIX_WORKSPACE = projectInfo.workspace;
+  process.env.HELIX_WORKSPACE = workspace;
   process.env.HELIX_DESKTOP = "1";
   process.env.HELIX_MAX_TOKENS = process.env.HELIX_MAX_TOKENS || "0";
   process.env.HELIX_MAX_STEPS = process.env.HELIX_MAX_STEPS || "0";
-  logLine(
-    `project workspace=${projectInfo.workspace} created=${projectInfo.created.length} updated=${projectInfo.updated.length} upgraded=${projectInfo.upgraded}`
-  );
+  projectInfo = {
+    workspace,
+    projectsRoot: path.dirname(workspace),
+    created: [],
+    updated: [],
+    skipped: [],
+    version: "pending",
+    upgraded: false,
+  };
+  logLine(`fast workspace=${workspace}`);
 
   try {
-    process.chdir(projectInfo.workspace);
+    process.chdir(workspace);
   } catch (err) {
     logLine(`chdir workspace failed: ${err.message}`);
     try {
@@ -117,7 +127,24 @@ async function startPackagedServerInProcess(appRoot) {
 
   const url = pathToFileURL(entry).href;
   logLine(`import in-process server ${url}`);
-  await import(url);
+  const importPromise = import(url);
+
+  // Sync managed templates without blocking health/UI
+  setImmediate(() => {
+    try {
+      projectInfo = installOrUpdateProjectSync({
+        workspace,
+        runNpmInstall: false,
+      });
+      logLine(
+        `project sync created=${projectInfo.created.length} updated=${projectInfo.updated.length} upgraded=${projectInfo.upgraded} fast=${Boolean(projectInfo.fastPath)}`
+      );
+    } catch (err) {
+      logLine(`project sync failed: ${err?.message || err}`);
+    }
+  });
+
+  await importPromise;
   return true;
 }
 
