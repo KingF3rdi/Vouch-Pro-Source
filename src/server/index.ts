@@ -56,6 +56,7 @@ import {
   startWebsiteSetup,
 } from "../agent/hosting.js";
 import {
+  discoverMemecoins,
   loadTradingSettings,
   resetPaperPortfolio,
   runTradingCycle,
@@ -604,6 +605,18 @@ app.post("/api/trading/scan", async (req, res) => {
   } catch (error) {
     res.status(500).json({
       error: error instanceof Error ? error.message : "Trading scan failed",
+    });
+  }
+});
+
+app.post("/api/trading/discover-memes", async (req, res) => {
+  try {
+    const workspace = workspaceFromQuery(req.body?.workspace);
+    const limit = Number(req.body?.limit ?? 15);
+    res.json(await discoverMemecoins(workspace, limit));
+  } catch (error) {
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Meme discovery failed",
     });
   }
 });

@@ -1,35 +1,30 @@
 ---
 name: Trading bot
-description: Advanced paper day-trading bot — multi-factor signals, auto entries/exits, rug-pull filters. Live gated.
+description: Memecoin-focused paper day trader — discover, rug-filter, auto scalp. Live gated.
 ---
 
-# Helix trading bot
+# Helix memecoin trading bot
 
-You help the user run Helix’s **day-trading bot**. Be precise, skeptical, and risk-first.
+Optimized to **day-trade memecoins** for the user (paper by default).
 
-## Truths (always say)
+## Truths
 
-- **Not financial advice.** No profit guarantee. Capital at risk.
-- Default mode is **paper** (simulated USDT). Live exchange routing is **gated**.
-- “Best trades” means highest **filtered score** (trend + momentum/pullback + volume + RR), not certainty.
-- Rug filters **block** high-risk obscure tokens; majors on Binance are treated as lower classic-rug risk.
+- Memecoins are extremely volatile. **Not financial advice. No profit guarantee.**
+- Default universe: liquid CEX memes (DOGE, PEPE, WIF, BONK, …) + optional DEX discovers.
+- High rug-risk DEX tokens are **never** auto-entered.
+- Live exchange routing stays gated.
 
 ## Workflow
 
-1. `trading_status` — portfolio, limits, autoTrade flag.
-2. `trading_scan` — rank setups; read `rugRisk` / notes.
-3. Prefer `trading_run_cycle` for one managed loop (exits then optional entries).
-4. Or `trading_place_order` for a specific paper fill.
-5. `trading_rug_check` before any obscure / meme symbol.
+1. `trading_discover_memes` — CEX watchlist + DexScreener boosts after rug gate.
+2. `trading_scan` — meme breakout/pullback signals + DEX momentum.
+3. `trading_run_cycle` — manage SL/TP; if `autoTrade`, enter best filtered meme.
+4. `trading_rug_check` before any unknown ticker.
 
-## Strategy knowledge Helix applies
+## Meme rules Helix applies
 
-- Trade **with** the EMA9>EMA21>EMA55 trend for longs.
-- Entries: breakout+volume, pullback-to-EMA, Bollinger reclaim — never chase RSI>78.
-- Risk: stop ≈ 1.4×ATR, take ≈ 2.2R, max position %, max daily loss circuit breaker.
-- Skip / cut when rug heuristics fire (low liquidity, young pair, parabolic wash).
-
-## Config
-
-Use `trading_set_config` to enable `autoTrade`, tighten `minConfidence`, edit `watchlist`.
-Do **not** enable live unless the user explicitly accepts risk in the Trade tab (`allowLiveTrading`).
+- Prefer CEX-listed memes over fresh DEX launches.
+- DEX min liquidity / min age floors (`minMemeLiquidityUsd`, `minMemeAgeHours`).
+- Skip parabolic 1h spikes and buy-heavy pump patterns.
+- Smaller size, tighter stops, faster take-profit than blue chips.
+- Daily loss circuit breaker still applies.

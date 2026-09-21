@@ -91,12 +91,47 @@ export function TradingPanel() {
 
   async function scan() {
     setBusy(true);
-    setLog("Scanning markets…");
+    setLog("Scanning memecoins…");
     try {
       const res = await fetch("/api/trading/scan", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
       const data = await res.json();
       setSignals(data.signals ?? []);
-      setLog(`Scanned ${data.signals?.length ?? 0} symbols @ ${data.scannedAt}`);
+      setLog(
+        `Memes scanned ${data.signals?.length ?? 0} @ ${data.scannedAt}` +
+          (data.memes ? ` · discovered ${data.memes.length}` : "")
+      );
+    } catch (e) {
+      setLog(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function discover() {
+    setBusy(true);
+    setLog("Discovering memecoins…");
+    try {
+      const res = await fetch("/api/trading/discover-memes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ limit: 15 }),
+      });
+      const data = await res.json();
+      setLog(
+        JSON.stringify(
+          (data.candidates ?? []).slice(0, 10).map(
+            (c: { id: string; source: string; rugRisk: string; change24h: number; liquidityUsd: number }) => ({
+              id: c.id,
+              source: c.source,
+              rug: c.rugRisk,
+              chg24: c.change24h,
+              liq: c.liquidityUsd,
+            })
+          ),
+          null,
+          2
+        )
+      );
     } catch (e) {
       setLog(e instanceof Error ? e.message : String(e));
     } finally {
@@ -139,10 +174,11 @@ export function TradingPanel() {
 
   return (
     <div className="side-panel">
-      <div className="pane-label">Day trading bot</div>
+      <div className="pane-label">Memecoin day trader</div>
       <p className="panel-copy">
-        Multi-factor day trader with stop/target management and rug-pull filters.{" "}
-        <strong>Paper by default.</strong> Not financial advice — no profit guarantee.
+        Finds and day-trades <strong>memecoins</strong> (CEX + filtered DEX). Strict rug gates,
+        small size, fast scalps. <strong>Paper by default.</strong> Not financial advice —
+        memes can go to zero.
       </p>
 
       <div className="status-card trade-warn">
@@ -175,8 +211,11 @@ export function TradingPanel() {
       </label>
 
       <div className="host-actions">
+        <button type="button" className="send-btn" disabled={busy} onClick={() => void discover()}>
+          Discover memes
+        </button>
         <button type="button" className="send-btn" disabled={busy} onClick={() => void scan()}>
-          <RefreshCw size={14} /> Scan best trades
+          <RefreshCw size={14} /> Scan best memes
         </button>
         <button type="button" className="send-btn" disabled={busy} onClick={() => void runCycle()}>
           <Play size={14} /> Run cycle

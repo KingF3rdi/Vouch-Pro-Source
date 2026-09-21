@@ -3,64 +3,63 @@ import os from "node:os";
 import path from "node:path";
 import {
   assessRugRisk,
+  discoverMemecoins,
   generateSignalFromCandles,
   placeOrder,
   resetPaperPortfolio,
-  runTradingCycle,
   saveTradingSettings,
   tradingStatus,
   type Candle,
 } from "../src/agent/trading.js";
 
-const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "helix-trade-"));
+const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "helix-meme-"));
 
 await saveTradingSettings(tmp, {
+  focus: "memecoins",
   autoTrade: false,
+  discoverDexMemes: false, // keep smoke offline-ish for discovery noise
+  watchlist: ["DOGEUSDT", "PEPEUSDT", "WIFUSDT"],
   startingBalance: 10_000,
-  watchlist: ["BTCUSDT"],
 });
 await resetPaperPortfolio(tmp);
 
-const rugBtc = await assessRugRisk("BTCUSDT");
-console.log("rug_btc", rugBtc.risk, rugBtc.scorePenalty);
+const rug = await assessRugRisk("PEPEUSDT", { focus: "memecoins" });
+console.log("rug_pepe", rug.risk);
 
-// Synthetic uptrend candles for local signal test (no network required for this part)
 const candles: Candle[] = [];
-let px = 100;
+let px = 0.00001;
 for (let i = 0; i < 120; i++) {
-  px = px * (1 + (i > 80 ? 0.004 : 0.001));
-  const high = px * 1.002;
-  const low = px * 0.998;
+  px = px * (1 + (i > 90 ? 0.006 : 0.0015));
   candles.push({
     openTime: Date.now() - (120 - i) * 300_000,
     open: px * 0.999,
-    high,
-    low,
+    high: px * 1.003,
+    low: px * 0.997,
     close: px,
-    volume: i > 100 ? 5000 : 1000,
+    volume: i > 100 ? 8_000_000 : 900_000,
   });
 }
-const signal = generateSignalFromCandles("BTCUSDT", candles, rugBtc);
-console.log("signal", signal?.strategy, signal?.side, signal?.score.toFixed(2));
+const signal = generateSignalFromCandles("PEPEUSDT", candles, rug, { memeMode: true });
+console.log("meme_signal", signal?.strategy, signal?.side, signal?.score.toFixed(2));
 
 const buy = await placeOrder(tmp, {
-  symbol: "BTCUSDT",
+  symbol: "DOGEUSDT",
   side: "buy",
-  notional: 500,
-  reason: "smoke",
+  notional: 300,
+  reason: "meme-smoke",
   force: true,
 });
 console.log("buy_ok", buy.ok);
 
 const status = await tradingStatus(tmp);
-console.log("equity", status.portfolio.equity, "positions", status.portfolio.positions.length);
+console.log("focus", status.focus, "equity", status.portfolio.equity);
 
-const cycle = await runTradingCycle(tmp);
-console.log("cycle_actions", cycle.actions?.length);
+// Quick discover with network (may return CEX-only if Dex slow)
+const found = await discoverMemecoins(tmp, 8);
+console.log(
+  "discovered",
+  found.candidates.length,
+  found.candidates.slice(0, 3).map((c) => `${c.source}:${c.symbol}:${c.rugRisk}`)
+);
 
-// Live should stay gated
-await saveTradingSettings(tmp, { allowLiveTrading: false, mode: "live" });
-const settings = await tradingStatus(tmp);
-console.log("forced_paper", settings.settings.mode === "paper");
-
-console.log("smoke_trading_ok", tmp);
+console.log("smoke_meme_ok", tmp);

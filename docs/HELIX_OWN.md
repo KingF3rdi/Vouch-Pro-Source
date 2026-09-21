@@ -30,16 +30,16 @@ Helix Own is optimized for:
 
 Skills: `build-products`, `games-mods`, plus coding/ship/curriculum.
 
-## Day trading bot
+## Day trading bot (memecoins)
 
-Helix includes an advanced **paper** day trader (Trade tab):
+Helix’s **Trade** tab is optimized for **memecoin** day trading:
 
-- Multi-factor signals (trend + breakout/pullback + volume + RR)
-- Auto entries/exits when `autoTrade` is on
-- Rug-pull filters (liquidity/age/DEX heuristics; blocks high risk)
-- Daily loss circuit breaker + position sizing
+- Default watchlist: DOGE, PEPE, WIF, BONK, FLOKI, …
+- Discovers trending DEX memes via DexScreener (strict rug gate)
+- Meme breakout/pullback strategies, smaller size, faster TP
+- Blocks high rug-risk tokens automatically
 
-**Not financial advice — no profit guarantee.** Live exchange orders stay gated.
+Paper by default. **Not financial advice.**
 
 ```bash
 npx tsx scripts/smoke-trading.ts

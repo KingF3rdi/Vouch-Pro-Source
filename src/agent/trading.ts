@@ -66,6 +66,10 @@ export type TradingSettings = {
   allowLiveTrading: boolean;
   autoTrade: boolean;
   mode: TradeMode;
+  /** Primary universe — Helix is optimized for memecoins. */
+  focus: "memecoins" | "majors" | "mixed";
+  /** Also pull trending DEX memes into the scan (strict rug gate). */
+  discoverDexMemes: boolean;
   quote: "USDT";
   startingBalance: number;
   maxPositionPct: number; // of equity
@@ -73,6 +77,10 @@ export type TradingSettings = {
   minConfidence: number;
   maxOpenPositions: number;
   feeBps: number; // 10 = 0.10%
+  /** Min Dex liquidity USD to even consider a DEX meme */
+  minMemeLiquidityUsd: number;
+  /** Min pair age (hours) for DEX memes */
+  minMemeAgeHours: number;
   watchlist: string[];
   binanceApiKey?: string;
   binanceApiSecret?: string;
@@ -90,18 +98,47 @@ export type Portfolio = {
   updatedAt: string;
 };
 
-const DEFAULT_WATCHLIST = [
-  "BTCUSDT",
-  "ETHUSDT",
-  "SOLUSDT",
-  "BNBUSDT",
-  "XRPUSDT",
-  "ADAUSDT",
+export type MemeCandidate = {
+  id: string;
+  symbol: string;
+  source: "cex" | "dex";
+  chain?: string;
+  address?: string;
+  priceUsd: number;
+  liquidityUsd: number;
+  volume24h: number;
+  change1h?: number;
+  change6h?: number;
+  change24h: number;
+  ageHours?: number;
+  url?: string;
+  rugRisk: TradeSignal["rugRisk"];
+  rugNotes: string[];
+};
+
+/** Liquid CEX memecoins (Binance USDT) — default day-trade universe */
+const DEFAULT_MEME_WATCHLIST = [
   "DOGEUSDT",
-  "AVAXUSDT",
-  "LINKUSDT",
-  "DOTUSDT",
+  "SHIBUSDT",
+  "PEPEUSDT",
+  "WIFUSDT",
+  "BONKUSDT",
+  "FLOKIUSDT",
+  "MEMEUSDT",
+  "BOMEUSDT",
+  "NEIROUSDT",
+  "PNUTUSDT",
+  "TRUMPUSDT",
+  "TURBOUSDT",
+  "1000SATSUSDT",
+  "PEOPLEUSDT",
+  "NOTUSDT",
+  "DOGSUSDT",
+  "HMSTRUSDT",
+  "ACTUSDT",
 ];
+
+const DEFAULT_WATCHLIST = DEFAULT_MEME_WATCHLIST;
 
 function tradingDir(workspace: string) {
   return path.join(workspace, ".helix", "trading");
@@ -120,14 +157,19 @@ function defaultSettings(): TradingSettings {
     allowLiveTrading: false,
     autoTrade: false,
     mode: "paper",
+    focus: "memecoins",
+    discoverDexMemes: true,
     quote: "USDT",
     startingBalance: 10_000,
-    maxPositionPct: 0.08,
-    maxDailyLossPct: 0.03,
-    minConfidence: 0.62,
-    maxOpenPositions: 4,
+    // Memes are violent — keep size small
+    maxPositionPct: 0.04,
+    maxDailyLossPct: 0.025,
+    minConfidence: 0.64,
+    maxOpenPositions: 3,
     feeBps: 10,
-    watchlist: DEFAULT_WATCHLIST,
+    minMemeLiquidityUsd: 200_000,
+    minMemeAgeHours: 48,
+    watchlist: DEFAULT_MEME_WATCHLIST,
   };
 }
 
@@ -422,22 +464,120 @@ function stdev(values: number[], period: number): number | null {
   return Math.sqrt(variance);
 }
 
-/** Major CEX pairs are generally not classic “rug pulls”; scam risk focuses on obscure tokens. */
-export async function assessRugRisk(symbol: string): Promise<{
+type DexPair = {
+  chainId?: string;
+  pairAddress?: string;
+  url?: string;
+  liquidity?: { usd?: number };
+  fdv?: number;
+  marketCap?: number;
+  pairCreatedAt?: number;
+  txns?: { h1?: { buys?: number; sells?: number }; h24?: { buys?: number; sells?: number } };
+  volume?: { h1?: number; h6?: number; h24?: number };
+  priceChange?: { m5?: number; h1?: number; h6?: number; h24?: number };
+  priceUsd?: string;
+  baseToken?: { symbol?: string; address?: string };
+};
+
+function scoreDexPairRug(
+  pair: DexPair,
+  opts: { minLiq: number; minAgeHours: number; memeMode: boolean }
+): { risk: TradeSignal["rugRisk"]; notes: string[]; scorePenalty: number } {
+  const notes: string[] = [];
+  const liq = pair.liquidity?.usd ?? 0;
+  const vol = pair.volume?.h24 ?? 0;
+  const ageMs = pair.pairCreatedAt ? Date.now() - pair.pairCreatedAt : null;
+  const ageHours = ageMs != null ? ageMs / 3_600_000 : null;
+  const buys = pair.txns?.h24?.buys ?? 0;
+  const sells = pair.txns?.h24?.sells ?? 0;
+  const change = pair.priceChange?.h24 ?? 0;
+  const change1h = pair.priceChange?.h1 ?? 0;
+
+  let risk: TradeSignal["rugRisk"] = "low";
+  let penalty = 0;
+  const minLiq = opts.memeMode ? Math.max(opts.minLiq, 150_000) : opts.minLiq;
+  const minAge = opts.memeMode ? Math.max(opts.minAgeHours, 36) : opts.minAgeHours;
+
+  if (liq < minLiq * 0.35) {
+    notes.push(`Liquidity too thin ($${Math.round(liq)}) — rug/slippage trap.`);
+    risk = "high";
+    penalty += 0.55;
+  } else if (liq < minLiq) {
+    notes.push(`Below meme liquidity floor ($${Math.round(liq)} < $${minLiq}).`);
+    risk = "high";
+    penalty += 0.4;
+  } else if (liq < minLiq * 2) {
+    notes.push(`Liquidity OK-ish ($${Math.round(liq)}).`);
+    risk = "medium";
+    penalty += 0.15;
+  } else {
+    notes.push(`Liquidity solid ($${Math.round(liq)}).`);
+  }
+
+  if (ageHours != null && ageHours < minAge) {
+    notes.push(`Pair too young (${ageHours.toFixed(1)}h < ${minAge}h) — peak rug window.`);
+    risk = "high";
+    penalty += 0.4;
+  } else if (ageHours != null && ageHours < minAge * 2) {
+    notes.push(`Still young (${ageHours.toFixed(1)}h).`);
+    if (risk === "low") risk = "medium";
+    penalty += 0.12;
+  }
+
+  if (vol > 0 && liq > 0 && vol / liq > (opts.memeMode ? 12 : 15)) {
+    notes.push("Volume/liquidity extreme — wash or coordinated pump risk.");
+    if (risk === "low") risk = "medium";
+    penalty += 0.12;
+  }
+
+  if (sells > 0 && buys / Math.max(sells, 1) > 6 && change > 60) {
+    notes.push("Buy-heavy + parabolic 24h — dump/rug setup.");
+    risk = "high";
+    penalty += 0.2;
+  }
+
+  if (change1h > 35) {
+    notes.push("Parabolic 1h spike — late entry / exit liquidity risk.");
+    if (risk === "low") risk = "medium";
+    penalty += 0.12;
+  }
+
+  if (change < -55) {
+    notes.push("Already nuked 24h — do not catch the knife.");
+    penalty += 0.25;
+    if (risk === "low") risk = "medium";
+  }
+
+  // Single-chain meme concentration note
+  if (opts.memeMode && (pair.chainId === "solana" || pair.chainId === "bsc")) {
+    notes.push(`${pair.chainId} meme — prefer locked liq / known CEX listings when possible.`);
+  }
+
+  if (penalty >= 0.4) risk = "high";
+  else if (penalty >= 0.18 && risk === "low") risk = "medium";
+
+  return { risk, notes, scorePenalty: Math.min(0.8, penalty) };
+}
+
+/** Major CEX pairs are lower classic rug risk; memes always get Dex heuristics. */
+export async function assessRugRisk(
+  symbol: string,
+  opts?: { minMemeLiquidityUsd?: number; minMemeAgeHours?: number; focus?: TradingSettings["focus"] }
+): Promise<{
   risk: TradeSignal["rugRisk"];
   notes: string[];
   scorePenalty: number;
 }> {
   const notes: string[] = [];
-  const base = symbol.replace(/USDT$|BUSD$|USD$/, "");
-  const majors = new Set([
+  const base = symbol.replace(/^1000/, "").replace(/USDT$|BUSD$|USD$/, "");
+  const memeMode = (opts?.focus ?? "memecoins") !== "majors";
+  const blueChips = new Set([
     "BTC",
     "ETH",
     "BNB",
     "SOL",
     "XRP",
     "ADA",
-    "DOGE",
     "AVAX",
     "LINK",
     "DOT",
@@ -456,116 +596,215 @@ export async function assessRugRisk(symbol: string): Promise<{
     "TRX",
   ]);
 
-  if (majors.has(base)) {
+  // Established CEX memes still get a light Dex cross-check but start friendlier
+  const establishedMemes = new Set([
+    "DOGE",
+    "SHIB",
+    "PEPE",
+    "WIF",
+    "BONK",
+    "FLOKI",
+    "MEME",
+    "BOME",
+    "NEIRO",
+    "PNUT",
+    "TRUMP",
+    "TURBO",
+    "SATS",
+    "PEOPLE",
+    "NOT",
+    "DOGS",
+    "HMSTR",
+    "ACT",
+    "ORDI",
+  ]);
+
+  if (blueChips.has(base) && !memeMode) {
     return {
       risk: "low",
-      notes: ["Listed major on Binance spot — classic contract rug risk is low vs meme/DEX launches."],
+      notes: ["Blue-chip CEX asset — classic contract rug risk low."],
       scorePenalty: 0,
     };
   }
 
-  // DexScreener search for obscure / meme tickers
   try {
     const q = encodeURIComponent(base);
     const res = await fetch(`https://api.dexscreener.com/latest/dex/search?q=${q}`, {
       headers: { "User-Agent": "HelixTrading/1.0" },
     });
     if (!res.ok) {
-      return { risk: "unknown", notes: ["Could not query DexScreener for rug heuristics."], scorePenalty: 0.15 };
+      if (establishedMemes.has(base)) {
+        return {
+          risk: "medium",
+          notes: ["CEX meme listed but DexScreener unreachable — trade small."],
+          scorePenalty: 0.1,
+        };
+      }
+      return { risk: "unknown", notes: ["Could not query DexScreener for rug heuristics."], scorePenalty: 0.2 };
     }
-    const data = (await res.json()) as {
-      pairs?: Array<{
-        chainId?: string;
-        liquidity?: { usd?: number };
-        fdv?: number;
-        marketCap?: number;
-        pairCreatedAt?: number;
-        txns?: { h24?: { buys?: number; sells?: number } };
-        volume?: { h24?: number };
-        priceChange?: { h24?: number };
-        url?: string;
-        baseToken?: { symbol?: string };
-      }>;
-    };
+    const data = (await res.json()) as { pairs?: DexPair[] };
     const pairs = (data.pairs ?? [])
-      .filter((p) => (p.baseToken?.symbol || "").toUpperCase() === base)
+      .filter((p) => (p.baseToken?.symbol || "").toUpperCase().replace(/^1000/, "") === base)
       .sort((a, b) => (b.liquidity?.usd ?? 0) - (a.liquidity?.usd ?? 0));
 
     if (!pairs.length) {
-      notes.push("No clear DEX pair found — treat as elevated unknown risk.");
-      return { risk: "medium", notes, scorePenalty: 0.2 };
+      if (establishedMemes.has(base)) {
+        return {
+          risk: "low",
+          notes: ["Established CEX memecoin — no matching Dex pair required."],
+          scorePenalty: 0.05,
+        };
+      }
+      notes.push("No clear DEX pair — elevated unknown meme risk.");
+      return { risk: "high", notes, scorePenalty: 0.45 };
     }
 
-    const top = pairs[0]!;
-    const liq = top.liquidity?.usd ?? 0;
-    const vol = top.volume?.h24 ?? 0;
-    const ageMs = top.pairCreatedAt ? Date.now() - top.pairCreatedAt : null;
-    const ageHours = ageMs != null ? ageMs / 3_600_000 : null;
-    const buys = top.txns?.h24?.buys ?? 0;
-    const sells = top.txns?.h24?.sells ?? 0;
-    const change = top.priceChange?.h24 ?? 0;
+    const scored = scoreDexPairRug(pairs[0]!, {
+      minLiq: opts?.minMemeLiquidityUsd ?? 200_000,
+      minAgeHours: opts?.minMemeAgeHours ?? 48,
+      memeMode,
+    });
 
-    let risk: TradeSignal["rugRisk"] = "low";
-    let penalty = 0;
-
-    if (liq < 50_000) {
-      notes.push(`Low liquidity ($${Math.round(liq)}) — easy to rug / high slippage.`);
-      risk = "high";
-      penalty += 0.45;
-    } else if (liq < 250_000) {
-      notes.push(`Modest liquidity ($${Math.round(liq)}).`);
-      risk = "medium";
-      penalty += 0.2;
-    } else {
-      notes.push(`Liquidity ~$${Math.round(liq)}.`);
+    if (establishedMemes.has(base) && scored.risk === "high" && (pairs[0]!.liquidity?.usd ?? 0) > 500_000) {
+      // CEX-listed + deep liq: soften to medium
+      return {
+        risk: "medium",
+        notes: [...scored.notes, "Softened: deep liquidity + CEX meme listing."],
+        scorePenalty: Math.min(0.25, scored.scorePenalty),
+      };
     }
-
-    if (ageHours != null && ageHours < 24) {
-      notes.push(`Pair age < 24h (${ageHours.toFixed(1)}h) — classic rug window.`);
-      risk = "high";
-      penalty += 0.35;
-    } else if (ageHours != null && ageHours < 72) {
-      notes.push(`Young pair (${ageHours.toFixed(1)}h).`);
-      if (risk === "low") risk = "medium";
-      penalty += 0.15;
-    }
-
-    if (vol > 0 && liq > 0 && vol / liq > 15) {
-      notes.push("Volume/liquidity extremely high — wash-trading or mania risk.");
-      if (risk === "low") risk = "medium";
-      penalty += 0.1;
-    }
-
-    if (sells > 0 && buys / Math.max(sells, 1) > 8 && change > 80) {
-      notes.push("Buy-heavy + parabolic move — dump risk.");
-      risk = risk === "high" ? "high" : "medium";
-      penalty += 0.15;
-    }
-
-    if (change < -60) {
-      notes.push("Already dumped hard in 24h — avoid catching knives.");
-      penalty += 0.2;
-      if (risk === "low") risk = "medium";
-    }
-
-    if (penalty >= 0.45) risk = "high";
-    else if (penalty >= 0.2 && risk === "low") risk = "medium";
-
-    return { risk, notes, scorePenalty: Math.min(0.7, penalty) };
+    return scored;
   } catch (error) {
     return {
       risk: "unknown",
       notes: [`Rug scan error: ${error instanceof Error ? error.message : String(error)}`],
-      scorePenalty: 0.15,
+      scorePenalty: 0.2,
     };
   }
+}
+
+export async function discoverMemecoins(
+  workspace: string,
+  limit = 15
+): Promise<{ candidates: MemeCandidate[]; discoveredAt: string }> {
+  const settings = await loadTradingSettings(workspace);
+  const candidates: MemeCandidate[] = [];
+
+  // 1) Seed CEX meme watchlist as candidates
+  for (const symbol of settings.watchlist) {
+    try {
+      const [ticker, rug] = await Promise.all([
+        fetchTicker(symbol),
+        assessRugRisk(symbol, {
+          minMemeLiquidityUsd: settings.minMemeLiquidityUsd,
+          minMemeAgeHours: settings.minMemeAgeHours,
+          focus: settings.focus,
+        }),
+      ]);
+      candidates.push({
+        id: symbol,
+        symbol,
+        source: "cex",
+        priceUsd: ticker.price,
+        liquidityUsd: ticker.quoteVolume, // proxy
+        volume24h: ticker.quoteVolume,
+        change24h: ticker.changePct,
+        rugRisk: rug.risk,
+        rugNotes: rug.notes,
+      });
+    } catch {
+      // skip dead symbols
+    }
+  }
+
+  // 2) DexScreener boosts / latest profiles → strict rug gate
+  if (settings.discoverDexMemes) {
+    try {
+      const res = await fetch("https://api.dexscreener.com/token-boosts/top/v1", {
+        headers: { "User-Agent": "HelixTrading/1.0" },
+      });
+      if (res.ok) {
+        const boosts = (await res.json()) as Array<{
+          chainId?: string;
+          tokenAddress?: string;
+          url?: string;
+          description?: string;
+        }>;
+        for (const b of boosts.slice(0, 25)) {
+          if (!b.chainId || !b.tokenAddress) continue;
+          try {
+            const pairRes = await fetch(
+              `https://api.dexscreener.com/latest/dex/tokens/${b.tokenAddress}`,
+              { headers: { "User-Agent": "HelixTrading/1.0" } }
+            );
+            if (!pairRes.ok) continue;
+            const pairData = (await pairRes.json()) as { pairs?: DexPair[] };
+            const pair = (pairData.pairs ?? [])
+              .filter((p) => p.chainId === b.chainId)
+              .sort((a, c) => (c.liquidity?.usd ?? 0) - (a.liquidity?.usd ?? 0))[0];
+            if (!pair?.priceUsd) continue;
+            const rug = scoreDexPairRug(pair, {
+              minLiq: settings.minMemeLiquidityUsd,
+              minAgeHours: settings.minMemeAgeHours,
+              memeMode: true,
+            });
+            if (rug.risk === "high") continue; // never surface high-rug DEX boosts
+            const sym = (pair.baseToken?.symbol || "MEME").toUpperCase();
+            const id = `DEX:${b.chainId}:${b.tokenAddress}`;
+            if (candidates.some((c) => c.id === id)) continue;
+            const ageHours = pair.pairCreatedAt
+              ? (Date.now() - pair.pairCreatedAt) / 3_600_000
+              : undefined;
+            candidates.push({
+              id,
+              symbol: sym,
+              source: "dex",
+              chain: b.chainId,
+              address: b.tokenAddress,
+              priceUsd: Number(pair.priceUsd),
+              liquidityUsd: pair.liquidity?.usd ?? 0,
+              volume24h: pair.volume?.h24 ?? 0,
+              change1h: pair.priceChange?.h1,
+              change6h: pair.priceChange?.h6,
+              change24h: pair.priceChange?.h24 ?? 0,
+              ageHours,
+              url: pair.url || b.url,
+              rugRisk: rug.risk,
+              rugNotes: rug.notes,
+            });
+          } catch {
+            // skip token
+          }
+        }
+      }
+    } catch {
+      // discovery optional
+    }
+  }
+
+  // Prefer tradeable CEX memes, then safer DEX
+  candidates.sort((a, b) => {
+    const rank = (c: MemeCandidate) =>
+      (c.source === "cex" ? 1000 : 0) +
+      (c.rugRisk === "low" ? 200 : c.rugRisk === "medium" ? 50 : -500) +
+      Math.min(c.volume24h / 1e6, 50) +
+      (c.change1h && c.change1h > 0 && c.change1h < 25 ? 10 : 0);
+    return rank(b) - rank(a);
+  });
+
+  return {
+    candidates: candidates.slice(0, limit),
+    discoveredAt: new Date().toISOString(),
+  };
 }
 
 export function generateSignalFromCandles(
   symbol: string,
   candles: Candle[],
-  rug: { risk: TradeSignal["rugRisk"]; notes: string[]; scorePenalty: number }
+  rug: { risk: TradeSignal["rugRisk"]; notes: string[]; scorePenalty: number },
+  opts?: { memeMode?: boolean }
 ): TradeSignal | null {
+  const memeMode = opts?.memeMode !== false;
   const closes = candles.map((c) => c.close);
   const volumes = candles.map((c) => c.volume);
   const price = closes.at(-1);
@@ -590,9 +829,9 @@ export function generateSignalFromCandles(
     return {
       symbol,
       side: "sell",
-      confidence: 0.9,
+      confidence: 0.95,
       strategy: "rug-avoidance",
-      reason: `Hard avoid: ${rug.notes.join(" ")}`,
+      reason: `Hard avoid meme rug: ${rug.notes.join(" ")}`,
       entry: price,
       stopLoss: price,
       takeProfit: price,
@@ -605,67 +844,71 @@ export function generateSignalFromCandles(
   let score = 0;
   const reasons: string[] = [];
   let side: TradeSide | null = null;
-  let strategy = "multi-factor";
+  let strategy = memeMode ? "meme-momentum" : "multi-factor";
 
-  // Trend filter: only long when EMA stack is bullish (day-trade with trend)
   const trendUp = ema9 > ema21 && ema21 > ema55;
   const trendDown = ema9 < ema21 && ema21 < ema55;
-
-  // Momentum breakout
   const recentHigh = Math.max(...candles.slice(-20, -1).map((c) => c.high));
-  const volSurge = volSma ? lastVol > volSma * 1.4 : false;
-  if (trendUp && price > recentHigh && volSurge && rsi14 < 72) {
+  const volSurge = volSma ? lastVol > volSma * (memeMode ? 1.6 : 1.4) : false;
+
+  // Meme day-trade: momentum continuation with volume — never chase RSI extremes
+  if (trendUp && price > recentHigh && volSurge && rsi14 < (memeMode ? 68 : 72)) {
     side = "buy";
-    strategy = "breakout-momentum";
-    score += 0.55;
-    reasons.push("Breakout above 20-bar high with volume surge in uptrend.");
+    strategy = memeMode ? "meme-breakout" : "breakout-momentum";
+    score += memeMode ? 0.6 : 0.55;
+    reasons.push(
+      memeMode
+        ? "Memecoin breakout + volume surge in uptrend (not chasing RSI blowoff)."
+        : "Breakout above 20-bar high with volume surge in uptrend."
+    );
   }
 
-  // Pullback in uptrend (mean reversion to EMA21)
   const distToEma21 = (price - ema21) / ema21;
-  if (trendUp && distToEma21 < -0.002 && distToEma21 > -0.02 && rsi14 > 38 && rsi14 < 55) {
+  if (
+    trendUp &&
+    distToEma21 < -0.003 &&
+    distToEma21 > (memeMode ? -0.035 : -0.02) &&
+    rsi14 > 35 &&
+    rsi14 < 55
+  ) {
     if (!side) {
       side = "buy";
-      strategy = "trend-pullback";
+      strategy = memeMode ? "meme-pullback" : "trend-pullback";
     }
     score += 0.4;
     reasons.push("Pullback toward EMA21 in uptrend with RSI reset.");
   }
 
-  // Bollinger bounce (only with trend)
   const lower = bbMid - 2 * bbStd;
-  if (trendUp && price <= lower * 1.002 && rsi14 < 40) {
+  if (trendUp && price <= lower * 1.003 && rsi14 < 40) {
     if (!side) {
       side = "buy";
       strategy = "bollinger-reclaim";
     }
-    score += 0.3;
+    score += 0.25;
     reasons.push("Price at lower Bollinger in uptrend.");
   }
 
-  // Avoid chasing
-  if (rsi14 > 78) {
-    score -= 0.35;
-    reasons.push("RSI overbought — chase penalty.");
+  // Memes: heavier chase / dump penalties
+  if (rsi14 > (memeMode ? 72 : 78)) {
+    score -= memeMode ? 0.5 : 0.35;
+    reasons.push("RSI overbought — meme chase penalty.");
   }
-
-  // Short-term fade only as “sell signal” for exiting / standing aside (we only open longs)
-  if (trendDown && rsi14 > 60) {
-    score -= 0.25;
-    reasons.push("Downtrend — no new longs.");
+  if (trendDown) {
+    score -= memeMode ? 0.4 : 0.25;
+    reasons.push("Downtrend — no new meme longs.");
   }
 
   score -= rug.scorePenalty;
-  if (rug.risk === "medium") reasons.push("Elevated token risk — size will be reduced.");
+  if (rug.risk === "medium") reasons.push("Elevated meme risk — size cut in half.");
 
-  if (!side || side !== "buy" || score < 0.35) {
-    // Stand aside
+  if (!side || side !== "buy" || score < (memeMode ? 0.4 : 0.35)) {
     return {
       symbol,
       side: "sell",
       confidence: Math.max(0, Math.min(1, 1 - score)),
       strategy: "stand-aside",
-      reason: reasons.join(" ") || "No high-quality long setup.",
+      reason: reasons.join(" ") || "No high-quality meme long setup.",
       entry: price,
       stopLoss: price * 0.99,
       takeProfit: price * 1.01,
@@ -675,9 +918,12 @@ export function generateSignalFromCandles(
     };
   }
 
-  const stop = price - atr14 * 1.4;
-  const risk = price - stop;
-  const take = price + risk * 2.2; // ~1:2.2 RR
+  // Memes: tighter stop, faster scalp TP (still positive RR)
+  const stopMult = memeMode ? 1.1 : 1.4;
+  const rr = memeMode ? 1.8 : 2.2;
+  const stop = price - atr14 * stopMult;
+  const riskAmt = price - stop;
+  const take = price + riskAmt * rr;
   const confidence = Math.max(0.4, Math.min(0.95, score));
 
   return {
@@ -695,21 +941,111 @@ export function generateSignalFromCandles(
   };
 }
 
+/** Dex meme momentum from DexScreener stats (no CEX candles). */
+export function generateDexMemeSignal(candidate: MemeCandidate): TradeSignal {
+  if (candidate.rugRisk === "high") {
+    return {
+      symbol: candidate.id,
+      side: "sell",
+      confidence: 0.95,
+      strategy: "rug-avoidance",
+      reason: candidate.rugNotes.join(" "),
+      entry: candidate.priceUsd,
+      stopLoss: candidate.priceUsd,
+      takeProfit: candidate.priceUsd,
+      score: -1,
+      rugRisk: "high",
+      rugNotes: candidate.rugNotes,
+    };
+  }
+
+  let score = 0;
+  const reasons: string[] = [];
+  const c1 = candidate.change1h ?? 0;
+  const c6 = candidate.change6h ?? 0;
+  const c24 = candidate.change24h;
+
+  if (c1 > 3 && c1 < 22 && c6 > 0 && c24 > -10 && c24 < 80) {
+    score += 0.55;
+    reasons.push("DEX meme momentum healthy (1h up, not parabolic).");
+  }
+  if (candidate.liquidityUsd >= 400_000) {
+    score += 0.15;
+    reasons.push("Liquidity above $400k.");
+  }
+  if (c1 > 28 || c24 > 120) {
+    score -= 0.45;
+    reasons.push("Too parabolic — skip.");
+  }
+  if (c24 < -40) {
+    score -= 0.4;
+    reasons.push("Heavy 24h dump.");
+  }
+  if (candidate.rugRisk === "medium") score -= 0.15;
+
+  const price = candidate.priceUsd;
+  if (score < 0.45) {
+    return {
+      symbol: candidate.id,
+      side: "sell",
+      confidence: 0.5,
+      strategy: "stand-aside",
+      reason: reasons.join(" ") || "No DEX meme entry.",
+      entry: price,
+      stopLoss: price * 0.94,
+      takeProfit: price * 1.08,
+      score,
+      rugRisk: candidate.rugRisk,
+      rugNotes: candidate.rugNotes,
+    };
+  }
+
+  return {
+    symbol: candidate.id,
+    side: "buy",
+    confidence: Math.min(0.9, score),
+    strategy: "dex-meme-momentum",
+    reason: reasons.join(" "),
+    entry: price,
+    stopLoss: Number((price * 0.93).toFixed(10)),
+    takeProfit: Number((price * 1.12).toFixed(10)),
+    score,
+    rugRisk: candidate.rugRisk,
+    rugNotes: candidate.rugNotes,
+  };
+}
+
 export async function scanBestTrades(
   workspace: string,
   symbols?: string[]
-): Promise<{ signals: TradeSignal[]; scannedAt: string }> {
+): Promise<{ signals: TradeSignal[]; scannedAt: string; memes?: MemeCandidate[] }> {
   const settings = await loadTradingSettings(workspace);
-  const list = symbols?.length ? symbols : settings.watchlist;
+  const memeMode = settings.focus !== "majors";
   const signals: TradeSignal[] = [];
 
+  let list = symbols?.length ? symbols : settings.watchlist;
+  let memes: MemeCandidate[] | undefined;
+
+  if (!symbols?.length && memeMode) {
+    const discovered = await discoverMemecoins(workspace, 20);
+    memes = discovered.candidates;
+    // Prefer CEX ids for candle scans; keep DEX for separate signals
+    const cex = discovered.candidates.filter((c) => c.source === "cex").map((c) => c.id);
+    if (cex.length) list = [...new Set([...cex, ...settings.watchlist])].slice(0, 18);
+  }
+
   for (const symbol of list) {
+    if (symbol.startsWith("DEX:")) continue;
     try {
       const [candles, rug] = await Promise.all([
         fetchCandles(symbol, "5m", 120),
-        assessRugRisk(symbol),
+        assessRugRisk(symbol, {
+          minMemeLiquidityUsd: settings.minMemeLiquidityUsd,
+          minMemeAgeHours: settings.minMemeAgeHours,
+          focus: settings.focus,
+        }),
       ]);
-      const signal = generateSignalFromCandles(symbol, candles, rug);
+      const signal = generateSignalFromCandles(symbol, candles, rug, { memeMode });
       if (signal) signals.push(signal);
     } catch (error) {
       signals.push({
@@ -728,9 +1064,20 @@ export async function scanBestTrades(
     }
   }
 
-  // Best longs first by score*confidence, exclude hard avoids (score < 0)
+  // Add safer DEX meme signals (paper ids)
+  if (memeMode && settings.discoverDexMemes) {
+    const dexList =
+      memes?.filter((m) => m.source === "dex" && m.rugRisk !== "high").slice(0, 8) ??
+      (await discoverMemecoins(workspace, 12)).candidates.filter(
+        (m) => m.source === "dex" && m.rugRisk !== "high"
+      );
+    for (const m of dexList.slice(0, 6)) {
+      signals.push(generateDexMemeSignal(m));
+    }
+  }
+
   signals.sort((a, b) => b.score * b.confidence - a.score * a.confidence);
-  return { signals, scannedAt: new Date().toISOString() };
+  return { signals, scannedAt: new Date().toISOString(), memes };
 }
 
 function markEquity(portfolio: Portfolio, marks: Record<string, number>): Portfolio {
@@ -743,13 +1090,33 @@ function markEquity(portfolio: Portfolio, marks: Record<string, number>): Portfo
   return portfolio;
 }
 
+async function resolvePrice(symbol: string): Promise<number> {
+  if (symbol.startsWith("DEX:")) {
+    const parts = symbol.split(":");
+    const address = parts[2];
+    if (!address) throw new Error(`Bad DEX symbol ${symbol}`);
+    const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${address}`, {
+      headers: { "User-Agent": "HelixTrading/1.0" },
+    });
+    if (!res.ok) throw new Error(`DEX price failed for ${symbol}`);
+    const data = (await res.json()) as { pairs?: DexPair[] };
+    const pair = (data.pairs ?? []).sort(
+      (a, b) => (b.liquidity?.usd ?? 0) - (a.liquidity?.usd ?? 0)
+    )[0];
+    const px = pair?.priceUsd ? Number(pair.priceUsd) : NaN;
+    if (!Number.isFinite(px) || px <= 0) throw new Error(`No DEX price for ${symbol}`);
+    return px;
+  }
+  const t = await fetchTicker(symbol);
+  return t.price;
+}
+
 async function markPrices(symbols: string[]): Promise<Record<string, number>> {
   const out: Record<string, number> = {};
   await Promise.all(
     symbols.map(async (symbol) => {
       try {
-        const t = await fetchTicker(symbol);
-        out[symbol] = t.price;
+        out[symbol] = await resolvePrice(symbol);
       } catch {
         // skip
       }
@@ -792,8 +1159,8 @@ export async function placeOrder(
     return { ok: false as const, error: "Max daily loss hit — trading paused for today." };
   }
 
-  const ticker = await fetchTicker(input.symbol);
-  const price = ticker.price;
+  const tickerPrice = await resolvePrice(input.symbol);
+  const price = tickerPrice;
   const marks = await markPrices([
     ...new Set([input.symbol, ...portfolio.positions.map((p) => p.symbol)]),
   ]);
@@ -803,12 +1170,18 @@ export async function placeOrder(
     if (portfolio.positions.length >= settings.maxOpenPositions && !input.force) {
       return { ok: false as const, error: "Max open positions reached." };
     }
-    const rug = await assessRugRisk(input.symbol);
+    const rug = await assessRugRisk(input.symbol, {
+      minMemeLiquidityUsd: settings.minMemeLiquidityUsd,
+      minMemeAgeHours: settings.minMemeAgeHours,
+      focus: settings.focus,
+    });
     if (rug.risk === "high" && !input.force) {
       return { ok: false as const, error: `Blocked rug risk: ${rug.notes.join(" ")}`, rug };
     }
 
-    const maxNotional = portfolio.equity * settings.maxPositionPct;
+    // Memecoins: tighter default size
+    const sizeMult = settings.focus === "memecoins" ? 0.75 : 1;
+    const maxNotional = portfolio.equity * settings.maxPositionPct * sizeMult;
     let notional = input.notional ?? maxNotional;
     if (rug.risk === "medium") notional *= 0.5;
     notional = Math.min(notional, portfolio.cash * 0.98, maxNotional);
@@ -978,7 +1351,8 @@ export async function tradingStatus(workspace: string) {
   markEquity(portfolio, marks);
   return {
     disclaimer:
-      "Experimental trading assistant. Not financial advice. No profit guarantee. You can lose money.",
+      "Experimental memecoin day-trader. Not financial advice. Memes are extremely risky. No profit guarantee. You can lose money.",
+    focus: settings.focus,
     settings: {
       ...settings,
       binanceApiKey: settings.binanceApiKey ? "***" : undefined,
@@ -1019,17 +1393,33 @@ export function createTradingTools(workspace: string) {
 
     trading_scan: tool({
       description:
-        "Scan watchlist for the best day-trade setups using multi-factor signals + rug-pull filters.",
+        "Scan memecoin watchlist (+ optional DEX discovers) for best day-trade setups with strict rug filters.",
       inputSchema: z.object({
         symbols: z.array(z.string()).optional(),
       }),
       execute: async ({ symbols }) => scanBestTrades(workspace, symbols),
     }),
 
+    trading_discover_memes: tool({
+      description:
+        "Discover CEX + trending DEX memecoins, ranked after rug-pull filters (high-risk DEX boosts dropped).",
+      inputSchema: z.object({
+        limit: z.number().int().min(5).max(30).default(15),
+      }),
+      execute: async ({ limit }) => discoverMemecoins(workspace, limit),
+    }),
+
     trading_rug_check: tool({
-      description: "Assess rug-pull / scam risk for a symbol (majors vs DEX liquidity/age heuristics).",
+      description: "Assess rug-pull / scam risk for a meme or CEX symbol (Dex liquidity/age/momentum heuristics).",
       inputSchema: z.object({ symbol: z.string().min(1) }),
-      execute: async ({ symbol }) => assessRugRisk(symbol.toUpperCase()),
+      execute: async ({ symbol }) => {
+        const settings = await loadTradingSettings(workspace);
+        return assessRugRisk(symbol.toUpperCase(), {
+          minMemeLiquidityUsd: settings.minMemeLiquidityUsd,
+          minMemeAgeHours: settings.minMemeAgeHours,
+          focus: settings.focus,
+        });
+      },
     }),
 
     trading_place_order: tool({
@@ -1045,7 +1435,12 @@ export function createTradingTools(workspace: string) {
         reason: z.string().optional(),
         force: z.boolean().default(false),
       }),
-      execute: async (input) => placeOrder(workspace, { ...input, symbol: input.symbol.toUpperCase() }),
+      execute: async (input) => {
+        const symbol = input.symbol.startsWith("DEX:")
+          ? input.symbol
+          : input.symbol.toUpperCase();
+        return placeOrder(workspace, { ...input, symbol });
+      },
     }),
 
     trading_run_cycle: tool({
@@ -1067,6 +1462,10 @@ export function createTradingTools(workspace: string) {
         maxOpenPositions: z.number().int().min(1).max(20).optional(),
         watchlist: z.array(z.string()).optional(),
         startingBalance: z.number().positive().optional(),
+        focus: z.enum(["memecoins", "majors", "mixed"]).optional(),
+        discoverDexMemes: z.boolean().optional(),
+        minMemeLiquidityUsd: z.number().min(50_000).max(5_000_000).optional(),
+        minMemeAgeHours: z.number().min(1).max(720).optional(),
       }),
       execute: async (patch) => {
         const settings = await saveTradingSettings(workspace, {
