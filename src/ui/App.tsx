@@ -7,8 +7,10 @@ import { ChatPanel } from "./components/ChatPanel";
 import { BrowserPanel, PreviewPanel } from "./components/FramePanels";
 import { GitHubPanel } from "./components/GitHubPanel";
 import { McpPanel } from "./components/McpPanel";
+import { WindowControls, useIsDesktop } from "./components/WindowControls";
 
 export function App() {
+  const isDesktop = useIsDesktop();
   const [settings, setSettings] = useState<AgentSettings | null>(null);
   const [skills, setSkills] = useState<SkillSummary[]>([]);
   const [plugins, setPlugins] = useState<PluginManifest[]>([]);
@@ -96,7 +98,7 @@ export function App() {
   const workspaceLabel = settings?.workspace?.split(/[/\\]/).pop() || "workspace";
 
   return (
-    <div className="ide-shell">
+    <div className={`ide-shell${isDesktop ? " is-desktop" : ""}${isDesktop && window.helixDesktop?.platform === "darwin" ? " is-mac" : ""}`}>
       <header className="ide-topbar titlebar-drag">
         <div className="brand-mark no-drag">
           <div className="brand-glyph" aria-hidden />
@@ -112,6 +114,11 @@ export function App() {
           <span className="pill">
             model <strong>{settings?.model ?? "…"}</strong>
           </span>
+          {isDesktop ? (
+            <span className="pill">
+              shell <strong>desktop</strong>
+            </span>
+          ) : null}
         </div>
         <nav className="ide-tabs no-drag">
           {(
@@ -138,6 +145,7 @@ export function App() {
             </button>
           ))}
         </nav>
+        <WindowControls />
       </header>
 
       <div className="ide-body">

@@ -1,55 +1,38 @@
 # Helix
 
-Local coding AI **IDE** — Cursor/Claude-quality agent, diffs, MCP, sessions, and desktop installers.
+Local coding AI **desktop IDE** — same UI in the Electron window as in the browser preview.
 
-## Features
-
-- **Project map first** on every agent task
-- **Web + GitHub research** before building from scratch
-- **IDE**: file tree (git badges), multi-file tabs, Monaco editor, **side-by-side diff**
-- **Saved chats** in `.helix/sessions/`
-- **MCP plugin host** via `.helix/mcp.json`
-- **GitHub** connect → commit & push
-- **Preview / Browser / Bug hunt** tabs
-- **Desktop app** (Electron) that loads the **same UI** as the browser
-
-## Quick start (browser)
+## Desktop (recommended)
 
 ```bash
 cp .env.example .env
 npm install
+npm run desktop
+```
+
+This opens the **Helix desktop app** loading the exact same React UI / CSS as `http://127.0.0.1:5173` (frameless window, in-app chrome — no separate desktop skin).
+
+### Installers
+
+```bash
+npm run dist        # current OS
+npm run dist:win
+npm run dist:mac
+npm run dist:linux
+```
+
+Outputs go to `release/`.
+
+## Browser preview (same UI)
+
+```bash
 npm run dev
 ```
 
-Open http://127.0.0.1:5173
+Open http://127.0.0.1:5173 — pixel-identical layout to the desktop shell.
 
-## Desktop app (same look as browser)
+## Features
 
-```bash
-npm run dev:electron
-```
-
-### Installers (Windows / macOS / Linux)
-
-```bash
-npm run dist        # current platform
-npm run dist:win    # NSIS + portable
-npm run dist:mac    # dmg + zip
-npm run dist:linux  # AppImage + deb
-```
-
-Artifacts land in `release/`.
-
-## GitHub
-
-GitHub tab → paste a `repo`-scoped PAT → **Commit & Push**.  
-Stored in `.helix/secrets.json` (gitignored). Or set `GITHUB_TOKEN` in `.env`.
-
-## MCP
-
-Edit the **MCP** tab (writes `.helix/mcp.json`), then **Save config** / **Reconnect**.  
-Agent tools: `mcp_list_servers`, `mcp_call_tool`.
-
-## Sessions
-
-Chats auto-save under `.helix/sessions/`. Use **New** in the agent rail to start another thread.
+- Project map first · web/GitHub research · Monaco editor + diffs
+- MCP host · GitHub commit/push · Bug hunt · Preview/Browser tabs
+- Chat sessions saved under `.helix/sessions/`

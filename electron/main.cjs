@@ -1,4 +1,4 @@
-const { app, BrowserWindow, shell } = require("electron");
+const { app, BrowserWindow, shell, ipcMain, Menu } = require("electron");
 const path = require("path");
 const { spawn } = require("child_process");
 const http = require("http");
@@ -6,8 +6,9 @@ const http = require("http");
 const PORT = Number(process.env.HELIX_PORT || 8787);
 const DEV_UI = process.env.HELIX_UI_URL || "http://127.0.0.1:5173";
 let serverProcess = null;
+let mainWindow = null;
 
-function waitForHealth(url, attempts = 60) {
+function waitForUrl(url, attempts = 80) {
   return new Promise((resolve, reject) => {
     let left = attempts;
     const tick = () => {
@@ -20,7 +21,7 @@ function waitForHealth(url, attempts = 60) {
     };
     const retry = () => {
       left -= 1;
-      if (left <= 0) reject(new Error("Helix server did not start"));
+      if (left <= 0) reject(new Error(`Timed out waiting for ${url}`));
       else setTimeout(tick, 250);
     };
     tick();
@@ -29,10 +30,12 @@ function waitForHealth(url, attempts = 60) {
 
 function startServer() {
   if (serverProcess) return serverProcess;
+  const root = path.join(__dirname, "..");
   const env = {
     ...process.env,
     HELIX_PORT: String(PORT),
     HELIX_WORKSPACE: process.env.HELIX_WORKSPACE || process.cwd(),
+    HELIX_DESKTOP: "1",
   };
 
   if (app.isPackaged) {
@@ -49,7 +52,7 @@ function startServer() {
       process.platform === "win32" ? "npx.cmd" : "npx",
       ["tsx", "src/server/index.ts"],
       {
-        cwd: path.join(__dirname, ".."),
+        cwd: root,
         env,
         stdio: "inherit",
         shell: process.platform === "win32",
@@ -64,7 +67,7 @@ function startServer() {
 }
 
 function createWindow(loadUrl) {
-  const win = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1440,
     height: 900,
     minWidth: 1100,
@@ -72,32 +75,69 @@ function createWindow(loadUrl) {
     backgroundColor: "#0b0d10",
     title: "Helix",
     show: false,
+    frame: false,
     autoHideMenuBar: true,
-    titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
-    trafficLightPosition: { x: 14, y: 14 },
+    trafficLightPosition: { x: 16, y: 16 },
+    // Keep macOS traffic lights but no native title strip — UI chrome matches browser.
+    titleBarStyle: process.platform === "darwin" ? "hiddenInset" : undefined,
     webPreferences: {
+      preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: true,
+      sandbox: false,
     },
   });
 
-  win.once("ready-to-show", () => win.show());
-  win.webContents.setWindowOpenHandler(({ url }) => {
+  Menu.setApplicationMenu(null);
+
+  mainWindow.once("ready-to-show", () => mainWindow.show());
+  mainWindow.on("maximize", () => mainWindow.webContents.send("window:maximized", true));
+  mainWindow.on("unmaximize", () => mainWindow.webContents.send("window:maximized", false));
+
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     void shell.openExternal(url);
     return { action: "deny" };
   });
-  win.loadURL(loadUrl);
+
+  // Same React app / CSS as the browser preview — never a separate desktop skin.
+  mainWindow.loadURL(loadUrl);
+
+  if (process.env.HELIX_CAPTURE_SCREENSHOT) {
+    mainWindow.webContents.once("did-finish-load", async () => {
+      await new Promise((r) => setTimeout(r, 2000));
+      const image = await mainWindow.capturePage();
+      const out = process.env.HELIX_CAPTURE_SCREENSHOT;
+      require("fs").writeFileSync(out, image.toPNG());
+      console.log(`[helix] wrote desktop screenshot ${out}`);
+      app.quit();
+    });
+  }
 }
+
+ipcMain.handle("window:minimize", () => {
+  mainWindow?.minimize();
+});
+ipcMain.handle("window:maximize", () => {
+  if (!mainWindow) return false;
+  if (mainWindow.isMaximized()) mainWindow.unmaximize();
+  else mainWindow.maximize();
+  return mainWindow.isMaximized();
+});
+ipcMain.handle("window:close", () => {
+  mainWindow?.close();
+});
+ipcMain.handle("window:isMaximized", () => Boolean(mainWindow?.isMaximized()));
 
 app.whenReady().then(async () => {
   startServer();
-  const health = `http://127.0.0.1:${PORT}/api/health`;
-  await waitForHealth(health);
+  await waitForUrl(`http://127.0.0.1:${PORT}/api/health`);
 
-  // Packaged: same UI the browser serves from the API host.
-  // Dev: Vite UI (identical CSS/React) with API proxied.
+  // Dev: Vite UI (exact browser preview). Packaged: same build served by API.
   const url = app.isPackaged ? `http://127.0.0.1:${PORT}` : DEV_UI;
+  if (!app.isPackaged) {
+    await waitForUrl(DEV_UI).catch(() => undefined);
+  }
+
   createWindow(url);
 
   app.on("activate", () => {
@@ -105,17 +145,16 @@ app.whenReady().then(async () => {
   });
 });
 
-app.on("window-all-closed", () => {
+function shutdown() {
   if (serverProcess) {
     serverProcess.kill();
     serverProcess = null;
   }
+}
+
+app.on("window-all-closed", () => {
+  shutdown();
   if (process.platform !== "darwin") app.quit();
 });
 
-app.on("before-quit", () => {
-  if (serverProcess) {
-    serverProcess.kill();
-    serverProcess = null;
-  }
-});
+app.on("before-quit", shutdown);

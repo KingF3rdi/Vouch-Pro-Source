@@ -54,6 +54,16 @@ button {
   min-height: 100vh;
 }
 
+.ide-shell.is-desktop {
+  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.ide-shell.is-mac .ide-topbar {
+  padding-left: 4.5rem;
+}
+
 .ide-topbar {
   display: flex;
   align-items: center;
@@ -792,6 +802,35 @@ button {
 
 .no-drag {
   -webkit-app-region: no-drag;
+}
+
+.window-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  margin-left: 0.35rem;
+}
+
+.win-btn {
+  width: 2rem;
+  height: 1.7rem;
+  border: 0;
+  border-radius: 0.35rem;
+  background: transparent;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.win-btn:hover {
+  background: var(--bg-3);
+  color: var(--text);
+}
+
+.win-btn.close:hover {
+  background: #e5484d;
+  color: #fff;
 }
 
 @keyframes rise {
