@@ -20,6 +20,9 @@ export interface AgentSettings {
   workspace: string;
   helixModelId: string;
   helixModelName: string;
+  maxTokens?: number | "unlimited";
+  maxSteps?: number | "unlimited";
+  hardStepCap?: number;
 }
 
 export interface HelixModelProfile {

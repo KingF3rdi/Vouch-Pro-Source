@@ -64,6 +64,9 @@ def settings() -> AgentSettings:
         workspace=str(cfg.workspace),
         helixModelId=profile.id,
         helixModelName=profile.name,
+        maxTokens="unlimited" if cfg.max_tokens <= 0 else cfg.max_tokens,
+        maxSteps="unlimited" if cfg.max_steps <= 0 else cfg.max_steps,
+        hardStepCap=cfg.hard_step_cap,
     )
 
 

@@ -23,6 +23,9 @@ class AgentSettings(BaseModel):
     workspace: str
     helix_model_id: str = Field(alias="helixModelId")
     helix_model_name: str = Field(alias="helixModelName")
+    max_tokens: int | str = Field(default="unlimited", alias="maxTokens")
+    max_steps: int | str = Field(default="unlimited", alias="maxSteps")
+    hard_step_cap: int = Field(default=1000, alias="hardStepCap")
 
     model_config = {"populate_by_name": True}
 

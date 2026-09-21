@@ -28,6 +28,9 @@ UI_DIST = next(
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    from app.core.config import get_settings
+
+    get_settings.cache_clear()
     settings = get_settings()
     ensure_helix_dirs(settings.workspace)
     yield

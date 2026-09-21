@@ -50,3 +50,11 @@ Python emits `AgentEvent` (`status` | `token` | `tool_start` | `tool_result` | `
 - `WS /api/ws/agent` → JSON frames (preferred)
 
 TypeScript must not call LLMs directly; it only renders events.
+
+## Unlimited tokens
+
+Defaults (`HELIX_MAX_TOKENS=0`, `HELIX_MAX_STEPS=0`) remove soft caps so agents behave like Cursor/Claude Code:
+
+- Full provider output budget per model call
+- Tool loop continues until the model stops calling tools (hard cap `HELIX_HARD_STEP_CAP`)
+- File tools read complete files when `HELIX_TOOL_READ_MAX_CHARS=0`

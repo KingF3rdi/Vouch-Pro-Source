@@ -369,7 +369,7 @@ export function ChatPanel({
           }}
         />
         <div className="composer-footer">
-          <span className="hint">Python agents · Enter send</span>
+          <span className="hint">Unlimited tokens · Python agents · Enter send</span>
           <button className="send-btn" type="submit" disabled={busy || !input.trim()}>
             {busy ? "Working…" : "Send"}
           </button>
