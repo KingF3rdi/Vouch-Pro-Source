@@ -51,6 +51,35 @@ function asToolPart(part: unknown): ToolPartLike {
   return p;
 }
 
+/** Abort / disconnect noise when switching chats must not look like a hard failure. */
+function isBenignChatError(
+  error: unknown,
+  opts?: { recentlySwitched?: boolean }
+): boolean {
+  if (!error) return true;
+  const err = error as { name?: string; message?: string };
+  const name = (err.name || "").toLowerCase();
+  const msg = (err.message || "").toLowerCase();
+  if (
+    name === "aborterror" ||
+    msg.includes("abort") ||
+    msg.includes("bodystreambuffer") ||
+    msg.includes("the operation was aborted")
+  ) {
+    return true;
+  }
+  if (
+    opts?.recentlySwitched &&
+    (msg.includes("failed to fetch") ||
+      msg.includes("fetch failed") ||
+      msg.includes("networkerror") ||
+      msg.includes("network error"))
+  ) {
+    return true;
+  }
+  return false;
+}
+
 const STARTERS_BY_MODE: Record<"chat" | "ship" | "bug-hunt", string[]> = {
   chat: [
     "Scaffold a playable browser game with TypeScript canvas, then make movement and scoring feel good.",
@@ -145,6 +174,8 @@ export function AgentWindow({
   const lastLearnedCount = useRef(0);
   const loadingSessionRef = useRef(false);
   const skipEmptySaveRef = useRef(false);
+  const chatEpochRef = useRef(0);
+  const switchedAtRef = useRef(0);
   const workspace = settings?.workspace;
   const qs = workspace ? `?workspace=${encodeURIComponent(workspace)}` : "";
   const withWorkspace = (body: Record<string, unknown> = {}) =>
@@ -181,12 +212,24 @@ export function AgentWindow({
   // when switching sessions / after ensureSession, so the chat looked empty.
   const chatInstanceId = useRef(`helix-${crypto.randomUUID()}`);
 
+  const clearErrorRef = useRef<() => void>(() => undefined);
   const { messages, sendMessage, status, error, setMessages, stop, clearError } = useChat({
     id: chatInstanceId.current,
     transport,
+    onError: (err) => {
+      if (
+        isBenignChatError(err, {
+          recentlySwitched: Date.now() - switchedAtRef.current < 2500,
+        })
+      ) {
+        window.setTimeout(() => clearErrorRef.current(), 0);
+      }
+    },
   });
+  clearErrorRef.current = clearError;
   const busy = status === "submitted" || status === "streaming";
   const [cmdOpen, setCmdOpen] = useState(false);
+  const recentlySwitched = Date.now() - switchedAtRef.current < 2500;
 
   const lastAssistant = useMemo(
     () => [...messages].reverse().find((m) => m.role === "assistant"),
@@ -267,62 +310,79 @@ export function AgentWindow({
   }
 
   async function createNewSession() {
+    const epoch = ++chatEpochRef.current;
+    switchedAtRef.current = Date.now();
     loadingSessionRef.current = true;
     skipEmptySaveRef.current = true;
-    if (busy) {
-      try {
-        stop();
-      } catch {
-        // ignore
-      }
-      try {
-        clearError();
-      } catch {
-        // ignore
-      }
+    if (saveTimer.current) {
+      window.clearTimeout(saveTimer.current);
+      saveTimer.current = null;
     }
     try {
+      // Always stop any in-flight stream BEFORE clearing messages, otherwise
+      // late chunks / abort noise make the new chat look broken.
+      try {
+        await stop();
+      } catch {
+        // ignore
+      }
+      clearError();
+
       const res = await fetch("/api/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(withWorkspace({ mode, skillIds: activeSkills })),
       });
+      if (!res.ok) throw new Error(`Session create failed (${res.status})`);
       const data = await res.json();
+      if (!data?.session?.id) throw new Error("Session create returned no id");
+      if (epoch !== chatEpochRef.current) return;
+
       // Set session id BEFORE clearing messages so the save effect never
       // overwrites the previous session with an empty transcript.
       setSessionId(data.session.id);
       setMessages([]);
       lastLearnedCount.current = 0;
       setInput("");
+      setCmdOpen(false);
       clearError();
+      window.setTimeout(() => clearError(), 0);
+      window.setTimeout(() => clearError(), 120);
       await refreshSessions();
+    } catch (e) {
+      console.error("[helix] createNewSession", e);
+      clearError();
     } finally {
       window.setTimeout(() => {
+        if (epoch !== chatEpochRef.current) return;
         loadingSessionRef.current = false;
         skipEmptySaveRef.current = false;
-      }, 500);
+      }, 600);
     }
   }
 
   async function loadSession(id: string) {
+    const epoch = ++chatEpochRef.current;
+    switchedAtRef.current = Date.now();
     loadingSessionRef.current = true;
     skipEmptySaveRef.current = true;
+    if (saveTimer.current) {
+      window.clearTimeout(saveTimer.current);
+      saveTimer.current = null;
+    }
     try {
+      try {
+        await stop();
+      } catch {
+        // ignore
+      }
+      clearError();
+
       const res = await fetch(`/api/sessions/${id}${qs}`);
       const data = await res.json();
       if (!data.session) return;
-      if (busy) {
-        try {
-          stop();
-        } catch {
-          // ignore
-        }
-        try {
-          clearError();
-        } catch {
-          // ignore
-        }
-      }
+      if (epoch !== chatEpochRef.current) return;
+
       const loaded = (data.session.messages as UIMessage[]) ?? [];
       setSessionId(data.session.id);
       if (data.session.mode === "ship" || data.session.mode === "bug-hunt" || data.session.mode === "chat") {
@@ -331,11 +391,17 @@ export function AgentWindow({
       setMessages(loaded);
       lastLearnedCount.current = loaded.length;
       clearError();
+      window.setTimeout(() => clearError(), 0);
+      window.setTimeout(() => clearError(), 120);
+    } catch (e) {
+      console.error("[helix] loadSession", e);
+      clearError();
     } finally {
       window.setTimeout(() => {
+        if (epoch !== chatEpochRef.current) return;
         loadingSessionRef.current = false;
         skipEmptySaveRef.current = false;
-      }, 500);
+      }, 600);
     }
   }
 
@@ -706,12 +772,13 @@ export function AgentWindow({
             })
           )}
 
-          {error ? (
+          {error &&
+          !isBenignChatError(error, { recentlySwitched }) ? (
             <div className="agent-error">
               {error.message || "Chat failed"}
               <div className="muted">
                 Model: {modelLabel}. Prefer <strong>Helix Own</strong> (local). For cloud models set
-                keys in <code>.env</code>. Switching Agent ↔ IDE no longer resets the chat.
+                keys in <code>.env</code>. New chat / tab switches no longer abort the session.
               </div>
             </div>
           ) : null}

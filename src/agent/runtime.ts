@@ -19,7 +19,7 @@ import { createMcpTools } from "./mcp.js";
 import { createBuildTools } from "./build.js";
 import { createHostingTools } from "./hosting.js";
 import { createTradingTools } from "./trading.js";
-import { understandProject } from "./understand.js";
+import { createTodoTools } from "./todos.js";
 import {
   getHelixModel,
   helixModelSystemPreamble,
@@ -141,15 +141,15 @@ export async function runAgentStream(input: RunAgentInput) {
   ];
   const uniqueSkillIds = [...new Set(skillIds)];
 
-  const [skills, plugins, projectMap, understanding] = await Promise.all([
+  const [skills, plugins, projectMap] = await Promise.all([
     loadSkillBodies(uniqueSkillIds),
     loadPlugins(),
     buildProjectMap(workspace),
-    understandProject(workspace).catch(() => null),
   ]);
 
   const tools = {
     ...createAgentTools(workspace),
+    ...createTodoTools(workspace),
     ...createWebTools(),
     ...createGitTools(workspace),
     ...createMcpTools(),
@@ -168,14 +168,14 @@ export async function runAgentStream(input: RunAgentInput) {
 
   const system = [
     helixModelSystemPreamble({ ...profile, engine: resolvedEngine }),
-    "You are Helix Own — a local coding agent in the style of Cursor Agent / Claude Code.",
-    "Take initiative: use tools in a long loop, edit files on disk, create folders, run commands, and keep going until the task is done or blocked.",
-    "Prefer actions over essays. Short plan → tools → verify → fix. Do not stop after a single tool call.",
-    "You write quality code, scaffold the right product shape, and understand codebases before editing.",
+    "You are Helix Own — behave like Cursor Agent / Claude Code on the user's machine.",
+    "Agency: take initiative, use tools in a long loop, edit real files, create folders, run commands, and keep going until the task is done or truly blocked.",
+    "Workflow: (1) brief plan with todo_write for multi-step work (2) tools in parallel when independent (3) verify with quality_check / run_terminal (4) fix failures and continue — never stop after one tool call.",
+    "Communication: short status updates between tool batches. Prefer concrete file paths and commands over essays.",
     modeBlock(mode),
     "You have effectively unlimited output tokens and tool steps — finish the task fully.",
     "HARD RULES:",
-    "1) Call understand_project (or project_map) before non-trivial work on existing repos.",
+    "1) Call project_map or understand_project before non-trivial work on existing repos.",
     "2) For greenfield products, use scaffold_project with the matching kind (website, game-canvas, mod-fabric, electron-app, fullstack-ts, …) then fill real logic. Create folders with create_directory and files with write_file / apply_patch.",
     "3) Prefer precise edits. Never invent host APIs (Fabric/Forge, browser MV3, game engines) — read docs or samples first.",
     "4) After meaningful edits, call quality_check. If typecheck/build/ship fails, read the stderr, fix the code, and re-run until green — do not leave failed builds.",
@@ -185,11 +185,6 @@ export async function runAgentStream(input: RunAgentInput) {
     "8) For markets: use trading_* tools. Default focus is memecoins (CEX + rug-filtered DEX). Paper by default. Never promise profits. Live stays gated.",
     `Workspace root (real folder on this PC): ${workspace}`,
     `Current project map:\n${projectMap.summary}`,
-    understanding
-      ? `Project understanding:\n${understanding.narrative}\nArchitecture: ${understanding.architecture.join(
-          "; "
-        )}\nEntrypoints: ${understanding.entrypoints.join(", ")}`
-      : "",
     pluginSystemPrompt(plugins),
     skills ? `Loaded skills / training:\n\n${skills}` : "",
   ]
@@ -203,7 +198,14 @@ export async function runAgentStream(input: RunAgentInput) {
     messages: input.messages,
     tools,
     stopWhen: stepCountIs(maxSteps),
-    experimental_transform: smoothStream({ delayInMs: 18 }),
+    experimental_transform: smoothStream({ delayInMs: 12 }),
+    prepareStep: async ({ stepNumber }) => {
+      // Keep the agent in a Cursor/Claude-style tool loop; never “answer only” after step 0.
+      if (stepNumber === 0) {
+        return { toolChoice: "auto" as const };
+      }
+      return {};
+    },
     onStepFinish: ({ toolCalls, toolResults, finishReason }) => {
       stepCounter += 1;
       const toolsUsed = toolCalls.map((t) => t.toolName).join(", ") || "none";
