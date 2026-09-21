@@ -1449,6 +1449,27 @@ button {
   white-space: nowrap;
 }
 
+.agent-mode-toggle {
+  display: inline-flex;
+  border: 1px solid var(--agent-line);
+  border-radius: 0.55rem;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.agent-mode-toggle button {
+  border: 0;
+  background: transparent;
+  color: var(--agent-muted);
+  padding: 0.3rem 0.65rem;
+  font-size: 0.72rem;
+}
+
+.agent-mode-toggle button.active {
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
 .agent-stage {
   flex: 1;
   min-height: 0;
@@ -1990,7 +2011,7 @@ button {
   opacity: 0.35;
 }
 
-/* Keep Agent + IDE mounted; only one visible */
+/* Keep Agent mounted across panel switches; only one visible */
 .shell-layer {
   flex: 1;
   min-height: 0;
@@ -2004,4 +2025,13 @@ button {
 
 .shell-layer.is-active {
   display: flex;
+}
+
+.panel-body {
+  padding: 1rem 1.25rem;
+  overflow: auto;
+}
+
+.panel-switch {
+  margin-left: 0.5rem;
 }

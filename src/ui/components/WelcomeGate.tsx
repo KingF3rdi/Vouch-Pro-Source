@@ -24,8 +24,7 @@ export function WelcomeGate({
         <div className="brand-glyph" aria-hidden />
         <h1>Helix Own</h1>
         <p>
-          Agent-Fenster wie gewohnt — erstmal nur Build in der IDE: Dateien, Features,
-          TypeScript, Compile. Hosting & Trading kommen später.
+          Agent für Apps, Websites, Games & Mods — plus Ship, Hosting und Paper-Trading.
           {trained ? " LoRA-Weights geladen." : " Startet mit lokalem Modell."}
         </p>
         <button

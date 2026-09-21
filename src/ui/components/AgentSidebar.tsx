@@ -7,6 +7,9 @@ import {
   MoreHorizontal,
   Settings,
   SquareCode,
+  Rocket,
+  CandlestickChart,
+  Package,
   Trash2,
 } from "lucide-react";
 import type { AgentMode } from "../../shared/types";
@@ -18,6 +21,8 @@ export type AgentSessionItem = {
   mode: AgentMode;
 };
 
+export type AgentPanel = "ide" | "ship" | "host" | "trade";
+
 export function AgentSidebar({
   workspaceLabel,
   sessions,
@@ -25,7 +30,7 @@ export function AgentSidebar({
   onNew,
   onOpen,
   onDelete,
-  onOpenIde,
+  onOpenPanel,
   userName = "Helix",
 }: {
   workspaceLabel: string;
@@ -34,7 +39,7 @@ export function AgentSidebar({
   onNew: () => void;
   onOpen: (id: string) => void;
   onDelete: (id: string) => void;
-  onOpenIde: () => void;
+  onOpenPanel: (panel: AgentPanel) => void;
   userName?: string;
 }) {
   const [query, setQuery] = useState("");
@@ -47,7 +52,6 @@ export function AgentSidebar({
   }, [sessions, query]);
 
   const grouped = useMemo(() => {
-    // Group by workspace project name (single project for now)
     return [{ project: workspaceLabel || "workspace", items: filtered }];
   }, [filtered, workspaceLabel]);
 
@@ -69,11 +73,21 @@ export function AgentSidebar({
             <Plus size={14} />
             Neu
           </button>
-          <button type="button" className="agent-side-btn" disabled title="Bald">
+          <button
+            type="button"
+            className="agent-side-btn"
+            onClick={() => onOpenPanel("ship")}
+            title="Ship / build artifacts"
+          >
             <Box size={14} />
             Artifacts
           </button>
-          <button type="button" className="agent-side-btn" disabled title="Bald">
+          <button
+            type="button"
+            className="agent-side-btn"
+            onClick={() => onOpenPanel("host")}
+            title="Hosting setup"
+          >
             <SlidersHorizontal size={14} />
             Anpassen
           </button>
@@ -92,14 +106,41 @@ export function AgentSidebar({
                   type="button"
                   onClick={() => {
                     setMoreOpen(false);
-                    onOpenIde();
+                    onOpenPanel("ide");
                   }}
                 >
                   <SquareCode size={14} />
                   IDE öffnen
                 </button>
-                <button type="button" disabled>
-                  Hosting / Trade (später)
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMoreOpen(false);
+                    onOpenPanel("ship");
+                  }}
+                >
+                  <Package size={14} />
+                  Ship
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMoreOpen(false);
+                    onOpenPanel("host");
+                  }}
+                >
+                  <Rocket size={14} />
+                  Hosting
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMoreOpen(false);
+                    onOpenPanel("trade");
+                  }}
+                >
+                  <CandlestickChart size={14} />
+                  Trading
                 </button>
               </div>
             ) : null}
@@ -152,9 +193,14 @@ export function AgentSidebar({
           </div>
           <div className="agent-profile-text">
             <strong>{userName}</strong>
-            <span>Build · IDE only</span>
+            <span>Apps · Sites · Games · Mods</span>
           </div>
-          <button type="button" className="agent-gear" onClick={onOpenIde} title="IDE">
+          <button
+            type="button"
+            className="agent-gear"
+            onClick={() => onOpenPanel("ide")}
+            title="IDE"
+          >
             <Settings size={16} />
           </button>
         </div>

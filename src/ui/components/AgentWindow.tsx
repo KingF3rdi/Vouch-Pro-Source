@@ -51,12 +51,24 @@ function asToolPart(part: unknown): ToolPartLike {
   return p;
 }
 
-const IDE_STARTERS = [
-  "Map this repo, then scaffold a clean feature folder and wire it into the app.",
-  "Open the main entry files, fix TypeScript errors, and keep the IDE building.",
-  "Add a new UI component in the editor, connect it, and verify the build.",
-  "Refactor the messiest module — keep diffs small and leave the project compiling.",
-];
+const STARTERS_BY_MODE: Record<"chat" | "ship" | "bug-hunt", string[]> = {
+  chat: [
+    "Scaffold a playable browser game with TypeScript canvas, then make movement and scoring feel good.",
+    "Build a marketing website for my product — hero, clear CTA, responsive, then production build.",
+    "Create a fullstack app (API + React UI) and verify typecheck.",
+    "Set up this website on a host: recommend one, then use assisted mode so I log in and you click through.",
+    "Scan memecoins with the trading bot, skip rugs, and run one paper auto-trade cycle.",
+    "Map this repo, then scaffold a clean feature folder and wire it into the app.",
+  ],
+  ship: [
+    "Detect the build pipeline, compile the project, package the final product, and list artifacts.",
+    "Run typecheck + production build + installers. Fix any compile errors until ship succeeds.",
+  ],
+  "bug-hunt": [
+    "Hunt bugs in this project: map it, scan risky areas, and fix the highest-severity issue.",
+    "Find and fix TypeScript / runtime errors.",
+  ],
+};
 
 export function AgentWindow({
   settings,
@@ -65,7 +77,7 @@ export function AgentWindow({
   skills,
   plugins,
   activeSkills,
-  onOpenIde,
+  onOpenPanel,
   workspaceLabel,
 }: {
   settings: AgentSettings | null;
@@ -74,10 +86,10 @@ export function AgentWindow({
   skills: SkillSummary[];
   plugins: PluginManifest[];
   activeSkills: string[];
-  onOpenIde: () => void;
+  onOpenPanel: (panel: "ide" | "ship" | "host" | "trade") => void;
   workspaceLabel: string;
 }) {
-  const mode = "chat" as const; // IDE build only for now
+  const [mode, setMode] = useState<"chat" | "ship" | "bug-hunt">("chat");
   const [input, setInput] = useState("");
   const [sessions, setSessions] = useState<AgentSessionItem[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -244,6 +256,9 @@ export function AgentWindow({
       }
       const loaded = (data.session.messages as UIMessage[]) ?? [];
       setSessionId(data.session.id);
+      if (data.session.mode === "ship" || data.session.mode === "bug-hunt" || data.session.mode === "chat") {
+        setMode(data.session.mode);
+      }
       setMessages(loaded);
       lastLearnedCount.current = loaded.length;
     } finally {
@@ -386,7 +401,7 @@ export function AgentWindow({
         onNew={() => void createNewSession()}
         onOpen={(id) => void loadSession(id)}
         onDelete={(id) => void removeSession(id)}
-        onOpenIde={onOpenIde}
+        onOpenPanel={onOpenPanel}
       />
 
       <section className="agent-main">
@@ -401,10 +416,53 @@ export function AgentWindow({
                 New agent
               </button>
             )}
-            <button type="button" className="agent-tab muted-tab" onClick={onOpenIde}>
+            <button
+              type="button"
+              className="agent-tab muted-tab"
+              onClick={() => onOpenPanel("ide")}
+            >
               <SquareCode size={13} />
               IDE
             </button>
+            <button
+              type="button"
+              className="agent-tab muted-tab"
+              onClick={() => onOpenPanel("ship")}
+            >
+              Ship
+            </button>
+            <button
+              type="button"
+              className="agent-tab muted-tab"
+              onClick={() => onOpenPanel("host")}
+            >
+              Host
+            </button>
+            <button
+              type="button"
+              className="agent-tab muted-tab"
+              onClick={() => onOpenPanel("trade")}
+            >
+              Trade
+            </button>
+          </div>
+          <div className="agent-mode-toggle no-drag">
+            {(
+              [
+                ["chat", "Build"],
+                ["ship", "Ship"],
+                ["bug-hunt", "Bugs"],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                className={mode === id ? "active" : ""}
+                onClick={() => setMode(id)}
+              >
+                {label}
+              </button>
+            ))}
           </div>
           <div className="agent-scope-pill no-drag">
             {busy ? (
@@ -413,7 +471,7 @@ export function AgentWindow({
                 {phaseLabel}
               </>
             ) : (
-              "Build in IDE only"
+              "Apps · Sites · Games · Mods"
             )}
           </div>
         </header>
@@ -423,8 +481,8 @@ export function AgentWindow({
             <div className="agent-empty">
               <h1>Helix Agent</h1>
               <p>
-                For now you can only build in the IDE — edit files, scaffold features, fix
-                TypeScript, and keep the project compiling. Hosting & trading come later.
+                Build apps, websites, games, mods, ship packages, host sites, and run paper
+                trading — not just IDE edits.
               </p>
               {settings?.workspace ? (
                 <p className="agent-workspace-path muted">
@@ -432,7 +490,7 @@ export function AgentWindow({
                 </p>
               ) : null}
               <div className="agent-starters">
-                {IDE_STARTERS.map((prompt) => (
+                {STARTERS_BY_MODE[mode].map((prompt) => (
                   <button
                     key={prompt}
                     type="button"
@@ -621,7 +679,13 @@ export function AgentWindow({
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Tippe / für Befehle — build in the IDE…"
+            placeholder={
+              mode === "bug-hunt"
+                ? "Describe the bug or ask Helix to hunt…"
+                : mode === "ship"
+                  ? "Ask Helix to compile and package…"
+                  : "Tippe / für Befehle — apps, sites, games, mods…"
+            }
             rows={2}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
@@ -636,7 +700,9 @@ export function AgentWindow({
                 <Plus size={16} />
               </button>
               <span className="agent-mode-chip">Auto</span>
-              <span className="agent-mode-chip soft">IDE build</span>
+              <span className="agent-mode-chip soft">
+                {mode === "ship" ? "Ship" : mode === "bug-hunt" ? "Bug hunt" : "Build"}
+              </span>
               {learning?.enabled ? (
                 <span className="agent-mode-chip soft" title="Local learning">
                   Learn {learning.totalExamples}

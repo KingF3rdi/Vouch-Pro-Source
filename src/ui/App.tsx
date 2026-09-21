@@ -1,12 +1,16 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, CandlestickChart, Package, Rocket, SquareCode } from "lucide-react";
 import type { AgentSettings, PluginManifest, SkillSummary } from "../shared/types";
 import { FileTree } from "./components/FileTree";
 import { EditorPane, type OpenFile } from "./components/EditorPane";
 import { AgentWindow } from "./components/AgentWindow";
+import { ShipPanel } from "./components/ShipPanel";
+import { HostingPanel } from "./components/HostingPanel";
+import { TradingPanel } from "./components/TradingPanel";
 import { WindowControls, useIsDesktop } from "./components/WindowControls";
 import { ModelPicker } from "./components/ModelPicker";
 import { WelcomeGate } from "./components/WelcomeGate";
+import type { AgentPanel } from "./components/AgentSidebar";
 
 const ESSENTIAL_SKILLS = [
   "coding",
@@ -19,9 +23,24 @@ const ESSENTIAL_SKILLS = [
   "complex-projects",
   "code-quality",
   "agent-curriculum",
+  "build-products",
+  "games-mods",
+  "ship",
+  "website-hosting",
+  "trading-bot",
 ];
 
-type ShellView = "agent" | "ide";
+type ShellView = "agent" | AgentPanel;
+
+const PANEL_META: Record<
+  Exclude<ShellView, "agent">,
+  { title: string; scope: string }
+> = {
+  ide: { title: "IDE", scope: "build" },
+  ship: { title: "Ship", scope: "compile" },
+  host: { title: "Hosting", scope: "deploy" },
+  trade: { title: "Trading", scope: "paper" },
+};
 
 export function App() {
   const isDesktop = useIsDesktop();
@@ -99,7 +118,9 @@ export function App() {
       ]);
       setActiveSkills(
         [...ids].filter(
-          (id) => ESSENTIAL_SKILLS.includes(id) || ["design", "research", "coding"].includes(id)
+          (id) =>
+            ESSENTIAL_SKILLS.includes(id) ||
+            ["design", "research", "coding", "ship", "website-hosting", "trading-bot"].includes(id)
         )
       );
     });
@@ -123,6 +144,10 @@ export function App() {
     setSettings(settingsData);
     const selected = (modelsData.models ?? []).find((m: { id: string }) => m.id === id);
     if (selected?.name) setModelLabel(selected.name);
+  }
+
+  function openPanel(panel: AgentPanel) {
+    setView(panel);
   }
 
   async function openFile(path: string) {
@@ -175,6 +200,7 @@ export function App() {
   }
 
   const workspaceLabel = settings?.workspace?.split(/[/\\]/).pop() || "workspace";
+  const panelMeta = view !== "agent" ? PANEL_META[view] : null;
 
   return (
     <div
@@ -190,7 +216,7 @@ export function App() {
         }}
       />
 
-      {/* Keep Agent mounted when switching to IDE — unmounting aborted chat/streams */}
+      {/* Keep Agent mounted when switching panels — unmounting aborted chat/streams */}
       <div className={`shell-layer${view === "agent" ? " is-active" : " is-hidden"}`}>
         <div className="agent-chrome titlebar-drag">
           <div className="brand-mark no-drag">
@@ -216,65 +242,129 @@ export function App() {
           plugins={plugins}
           activeSkills={activeSkills}
           workspaceLabel={workspaceLabel}
-          onOpenIde={() => setView("ide")}
+          onOpenPanel={openPanel}
         />
       </div>
 
-      <div className={`shell-layer${view === "ide" ? " is-active" : " is-hidden"}`}>
-        <header className="ide-topbar titlebar-drag">
-          <button
-            type="button"
-            className="ghost-btn no-drag back-agent"
-            onClick={() => setView("agent")}
-          >
-            <ArrowLeft size={14} />
-            Agent
-          </button>
-          <div className="brand-mark no-drag">
-            <div className="brand-glyph" aria-hidden />
-            <div>
-              <strong>Helix</strong>
-              <span className="muted"> · IDE · {workspaceLabel}</span>
+      {view !== "agent" ? (
+        <div className="shell-layer is-active">
+          <header className="ide-topbar titlebar-drag">
+            <button
+              type="button"
+              className="ghost-btn no-drag back-agent"
+              onClick={() => setView("agent")}
+            >
+              <ArrowLeft size={14} />
+              Agent
+            </button>
+            <div className="brand-mark no-drag">
+              <div className="brand-glyph" aria-hidden />
+              <div>
+                <strong>Helix</strong>
+                <span className="muted">
+                  {" "}
+                  · {panelMeta?.title} · {workspaceLabel}
+                </span>
+              </div>
             </div>
-          </div>
-          <div className="meta-pills no-drag">
-            <ModelPicker
-              selectedId={helixModelId}
-              onSelect={(id) => void selectHelixModel(id)}
-            />
-            <span className="pill">
-              scope <strong>build</strong>
-            </span>
-          </div>
-          <WindowControls />
-        </header>
+            <nav className="ide-tabs no-drag panel-switch">
+              {(
+                [
+                  ["ide", "IDE", SquareCode],
+                  ["ship", "Ship", Package],
+                  ["host", "Host", Rocket],
+                  ["trade", "Trade", CandlestickChart],
+                ] as const
+              ).map(([id, label, Icon]) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={view === id ? "active" : ""}
+                  onClick={() => setView(id)}
+                >
+                  <Icon size={14} />
+                  {label}
+                </button>
+              ))}
+            </nav>
+            <div className="meta-pills no-drag">
+              <ModelPicker
+                selectedId={helixModelId}
+                onSelect={(id) => void selectHelixModel(id)}
+              />
+              <span className="pill">
+                scope <strong>{panelMeta?.scope ?? "build"}</strong>
+              </span>
+            </div>
+            <WindowControls />
+          </header>
 
-        <div className="ide-body ide-body-only">
-          <aside className="ide-left">
-            <FileTree onOpenFile={(path) => void openFile(path)} activePath={activePath} />
-            <div className="map-card">
-              <div className="pane-label">Project map</div>
-              <pre>{mapSummary || "Loading map…"}</pre>
+          {view === "ide" ? (
+            <div className="ide-body ide-body-only">
+              <aside className="ide-left">
+                <FileTree onOpenFile={(path) => void openFile(path)} activePath={activePath} />
+                <div className="map-card">
+                  <div className="pane-label">Project map</div>
+                  <pre>{mapSummary || "Loading map…"}</pre>
+                </div>
+              </aside>
+              <section className="ide-center">
+                <EditorPane
+                  files={files}
+                  activePath={activePath}
+                  onSelect={setActivePath}
+                  onClose={closeFile}
+                  onChange={(path, value) =>
+                    setFiles((prev) =>
+                      prev.map((f) => (f.path === path ? { ...f, content: value } : f))
+                    )
+                  }
+                  onSave={(path) => void saveFile(path)}
+                  showDiff={showDiff}
+                  onToggleDiff={() => setShowDiff((v) => !v)}
+                />
+              </section>
             </div>
-          </aside>
-          <section className="ide-center">
-            <EditorPane
-              files={files}
-              activePath={activePath}
-              onSelect={setActivePath}
-              onClose={closeFile}
-              onChange={(path, value) =>
-                setFiles((prev) =>
-                  prev.map((f) => (f.path === path ? { ...f, content: value } : f))
-                )
-              }
-              onSave={(path) => void saveFile(path)}
-              showDiff={showDiff}
-              onToggleDiff={() => setShowDiff((v) => !v)}
-            />
-          </section>
+          ) : null}
+
+          {view === "ship" ? (
+            <div className="ide-body ide-body-only panel-body">
+              <ShipPanel
+                onAskAgent={() => {
+                  setView("agent");
+                  window.dispatchEvent(
+                    new CustomEvent("helix:prefill-chat", {
+                      detail: {
+                        prompt:
+                          "Detect the build pipeline, compile the project, package the final product, and list artifacts.",
+                      },
+                    })
+                  );
+                }}
+              />
+            </div>
+          ) : null}
+
+          {view === "host" ? (
+            <div className="ide-body ide-body-only panel-body">
+              <HostingPanel
+                onAskAgent={(prompt) => {
+                  setView("agent");
+                  window.dispatchEvent(
+                    new CustomEvent("helix:prefill-chat", { detail: { prompt } })
+                  );
+                }}
+              />
+            </div>
+          ) : null}
+
+          {view === "trade" ? (
+            <div className="ide-body ide-body-only panel-body">
+              <TradingPanel />
+            </div>
+          ) : null}
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }
