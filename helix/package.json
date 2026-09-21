@@ -1,0 +1,46 @@
+{
+  "name": "helix-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local coding AI agent with a Cursor/Claude-style UI, plugins, and built-in skills",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "concurrently -k \"npm:dev:server\" \"npm:dev:ui\"",
+    "dev:server": "tsx watch src/server/index.ts",
+    "dev:ui": "vite",
+    "dev:electron": "concurrently -k \"npm:dev:server\" \"npm:dev:ui\" \"wait-on http://127.0.0.1:5173 http://127.0.0.1:8787/api/health && electron .\"",
+    "build": "tsc -p tsconfig.server.json && vite build",
+    "start": "tsx src/server/index.ts",
+    "typecheck": "tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^2.0.17",
+    "@ai-sdk/openai": "^2.0.32",
+    "@ai-sdk/react": "^2.0.48",
+    "ai": "^5.0.48",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "glob": "^11.0.3",
+    "lucide-react": "^0.544.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "zod": "^4.1.5"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.3.1",
+    "@types/react": "^19.1.12",
+    "@types/react-dom": "^19.1.9",
+    "@vitejs/plugin-react": "^5.0.2",
+    "concurrently": "^9.2.1",
+    "electron": "^38.0.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.5",
+    "wait-on": "^8.0.4"
+  }
+}
