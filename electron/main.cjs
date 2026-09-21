@@ -33,7 +33,7 @@ function logLine(message) {
   console.log(message);
 }
 
-function waitForUrl(url, attempts = 200, intervalMs = 40) {
+function waitForUrl(url, attempts = 300, intervalMs = 25) {
   return new Promise((resolve, reject) => {
     let left = attempts;
     const tick = () => {

@@ -70,6 +70,50 @@ const STARTERS_BY_MODE: Record<"chat" | "ship" | "bug-hunt", string[]> = {
   ],
 };
 
+type SlashCommand = {
+  id: string;
+  label: string;
+  hint: string;
+  kind: "prompt" | "panel" | "mode" | "action";
+  value?: string;
+  panel?: "ide" | "ship" | "host" | "trade";
+  mode?: "chat" | "ship" | "bug-hunt";
+  action?: "new" | "clear";
+};
+
+const SLASH_COMMANDS: SlashCommand[] = [
+  { id: "new", label: "/new", hint: "Neue Session", kind: "action", action: "new" },
+  { id: "clear", label: "/clear", hint: "Chat leeren", kind: "action", action: "clear" },
+  { id: "ide", label: "/ide", hint: "IDE öffnen", kind: "panel", panel: "ide" },
+  { id: "ship", label: "/ship", hint: "Ship-Panel + Build", kind: "panel", panel: "ship" },
+  { id: "host", label: "/host", hint: "Hosting", kind: "panel", panel: "host" },
+  { id: "trade", label: "/trade", hint: "Paper-Trading", kind: "panel", panel: "trade" },
+  { id: "bugs", label: "/bugs", hint: "Bug-Hunt Modus", kind: "mode", mode: "bug-hunt" },
+  {
+    id: "map",
+    label: "/map",
+    hint: "Projekt mappen",
+    kind: "prompt",
+    value: "Map this project thoroughly and summarize architecture, entrypoints, and risks.",
+  },
+  {
+    id: "fix",
+    label: "/fix",
+    hint: "Build-Fehler beheben",
+    kind: "prompt",
+    value:
+      "Run quality_check and ship_project. Fix every failure until typecheck and production build succeed.",
+  },
+  {
+    id: "scaffold",
+    label: "/scaffold",
+    hint: "Neues Produkt scaffolden",
+    kind: "prompt",
+    value:
+      "Scaffold a product that fits my request (website, game-canvas, mod-fabric, electron-app, or fullstack-ts), create folders/files on disk, then make a runnable slice.",
+  },
+];
+
 export function AgentWindow({
   settings,
   helixModelId,
@@ -137,11 +181,12 @@ export function AgentWindow({
   // when switching sessions / after ensureSession, so the chat looked empty.
   const chatInstanceId = useRef(`helix-${crypto.randomUUID()}`);
 
-  const { messages, sendMessage, status, error, setMessages, stop } = useChat({
+  const { messages, sendMessage, status, error, setMessages, stop, clearError } = useChat({
     id: chatInstanceId.current,
     transport,
   });
   const busy = status === "submitted" || status === "streaming";
+  const [cmdOpen, setCmdOpen] = useState(false);
 
   const lastAssistant = useMemo(
     () => [...messages].reverse().find((m) => m.role === "assistant"),
@@ -222,22 +267,41 @@ export function AgentWindow({
   }
 
   async function createNewSession() {
+    loadingSessionRef.current = true;
+    skipEmptySaveRef.current = true;
     if (busy) {
       try {
         stop();
       } catch {
         // ignore
       }
+      try {
+        clearError();
+      } catch {
+        // ignore
+      }
     }
-    const res = await fetch("/api/sessions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(withWorkspace({ mode, skillIds: activeSkills })),
-    });
-    const data = await res.json();
-    setMessages([]);
-    setSessionId(data.session.id);
-    await refreshSessions();
+    try {
+      const res = await fetch("/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(withWorkspace({ mode, skillIds: activeSkills })),
+      });
+      const data = await res.json();
+      // Set session id BEFORE clearing messages so the save effect never
+      // overwrites the previous session with an empty transcript.
+      setSessionId(data.session.id);
+      setMessages([]);
+      lastLearnedCount.current = 0;
+      setInput("");
+      clearError();
+      await refreshSessions();
+    } finally {
+      window.setTimeout(() => {
+        loadingSessionRef.current = false;
+        skipEmptySaveRef.current = false;
+      }, 500);
+    }
   }
 
   async function loadSession(id: string) {
@@ -253,6 +317,11 @@ export function AgentWindow({
         } catch {
           // ignore
         }
+        try {
+          clearError();
+        } catch {
+          // ignore
+        }
       }
       const loaded = (data.session.messages as UIMessage[]) ?? [];
       setSessionId(data.session.id);
@@ -261,6 +330,7 @@ export function AgentWindow({
       }
       setMessages(loaded);
       lastLearnedCount.current = loaded.length;
+      clearError();
     } finally {
       window.setTimeout(() => {
         loadingSessionRef.current = false;
@@ -385,7 +455,45 @@ export function AgentWindow({
     });
     void sendMessage({ text: trimmed });
     setInput("");
+    setCmdOpen(false);
   }
+
+  function runSlashCommand(cmd: SlashCommand) {
+    setCmdOpen(false);
+    if (cmd.kind === "panel" && cmd.panel) {
+      setInput("");
+      onOpenPanel(cmd.panel);
+      return;
+    }
+    if (cmd.kind === "mode" && cmd.mode) {
+      setMode(cmd.mode);
+      setInput("");
+      return;
+    }
+    if (cmd.kind === "action") {
+      setInput("");
+      if (cmd.action === "new" || cmd.action === "clear") {
+        void createNewSession();
+      }
+      return;
+    }
+    if (cmd.kind === "prompt" && cmd.value) {
+      setInput("");
+      submitPrompt(cmd.value);
+    }
+  }
+
+  const slashQuery = input.startsWith("/") ? input.slice(1).toLowerCase() : "";
+  const slashMatches =
+    cmdOpen || input.startsWith("/")
+      ? SLASH_COMMANDS.filter(
+          (c) =>
+            !slashQuery ||
+            c.label.slice(1).startsWith(slashQuery) ||
+            c.hint.toLowerCase().includes(slashQuery) ||
+            c.id.startsWith(slashQuery)
+        )
+      : [];
 
   const activeSession = sessions.find((s) => s.id === sessionId);
   const toolCount =
@@ -673,23 +781,59 @@ export function AgentWindow({
           className="agent-composer"
           onSubmit={(e) => {
             e.preventDefault();
+            if (slashMatches.length === 1 && input.trim().startsWith("/")) {
+              runSlashCommand(slashMatches[0]!);
+              return;
+            }
             submitPrompt(input);
           }}
         >
+          {slashMatches.length > 0 ? (
+            <div className="agent-slash-menu" role="listbox" aria-label="Befehle">
+              {slashMatches.map((cmd) => (
+                <button
+                  key={cmd.id}
+                  type="button"
+                  className="agent-slash-item"
+                  onClick={() => runSlashCommand(cmd)}
+                >
+                  <strong>{cmd.label}</strong>
+                  <span>{cmd.hint}</span>
+                </button>
+              ))}
+            </div>
+          ) : null}
           <textarea
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => {
+              const next = e.target.value;
+              setInput(next);
+              setCmdOpen(next.startsWith("/"));
+            }}
             placeholder={
               mode === "bug-hunt"
-                ? "Describe the bug or ask Helix to hunt…"
+                ? "Describe the bug or ask Helix to hunt…  ·  / for commands"
                 : mode === "ship"
-                  ? "Ask Helix to compile and package…"
+                  ? "Ask Helix to compile and package…  ·  / for commands"
                   : "Tippe / für Befehle — apps, sites, games, mods…"
             }
             rows={2}
             onKeyDown={(e) => {
+              if (e.key === "Escape" && (cmdOpen || input.startsWith("/"))) {
+                setCmdOpen(false);
+                if (input === "/") setInput("");
+                return;
+              }
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
+                if (slashMatches.length === 1 && input.trim().startsWith("/")) {
+                  runSlashCommand(slashMatches[0]!);
+                  return;
+                }
+                if (slashMatches.length > 0 && input.trim().match(/^\/[a-z-]*$/i)) {
+                  runSlashCommand(slashMatches[0]!);
+                  return;
+                }
                 submitPrompt(input);
               }
             }}
@@ -699,7 +843,17 @@ export function AgentWindow({
               <button type="button" className="agent-icon-btn" title="Attach" disabled>
                 <Plus size={16} />
               </button>
-              <span className="agent-mode-chip">Auto</span>
+              <button
+                type="button"
+                className="agent-mode-chip"
+                title="Befehle"
+                onClick={() => {
+                  setInput("/");
+                  setCmdOpen(true);
+                }}
+              >
+                /
+              </button>
               <span className="agent-mode-chip soft">
                 {mode === "ship" ? "Ship" : mode === "bug-hunt" ? "Bug hunt" : "Build"}
               </span>

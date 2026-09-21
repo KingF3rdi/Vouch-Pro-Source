@@ -241,8 +241,13 @@ export async function runFullShip(workspace: string) {
     const result = await runBuildCommand(workspace, step.command);
     results.push({ step, ...result });
     if (!result.ok) {
+      const stderr = String(result.stderr ?? "");
+      const stdout = String(result.stdout ?? "");
       return {
         ok: false,
+        failedStep: step,
+        errorSummary: (stderr || stdout || "Build failed").slice(-2_500),
+        hint: "Fix the code (apply_patch / write_file), then call ship_project or run_build_step again until ok.",
         pipeline,
         results,
         artifacts: await listBuildArtifacts(workspace, pipeline.artifactGlobs),

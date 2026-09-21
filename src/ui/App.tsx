@@ -330,12 +330,13 @@ export function App() {
           {view === "ship" ? (
             <div className="ide-body ide-body-only panel-body">
               <ShipPanel
-                onAskAgent={() => {
+                onAskAgent={(prompt) => {
                   setView("agent");
                   window.dispatchEvent(
                     new CustomEvent("helix:prefill-chat", {
                       detail: {
                         prompt:
+                          prompt ||
                           "Detect the build pipeline, compile the project, package the final product, and list artifacts.",
                       },
                     })

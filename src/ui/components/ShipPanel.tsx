@@ -1,8 +1,15 @@
 import { useEffect, useState } from "react";
-import { Package, Play, RefreshCw } from "lucide-react";
+import { Package, Play, RefreshCw, Wrench } from "lucide-react";
 
 type Step = { id: string; label: string; command: string; kind: string };
 type Artifact = { path: string; size: number; mtime: string };
+type StepResult = {
+  step?: Step;
+  ok?: boolean;
+  stderr?: string;
+  stdout?: string;
+  command?: string;
+};
 
 function formatBytes(n: number) {
   if (n < 1024) return `${n} B`;
@@ -10,13 +17,21 @@ function formatBytes(n: number) {
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function ShipPanel({ onAskAgent }: { onAskAgent?: () => void }) {
+export function ShipPanel({
+  onAskAgent,
+}: {
+  onAskAgent?: (prompt?: string) => void;
+}) {
   const [steps, setSteps] = useState<Step[]>([]);
   const [notes, setNotes] = useState<string[]>([]);
   const [stack, setStack] = useState<string[]>([]);
   const [artifacts, setArtifacts] = useState<Artifact[]>([]);
   const [log, setLog] = useState("");
   const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState<{
+    step?: Step;
+    errorSummary: string;
+  } | null>(null);
 
   async function refresh() {
     const [pipeRes, artRes] = await Promise.all([
@@ -37,6 +52,7 @@ export function ShipPanel({ onAskAgent }: { onAskAgent?: () => void }) {
 
   async function runShip() {
     setBusy(true);
+    setFailed(null);
     setLog("Shipping… this can take several minutes for installers.");
     try {
       const res = await fetch("/api/ship/run", {
@@ -47,29 +63,67 @@ export function ShipPanel({ onAskAgent }: { onAskAgent?: () => void }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Ship failed");
       setArtifacts(data.artifacts ?? []);
-      setLog(
-        JSON.stringify(
-          {
-            ok: data.ok,
-            steps: (data.results ?? []).map(
-              (r: { step?: { id?: string }; ok?: boolean; stderr?: string }) => ({
+      const results = (data.results ?? []) as StepResult[];
+      const failedStep = results.find((r) => r.ok === false);
+      if (!data.ok || failedStep) {
+        const summary =
+          data.errorSummary ||
+          failedStep?.stderr?.slice(-2000) ||
+          failedStep?.stdout?.slice(-1200) ||
+          "Build failed";
+        setFailed({
+          step: data.failedStep ?? failedStep?.step,
+          errorSummary: String(summary),
+        });
+        setLog(
+          JSON.stringify(
+            {
+              ok: false,
+              failedStep: data.failedStep?.id ?? failedStep?.step?.id,
+              errorSummary: String(summary).slice(-800),
+              steps: results.map((r) => ({
                 id: r.step?.id,
                 ok: r.ok,
                 stderrTail: r.stderr?.slice(-400),
-              })
-            ),
-            artifactCount: data.artifacts?.length ?? 0,
-          },
-          null,
-          2
-        )
-      );
+              })),
+            },
+            null,
+            2
+          )
+        );
+      } else {
+        setFailed(null);
+        setLog(
+          JSON.stringify(
+            {
+              ok: true,
+              steps: results.map((r) => ({
+                id: r.step?.id,
+                ok: r.ok,
+              })),
+              artifactCount: data.artifacts?.length ?? 0,
+            },
+            null,
+            2
+          )
+        );
+      }
       await refresh();
     } catch (e) {
-      setLog(e instanceof Error ? e.message : String(e));
+      const msg = e instanceof Error ? e.message : String(e);
+      setFailed({ errorSummary: msg });
+      setLog(msg);
     } finally {
       setBusy(false);
     }
+  }
+
+  function askFix() {
+    const stepLabel = failed?.step?.label || failed?.step?.command || "build";
+    const err = failed?.errorSummary?.slice(-1800) || "unknown error";
+    onAskAgent?.(
+      `The ship/build failed on “${stepLabel}”. Fix the code until typecheck and production build succeed, then re-run ship_project.\n\nError:\n${err}`
+    );
   }
 
   return (
@@ -90,6 +144,23 @@ export function ShipPanel({ onAskAgent }: { onAskAgent?: () => void }) {
           </div>
         ))}
       </div>
+
+      {failed ? (
+        <div className="status-card ship-fail">
+          <strong>Build failed</strong>
+          {failed.step ? (
+            <div className="muted">
+              Step: {failed.step.label} · <code>{failed.step.command}</code>
+            </div>
+          ) : null}
+          <pre className="panel-log ship-fail-log">{failed.errorSummary.slice(-1600)}</pre>
+          {onAskAgent ? (
+            <button type="button" className="send-btn" onClick={askFix}>
+              <Wrench size={14} /> Fix with agent
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="mcp-list" style={{ marginTop: "0.85rem" }}>
         {steps.map((step) => (
@@ -114,7 +185,16 @@ export function ShipPanel({ onAskAgent }: { onAskAgent?: () => void }) {
       </div>
 
       {onAskAgent ? (
-        <button type="button" className="prompt-chip" style={{ marginTop: "0.75rem" }} onClick={onAskAgent}>
+        <button
+          type="button"
+          className="prompt-chip"
+          style={{ marginTop: "0.75rem" }}
+          onClick={() =>
+            onAskAgent(
+              "Detect the build pipeline, compile the project, package the final product, and list artifacts. If anything fails, fix it and re-run until ship succeeds."
+            )
+          }
+        >
           Ask the agent to ship (fix errors if build fails)
         </button>
       ) : null}

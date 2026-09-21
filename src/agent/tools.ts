@@ -149,9 +149,22 @@ export function createAgentTools(workspace: string) {
       },
     }),
 
+    create_directory: tool({
+      description:
+        "Create a folder (and parents) on disk inside the workspace. Use before writing multiple files into a new directory.",
+      inputSchema: z.object({
+        relativePath: z.string().min(1).describe("Folder path relative to the workspace"),
+      }),
+      execute: async ({ relativePath }) => {
+        const dir = assertInsideWorkspace(workspace, relativePath);
+        await fs.mkdir(dir, { recursive: true });
+        return { ok: true, path: relativePath };
+      },
+    }),
+
     write_file: tool({
       description:
-        "Create or overwrite a text file in the workspace. Prefer editing existing files when possible.",
+        "Create or overwrite a text file on disk in the workspace. Creates parent folders automatically. Prefer editing existing files when possible.",
       inputSchema: z.object({
         relativePath: z.string(),
         content: z.string(),

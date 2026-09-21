@@ -80,16 +80,20 @@ function assertInside(workspace: string, targetPath: string) {
 
 loadEnvFileSync();
 
-// Ensure project folder exists / managed files are updated (desktop also does this)
+// Ensure project folder exists. Desktop already synced sync — skip duplicate boot work.
 if (!process.env.HELIX_WORKSPACE) {
   process.env.HELIX_WORKSPACE = defaultWorkspacePath();
 }
-void installOrUpdateProject({ workspace: process.env.HELIX_WORKSPACE }).then((info) => {
-  process.env.HELIX_WORKSPACE = info.workspace;
-  console.log(
-    `[helix] project ${info.workspace} · created=${info.created.length} updated=${info.updated.length}`
-  );
-});
+if (process.env.HELIX_DESKTOP === "1") {
+  console.log(`[helix] desktop workspace=${process.env.HELIX_WORKSPACE}`);
+} else {
+  void installOrUpdateProject({ workspace: process.env.HELIX_WORKSPACE }).then((info) => {
+    process.env.HELIX_WORKSPACE = info.workspace;
+    console.log(
+      `[helix] project ${info.workspace} · created=${info.created.length} updated=${info.updated.length}`
+    );
+  });
+}
 
 const app = express();
 app.use(cors());
