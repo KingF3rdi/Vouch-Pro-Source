@@ -2,6 +2,7 @@ const { app, BrowserWindow, shell, ipcMain, Menu } = require("electron");
 const path = require("path");
 const { spawn } = require("child_process");
 const http = require("http");
+const fs = require("fs");
 
 const PORT = Number(process.env.HELIX_PORT || 8787);
 const DEV_UI = process.env.HELIX_UI_URL || "http://127.0.0.1:5173";
@@ -28,37 +29,42 @@ function waitForUrl(url, attempts = 80) {
   });
 }
 
+function resolveBackendDir() {
+  if (app.isPackaged) {
+    const candidates = [
+      path.join(process.resourcesPath, "backend"),
+      path.join(app.getAppPath(), "backend"),
+    ];
+    for (const candidate of candidates) {
+      if (fs.existsSync(path.join(candidate, "main.py"))) return candidate;
+    }
+  }
+  return path.join(__dirname, "..", "backend");
+}
+
+function resolvePython() {
+  return process.env.HELIX_PYTHON || (process.platform === "win32" ? "python" : "python3");
+}
+
 function startServer() {
   if (serverProcess) return serverProcess;
-  const root = path.join(__dirname, "..");
+  const backendDir = resolveBackendDir();
   const env = {
     ...process.env,
     HELIX_PORT: String(PORT),
-    HELIX_WORKSPACE: process.env.HELIX_WORKSPACE || process.cwd(),
+    HELIX_WORKSPACE: process.env.HELIX_WORKSPACE || (app.isPackaged ? app.getPath("userData") : process.cwd()),
     HELIX_DESKTOP: "1",
   };
 
-  if (app.isPackaged) {
-    const appPath = app.getAppPath();
-    const tsxCli = path.join(appPath, "node_modules", "tsx", "dist", "cli.mjs");
-    const serverEntry = path.join(appPath, "src", "server", "index.ts");
-    serverProcess = spawn(process.execPath, [tsxCli, serverEntry], {
-      cwd: appPath,
-      env: { ...env, ELECTRON_RUN_AS_NODE: "1" },
+  serverProcess = spawn(
+    resolvePython(),
+    ["-m", "uvicorn", "main:app", "--host", "127.0.0.1", "--port", String(PORT)],
+    {
+      cwd: backendDir,
+      env,
       stdio: "inherit",
-    });
-  } else {
-    serverProcess = spawn(
-      process.platform === "win32" ? "npx.cmd" : "npx",
-      ["tsx", "src/server/index.ts"],
-      {
-        cwd: root,
-        env,
-        stdio: "inherit",
-        shell: process.platform === "win32",
-      }
-    );
-  }
+    }
+  );
 
   serverProcess.on("exit", () => {
     serverProcess = null;
@@ -78,7 +84,6 @@ function createWindow(loadUrl) {
     frame: false,
     autoHideMenuBar: true,
     trafficLightPosition: { x: 16, y: 16 },
-    // Keep macOS traffic lights but no native title strip — UI chrome matches browser.
     titleBarStyle: process.platform === "darwin" ? "hiddenInset" : undefined,
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
@@ -99,7 +104,6 @@ function createWindow(loadUrl) {
     return { action: "deny" };
   });
 
-  // Same React app / CSS as the browser preview — never a separate desktop skin.
   mainWindow.loadURL(loadUrl);
 
   if (process.env.HELIX_CAPTURE_SCREENSHOT) {
@@ -107,7 +111,7 @@ function createWindow(loadUrl) {
       await new Promise((r) => setTimeout(r, 2000));
       const image = await mainWindow.capturePage();
       const out = process.env.HELIX_CAPTURE_SCREENSHOT;
-      require("fs").writeFileSync(out, image.toPNG());
+      fs.writeFileSync(out, image.toPNG());
       console.log(`[helix] wrote desktop screenshot ${out}`);
       app.quit();
     });
@@ -132,7 +136,6 @@ app.whenReady().then(async () => {
   startServer();
   await waitForUrl(`http://127.0.0.1:${PORT}/api/health`);
 
-  // Dev: Vite UI (exact browser preview). Packaged: same build served by API.
   const url = app.isPackaged ? `http://127.0.0.1:${PORT}` : DEV_UI;
   if (!app.isPackaged) {
     await waitForUrl(DEV_UI).catch(() => undefined);

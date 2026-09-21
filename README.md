@@ -1,52 +1,53 @@
 # Helix
 
-Local coding AI **desktop IDE** — same UI in the Electron window as in the browser preview.
+Desktop coding IDE with autonomous AI agents.
 
-## Helix models
+## Architecture (strict)
 
-Helix ships with its **own model profiles** for coding:
-
-| Helix model | Role |
+| Layer | Stack |
 | --- | --- |
-| **Helix Code** | Flagship coding agent (default) |
-| **Helix Astra** | GPT‑6 Astra–class deep coding |
-| **Helix Fable** | Claude Fable 5.1–class careful reasoning |
-| **Helix Local** | Offline via Ollama (`qwen2.5-coder`) |
+| **Back-end & agents** | Python — FastAPI, Pydantic, LangChain-ready tools |
+| **Front-end & desktop** | TypeScript — React, Monaco, Electron/Tauri |
 
-Pick them in the top bar. For Code / Astra / Fable set `AI_GATEWAY_API_KEY` (or OpenAI/Anthropic keys) in `.env`. For Local: `ollama pull qwen2.5-coder:14b`.
+See `ARCHITECTURE.md` and `AGENTS.md`.
 
-## Desktop (recommended)
+## Quick start
 
 ```bash
-cp .env.example .env
-npm install
-npm run desktop
-```
+# Python agents API
+npm run backend:install
+# or: pip install -r backend/requirements.txt
 
-This opens the **Helix desktop app** loading the exact same React UI / CSS as `http://127.0.0.1:5173` (frameless window, in-app chrome — no separate desktop skin).
-
-### Installers
-
-```bash
-npm run dist        # current OS
-npm run dist:win
-npm run dist:mac
-npm run dist:linux
-```
-
-Outputs go to `release/`.
-
-## Browser preview (same UI)
-
-```bash
+# UI + Python API
+export HELIX_WORKSPACE=$PWD
 npm run dev
 ```
 
-Open http://127.0.0.1:5173 — pixel-identical layout to the desktop shell.
+- UI: http://127.0.0.1:5173  
+- API: http://127.0.0.1:8787/api/health (`backend: python-fastapi`)
 
-## Features
+Desktop (same UI):
 
-- Project map first · web/GitHub research · Monaco editor + diffs
-- MCP host · GitHub commit/push · Bug hunt · Preview/Browser tabs
-- Chat sessions saved under `.helix/sessions/`
-- **Ship mode** — agent detects build pipeline, compiles, and packages installers/binaries (`ship_project`)
+```bash
+npm run desktop
+```
+
+## Helix models
+
+| Model | Engine |
+| --- | --- |
+| Helix Code | GPT‑6 Astra class |
+| Helix Astra | `openai/gpt-6-astra` |
+| Helix Fable | `anthropic/claude-fable-5.1` |
+| Helix Local | Ollama `qwen2.5-coder` |
+
+Set `AI_GATEWAY_API_KEY` (or OpenAI/Anthropic keys) in `.env`.
+
+## Layout
+
+```
+backend/               # FastAPI + Python agents / tools
+src/ui/                # React IDE (TypeScript)
+src/shared/            # TS interfaces mirroring Pydantic schemas
+ARCHITECTURE.md        # stack rules
+```
