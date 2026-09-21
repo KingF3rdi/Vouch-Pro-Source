@@ -7,6 +7,8 @@ contextBridge.exposeInMainWorld("helixDesktop", {
   maximize: () => ipcRenderer.invoke("window:maximize"),
   close: () => ipcRenderer.invoke("window:close"),
   isMaximized: () => ipcRenderer.invoke("window:isMaximized"),
+  revealInFolder: (targetPath) => ipcRenderer.invoke("fs:reveal", targetPath),
+  openPath: (targetPath) => ipcRenderer.invoke("fs:openPath", targetPath),
   onMaximizedChange: (callback) => {
     const handler = (_event, value) => callback(value);
     ipcRenderer.on("window:maximized", handler);

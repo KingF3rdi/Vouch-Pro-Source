@@ -245,6 +245,24 @@ ipcMain.handle("window:close", () => {
   mainWindow?.close();
 });
 ipcMain.handle("window:isMaximized", () => Boolean(mainWindow?.isMaximized()));
+ipcMain.handle("fs:reveal", (_event, targetPath) => {
+  if (typeof targetPath !== "string" || !targetPath.trim()) return false;
+  try {
+    shell.showItemInFolder(targetPath);
+    return true;
+  } catch (err) {
+    logLine(`reveal failed: ${err?.message || err}`);
+    return false;
+  }
+});
+ipcMain.handle("fs:openPath", async (_event, targetPath) => {
+  if (typeof targetPath !== "string" || !targetPath.trim()) return "bad path";
+  try {
+    return await shell.openPath(targetPath);
+  } catch (err) {
+    return err?.message || String(err);
+  }
+});
 
 app.whenReady().then(async () => {
   const t0 = Date.now();

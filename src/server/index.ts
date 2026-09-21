@@ -254,12 +254,38 @@ app.put("/api/fs/file", async (req, res) => {
     const filePath = assertInside(workspace, relative);
     await fs.mkdir(path.dirname(filePath), { recursive: true });
     await fs.writeFile(filePath, content, "utf8");
-    res.json({ ok: true, path: relative });
+    res.json({ ok: true, path: relative, absolutePath: filePath });
   } catch (error) {
     res.status(400).json({
       error: error instanceof Error ? error.message : "Write failed",
     });
   }
+});
+
+app.post("/api/fs/mkdir", async (req, res) => {
+  try {
+    const workspace = workspaceFromQuery(req.body?.workspace);
+    const relative = String(req.body?.path ?? "").trim();
+    if (!relative) {
+      res.status(400).json({ error: "path required" });
+      return;
+    }
+    const dirPath = assertInside(workspace, relative);
+    await fs.mkdir(dirPath, { recursive: true });
+    res.json({ ok: true, path: relative, absolutePath: dirPath });
+  } catch (error) {
+    res.status(400).json({
+      error: error instanceof Error ? error.message : "mkdir failed",
+    });
+  }
+});
+
+app.get("/api/fs/workspace", async (_req, res) => {
+  const workspace = process.env.HELIX_WORKSPACE || (await getDefaultSettings()).workspace;
+  res.json({
+    workspace,
+    projectsRoot: path.dirname(workspace),
+  });
 });
 
 app.get("/api/git/status", async (req, res) => {

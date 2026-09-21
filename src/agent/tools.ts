@@ -10,6 +10,7 @@ import { understandProject } from "./understand.js";
 import { scaffoldProject } from "./scaffold.js";
 import { runQualityCheck } from "./quality.js";
 import { applyPatch, explainCode, findTodos, runTests } from "./essentialTools.js";
+import { defaultProjectsRoot } from "./projectInstall.js";
 
 const execAsync = promisify(exec);
 
@@ -25,7 +26,18 @@ function assertInsideWorkspace(workspace: string, targetPath: string): string {
   return resolved;
 }
 
+function assertInsideProjectsRoot(targetPath: string): string {
+  const root = path.resolve(defaultProjectsRoot());
+  const resolved = path.resolve(root, targetPath);
+  if (resolved !== root && !resolved.startsWith(root + path.sep)) {
+    throw new Error(`Path escapes Helix Projects folder: ${targetPath}`);
+  }
+  return resolved;
+}
+
 export function createAgentTools(workspace: string) {
+  const projectsRoot = defaultProjectsRoot();
+
   return {
     project_map: tool({
       description:
@@ -43,7 +55,7 @@ export function createAgentTools(workspace: string) {
 
     scaffold_project: tool({
       description:
-        "Scaffold a product: ts-api, react-vite, fullstack-ts, python-fastapi, monorepo-lite, website, electron-app, game-canvas, mod-fabric, browser-extension. Does not overwrite existing files.",
+        "Scaffold a product on disk: ts-api, react-vite, fullstack-ts, python-fastapi, monorepo-lite, website, electron-app, game-canvas, mod-fabric, browser-extension. Creates real folders/files. Does not overwrite existing files.",
       inputSchema: z.object({
         kind: z.enum([
           "ts-api",
@@ -76,7 +88,7 @@ export function createAgentTools(workspace: string) {
 
     apply_patch: tool({
       description:
-        "Exact search-replace edit inside a file. Prefer this over rewriting whole files for small changes.",
+        "Exact search-replace edit inside a file on disk. Prefer this over rewriting whole files for small changes.",
       inputSchema: z.object({
         relativePath: z.string(),
         oldText: z.string().min(1),
@@ -122,15 +134,18 @@ export function createAgentTools(workspace: string) {
       execute: async ({ relativePath }) => {
         const dir = assertInsideWorkspace(workspace, relativePath || ".");
         const entries = await fs.readdir(dir, { withFileTypes: true });
-        return entries.map((entry) => ({
-          name: entry.name,
-          type: entry.isDirectory() ? "dir" : "file",
-        }));
+        return {
+          absolutePath: dir,
+          entries: entries.map((entry) => ({
+            name: entry.name,
+            type: entry.isDirectory() ? "dir" : "file",
+          })),
+        };
       },
     }),
 
     read_file: tool({
-      description: "Read a text file from the workspace.",
+      description: "Read a text file from the workspace on this PC.",
       inputSchema: z.object({
         relativePath: z.string().describe("File path relative to the workspace"),
         maxChars: z.number().int().positive().max(200_000).default(80_000),
@@ -141,30 +156,61 @@ export function createAgentTools(workspace: string) {
         if (content.length > maxChars) {
           return {
             truncated: true,
+            absolutePath: filePath,
             content: content.slice(0, maxChars),
             note: `Truncated to ${maxChars} characters`,
           };
         }
-        return { truncated: false, content };
+        return { truncated: false, absolutePath: filePath, content };
       },
     }),
 
     create_directory: tool({
       description:
-        "Create a folder (and parents) on disk inside the workspace. Use before writing multiple files into a new directory.",
+        "Create a real folder on this PC inside the current workspace (parents included). Returns the absolute disk path.",
       inputSchema: z.object({
         relativePath: z.string().min(1).describe("Folder path relative to the workspace"),
       }),
       execute: async ({ relativePath }) => {
         const dir = assertInsideWorkspace(workspace, relativePath);
         await fs.mkdir(dir, { recursive: true });
-        return { ok: true, path: relativePath };
+        return {
+          ok: true,
+          created: true,
+          path: relativePath,
+          absolutePath: dir,
+          onDisk: true,
+        };
+      },
+    }),
+
+    create_project_folder: tool({
+      description: `Create a new project folder on this PC under ${projectsRoot}. Use for a brand-new app/site/game next to the current workspace.`,
+      inputSchema: z.object({
+        name: z
+          .string()
+          .min(1)
+          .describe("Folder name under Documents/Helix/Projects"),
+      }),
+      execute: async ({ name }) => {
+        const safe = name.replace(/[<>:"|?*\u0000-\u001f]/g, "-").trim();
+        if (!safe) throw new Error("Invalid folder name");
+        const dir = assertInsideProjectsRoot(safe);
+        await fs.mkdir(dir, { recursive: true });
+        return {
+          ok: true,
+          created: true,
+          path: safe,
+          absolutePath: dir,
+          projectsRoot,
+          onDisk: true,
+        };
       },
     }),
 
     write_file: tool({
       description:
-        "Create or overwrite a text file on disk in the workspace. Creates parent folders automatically. Prefer editing existing files when possible.",
+        "Create or overwrite a real text file on this PC in the workspace. Creates parent folders automatically. Returns the absolute disk path.",
       inputSchema: z.object({
         relativePath: z.string(),
         content: z.string(),
@@ -172,8 +218,20 @@ export function createAgentTools(workspace: string) {
       execute: async ({ relativePath, content }) => {
         const filePath = assertInsideWorkspace(workspace, relativePath);
         await fs.mkdir(path.dirname(filePath), { recursive: true });
+        const existed = await fs
+          .access(filePath)
+          .then(() => true)
+          .catch(() => false);
         await fs.writeFile(filePath, content, "utf8");
-        return { ok: true, path: relativePath };
+        return {
+          ok: true,
+          created: !existed,
+          updated: existed,
+          path: relativePath,
+          absolutePath: filePath,
+          onDisk: true,
+          bytes: Buffer.byteLength(content, "utf8"),
+        };
       },
     }),
 
@@ -215,7 +273,7 @@ export function createAgentTools(workspace: string) {
           }
         }
 
-        return { matches, scannedFiles: files.length };
+        return { matches, scannedFiles: files.length, workspace };
       },
     }),
 
@@ -236,6 +294,7 @@ export function createAgentTools(workspace: string) {
           });
           return {
             ok: true,
+            cwd: workspace,
             stdout: stdout.slice(0, 20_000),
             stderr: stderr.slice(0, 8_000),
           };
@@ -248,6 +307,7 @@ export function createAgentTools(workspace: string) {
           };
           return {
             ok: false,
+            cwd: workspace,
             code: err.code ?? 1,
             stdout: (err.stdout ?? "").slice(0, 20_000),
             stderr: (err.stderr ?? err.message ?? "Command failed").slice(0, 8_000),

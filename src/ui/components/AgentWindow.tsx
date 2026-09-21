@@ -143,12 +143,28 @@ const SLASH_COMMANDS: SlashCommand[] = [
     value: "Run the project tests with run_tests, fix failures, and re-run until green.",
   },
   {
+    id: "mkdir",
+    label: "/mkdir",
+    hint: "Ordner auf dem PC anlegen",
+    kind: "prompt",
+    value:
+      "Create the folders I describe on disk now using create_directory (and create_project_folder if it is a new project under Documents/Helix/Projects). Report each absolutePath.",
+  },
+  {
+    id: "file",
+    label: "/file",
+    hint: "Datei auf dem PC anlegen",
+    kind: "prompt",
+    value:
+      "Create the file(s) I describe on disk with write_file (create parent folders). Report absolutePath for each file written.",
+  },
+  {
     id: "scaffold",
     label: "/scaffold",
     hint: "Produkt scaffolden",
     kind: "prompt",
     value:
-      "Scaffold a product that fits my request (website, game-canvas, mod-fabric, electron-app, or fullstack-ts), create folders/files on disk, then make a runnable slice.",
+      "Scaffold a product that fits my request (website, game-canvas, mod-fabric, electron-app, or fullstack-ts), create folders/files on disk, then make a runnable slice. Report absolute paths.",
   },
   {
     id: "website",
@@ -201,7 +217,7 @@ const SLASH_COMMANDS: SlashCommand[] = [
 ];
 
 const COMMAND_CHIPS = SLASH_COMMANDS.filter((c) =>
-  ["help", "ship", "host", "trade", "fix", "website", "game", "app", "mod"].includes(c.id)
+  ["help", "ship", "host", "trade", "fix", "mkdir", "file", "website", "game", "app"].includes(c.id)
 );
 
 export function AgentWindow({

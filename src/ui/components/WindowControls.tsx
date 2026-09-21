@@ -8,6 +8,8 @@ type HelixDesktop = {
   maximize: () => Promise<boolean>;
   close: () => Promise<void>;
   isMaximized: () => Promise<boolean>;
+  revealInFolder?: (targetPath: string) => Promise<boolean>;
+  openPath?: (targetPath: string) => Promise<string>;
   onMaximizedChange: (cb: (value: boolean) => void) => () => void;
 };
 
