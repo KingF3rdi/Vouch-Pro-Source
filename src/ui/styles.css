@@ -1032,3 +1032,39 @@ button {
   margin-left: 0.25rem;
   opacity: 0.8;
 }
+
+.learn-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.learn-toggle.active {
+  color: var(--accent);
+  background: var(--accent-dim);
+  border-color: rgba(62, 207, 142, 0.35);
+}
+
+.learn-count {
+  opacity: 0.75;
+}
+
+.learn-actions {
+  display: flex;
+  gap: 0.25rem;
+  margin-top: 0.35rem;
+}
+
+.chat-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}

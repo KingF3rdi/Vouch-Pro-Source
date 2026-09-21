@@ -26,7 +26,7 @@ def load_rows(path: Path) -> list[dict]:
         if not line:
             continue
         rows.append(json.loads(line))
-    if len(rows) < 4:
+    if len(rows) < 2:
         raise SystemExit(f"Need more training rows in {path}")
     return rows
 

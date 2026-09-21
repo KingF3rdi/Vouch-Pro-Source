@@ -3,7 +3,7 @@ import { DefaultChatTransport, isToolUIPart, type UIMessage } from "ai";
 import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { MessageSquarePlus, Trash2 } from "lucide-react";
+import { MessageSquarePlus, ThumbsDown, ThumbsUp, Trash2, GraduationCap } from "lucide-react";
 import type { AgentMode, AgentSettings, PluginManifest, SkillSummary } from "../../shared/types";
 
 type SessionSummary = {
@@ -13,6 +13,26 @@ type SessionSummary = {
   mode: AgentMode;
 };
 
+type LearningInfo = {
+  enabled: boolean;
+  totalExamples: number;
+  pendingSinceTrain: number;
+  retrainEvery: number;
+  trainRunning?: boolean;
+};
+
+function messageText(message: {
+  role?: string;
+  parts?: Array<{ type?: string; text?: string }>;
+  content?: string;
+}): string {
+  if (typeof message.content === "string" && message.content.trim()) return message.content.trim();
+  return (message.parts ?? [])
+    .filter((p) => p.type === "text" && p.text)
+    .map((p) => p.text!.trim())
+    .filter(Boolean)
+    .join("\n");
+}
 export function ChatPanel({
   settings,
   helixModelId,
@@ -35,8 +55,14 @@ export function ChatPanel({
   const [input, setInput] = useState("");
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [learning, setLearning] = useState<LearningInfo | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const saveTimer = useRef<number | null>(null);
+  const lastLearnedCount = useRef(0);
+  const workspace = settings?.workspace;
+  const qs = workspace ? `?workspace=${encodeURIComponent(workspace)}` : "";
+  const withWorkspace = (body: Record<string, unknown> = {}) =>
+    workspace ? { ...body, workspace } : body;
   const bodyRef = useRef({
     skillIds: activeSkills,
     provider: settings?.provider,
@@ -71,7 +97,7 @@ export function ChatPanel({
   const busy = status === "submitted" || status === "streaming";
 
   async function refreshSessions() {
-    const res = await fetch("/api/sessions");
+    const res = await fetch(`/api/sessions${qs}`);
     const data = await res.json();
     setSessions(
       (data.sessions ?? []).map((s: SessionSummary) => ({
@@ -84,7 +110,7 @@ export function ChatPanel({
   }
 
   async function ensureSession() {
-    const res = await fetch("/api/sessions");
+    const res = await fetch(`/api/sessions${qs}`);
     const data = await res.json();
     const list = data.sessions ?? [];
     if (list.length > 0) {
@@ -106,7 +132,7 @@ export function ChatPanel({
     const res = await fetch("/api/sessions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode, skillIds: activeSkills }),
+      body: JSON.stringify(withWorkspace({ mode, skillIds: activeSkills })),
     });
     const data = await res.json();
     setSessionId(data.session.id);
@@ -115,7 +141,7 @@ export function ChatPanel({
   }
 
   async function loadSession(id: string) {
-    const res = await fetch(`/api/sessions/${id}`);
+    const res = await fetch(`/api/sessions/${id}${qs}`);
     const data = await res.json();
     if (!data.session) return;
     setSessionId(data.session.id);
@@ -124,7 +150,7 @@ export function ChatPanel({
   }
 
   async function removeSession(id: string) {
-    await fetch(`/api/sessions/${id}`, { method: "DELETE" });
+    await fetch(`/api/sessions/${id}${qs}`, { method: "DELETE" });
     if (sessionId === id) {
       setSessionId(null);
       setMessages([]);
@@ -134,10 +160,60 @@ export function ChatPanel({
     }
   }
 
+  async function refreshLearning() {
+    const res = await fetch(`/api/learning${qs}`);
+    const data = await res.json();
+    setLearning({
+      enabled: Boolean(data.settings?.enabled),
+      totalExamples: Number(data.settings?.totalExamples ?? 0),
+      pendingSinceTrain: Number(data.settings?.pendingSinceTrain ?? 0),
+      retrainEvery: Number(data.settings?.retrainEvery ?? 8),
+      trainRunning: Boolean(data.trainRunning),
+    });
+  }
+
+  async function toggleLearning(enabled: boolean) {
+    await fetch("/api/learning/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(withWorkspace({ enabled })),
+    });
+    await refreshLearning();
+  }
+
+  async function rateAssistant(assistantId: string, rating: "up" | "down") {
+    const idx = messages.findIndex((m) => m.id === assistantId);
+    if (idx < 0) return;
+    const assistant = messages[idx]!;
+    const user = [...messages.slice(0, idx)].reverse().find((m) => m.role === "user");
+    if (!user) return;
+    let correction: string | undefined;
+    if (rating === "down") {
+      correction =
+        window.prompt(
+          "Optional: write the better answer Helix should learn (local only)."
+        ) || undefined;
+    }
+    await fetch("/api/learning/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(
+        withWorkspace({
+          userText: messageText(user),
+          assistantText: messageText(assistant),
+          rating,
+          correction,
+        })
+      ),
+    });
+    await refreshLearning();
+  }
+
   useEffect(() => {
     void ensureSession();
+    void refreshLearning();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [workspace]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -150,12 +226,28 @@ export function ChatPanel({
       void fetch(`/api/sessions/${sessionId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages,
-          mode,
-          skillIds: activeSkills,
-        }),
-      }).then(() => refreshSessions());
+        body: JSON.stringify(
+          withWorkspace({
+            messages,
+            mode,
+            skillIds: activeSkills,
+          })
+        ),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          void refreshSessions();
+          if (data.learning?.added) void refreshLearning();
+        });
+      // Also ingest immediately for continuous learning
+      if (messages.length > lastLearnedCount.current) {
+        lastLearnedCount.current = messages.length;
+        void fetch("/api/learning/ingest", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(withWorkspace({ messages, source: "chat" })),
+        }).then(() => refreshLearning());
+      }
     }, 400);
     return () => {
       if (saveTimer.current) window.clearTimeout(saveTimer.current);
@@ -165,6 +257,14 @@ export function ChatPanel({
   function submitPrompt(text: string) {
     const trimmed = text.trim();
     if (!trimmed || busy || !sessionId) return;
+    // Archive every user prompt locally before the reply arrives
+    void fetch("/api/learning/observe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(
+        withWorkspace({ text: trimmed, kind: "prompt", meta: { mode, sessionId } })
+      ),
+    });
     void sendMessage({ text: trimmed });
     setInput("");
   }
@@ -237,6 +337,21 @@ export function ChatPanel({
             Bug hunt
           </button>
         </div>
+        <button
+          type="button"
+          className={`learn-toggle${learning?.enabled ? " active" : ""}`}
+          title="Learn from every chat locally (LoRA). Data never leaves this machine."
+          onClick={() => void toggleLearning(!(learning?.enabled ?? true))}
+        >
+          <GraduationCap size={14} />
+          {learning?.enabled ? "Learning on" : "Learning off"}
+          {learning ? (
+            <span className="learn-count">
+              {learning.totalExamples}
+              {learning.trainRunning ? " · training…" : ""}
+            </span>
+          ) : null}
+        </button>
         {busy ? <div className="status-dot" title="Working" /> : null}
       </div>
 
@@ -307,6 +422,26 @@ export function ChatPanel({
                     return null;
                   })}
                 </div>
+                {message.role === "assistant" && !busy ? (
+                  <div className="learn-actions">
+                    <button
+                      type="button"
+                      className="ghost-btn"
+                      title="Good — learn this"
+                      onClick={() => void rateAssistant(message.id, "up")}
+                    >
+                      <ThumbsUp size={12} />
+                    </button>
+                    <button
+                      type="button"
+                      className="ghost-btn"
+                      title="Bad — teach a better answer"
+                      onClick={() => void rateAssistant(message.id, "down")}
+                    >
+                      <ThumbsDown size={12} />
+                    </button>
+                  </div>
+                ) : null}
               </div>
             </article>
           ))
@@ -315,7 +450,7 @@ export function ChatPanel({
           <div className="pane-error">
             {error.message}
             <div className="muted">
-              Tip: use Ollama or set cloud API keys in <code>.env</code>.
+              Tip: use Ollama / Helix Own FT or set cloud API keys in <code>.env</code>.
             </div>
           </div>
         ) : null}
@@ -347,7 +482,12 @@ export function ChatPanel({
           }}
         />
         <div className="composer-footer">
-          <span className="hint">TS agents · unlimited tokens · Enter send</span>
+          <span className="hint">
+            Learns from your chats locally
+            {learning
+              ? ` · ${learning.pendingSinceTrain}/${learning.retrainEvery} until retrain`
+              : ""}
+          </span>
           <button className="send-btn" type="submit" disabled={busy || !input.trim()}>
             {busy ? "Working…" : "Send"}
           </button>
