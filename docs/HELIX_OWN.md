@@ -30,6 +30,21 @@ Helix Own is optimized for:
 
 Skills: `build-products`, `games-mods`, plus coding/ship/curriculum.
 
+## Day trading bot
+
+Helix includes an advanced **paper** day trader (Trade tab):
+
+- Multi-factor signals (trend + breakout/pullback + volume + RR)
+- Auto entries/exits when `autoTrade` is on
+- Rug-pull filters (liquidity/age/DEX heuristics; blocks high risk)
+- Daily loss circuit breaker + position sizing
+
+**Not financial advice — no profit guarantee.** Live exchange orders stay gated.
+
+```bash
+npx tsx scripts/smoke-trading.ts
+```
+
 ## Website hosting (two modes)
 
 1. **Credentialed** — enable “Allow credentialed host setup” in the **Host** tab, paste a Vercel/Netlify/Cloudflare token (not your password). Helix picks a host and deploys.

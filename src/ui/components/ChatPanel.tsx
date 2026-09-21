@@ -294,6 +294,7 @@ export function ChatPanel({
             "Build a marketing website for my product — hero, clear CTA, responsive, then production build.",
             "Create a fullstack app (API + React UI) for a simple task manager and verify typecheck.",
             "Set up this website on a host: recommend one, then use assisted mode so I log in and you click through.",
+            "Scan the markets with the trading bot, avoid rug risks, and run one paper auto-trade cycle.",
           ];
 
   return (
