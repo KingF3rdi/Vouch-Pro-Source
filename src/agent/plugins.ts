@@ -6,7 +6,10 @@ import { z } from "zod";
 import type { PluginManifest } from "../shared/types.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-export const PLUGINS_DIR = path.resolve(__dirname, "../../plugins");
+const helixRoot = process.env.HELIX_ROOT
+  ? path.resolve(process.env.HELIX_ROOT)
+  : path.resolve(__dirname, "../..");
+export const PLUGINS_DIR = path.join(helixRoot, "plugins");
 
 export type HelixPlugin = {
   manifest: PluginManifest;
@@ -25,29 +28,45 @@ type PluginModule = {
 };
 
 export async function loadPlugins(): Promise<HelixPlugin[]> {
-  const entries = await fs.readdir(PLUGINS_DIR, { withFileTypes: true });
+  let entries: import("node:fs").Dirent[] = [];
+  try {
+    entries = await fs.readdir(PLUGINS_DIR, { withFileTypes: true });
+  } catch {
+    return [];
+  }
   const plugins: HelixPlugin[] = [];
+  const allowTs = !process.env.HELIX_DESKTOP || Boolean(process.env.HELIX_ALLOW_TS_PLUGINS);
 
   for (const entry of entries) {
     if (!entry.isFile()) continue;
-    if (!entry.name.endsWith(".ts") && !entry.name.endsWith(".js")) continue;
     if (entry.name.startsWith("_")) continue;
+    if (entry.name.endsWith(".ts") && !allowTs) continue;
+    if (!entry.name.endsWith(".ts") && !entry.name.endsWith(".js") && !entry.name.endsWith(".mjs")) {
+      continue;
+    }
 
     const fullPath = path.join(PLUGINS_DIR, entry.name);
-    const mod = (await import(pathToFileUrl(fullPath))) as PluginModule;
-    const tools = mod.createTools ? await mod.createTools() : undefined;
+    try {
+      const mod = (await import(pathToFileUrl(fullPath))) as PluginModule;
+      const tools = mod.createTools ? await mod.createTools() : undefined;
 
-    plugins.push({
-      manifest: {
-        id: mod.id,
-        name: mod.name,
-        description: mod.description,
-        version: mod.version ?? "0.1.0",
-        enabled: mod.enabled !== false,
-      },
-      tools,
-      systemPrompt: mod.systemPrompt,
-    });
+      plugins.push({
+        manifest: {
+          id: mod.id,
+          name: mod.name,
+          description: mod.description,
+          version: mod.version ?? "0.1.0",
+          enabled: mod.enabled !== false,
+        },
+        tools,
+        systemPrompt: mod.systemPrompt,
+      });
+    } catch (error) {
+      console.warn(
+        `[helix] skip plugin ${entry.name}:`,
+        error instanceof Error ? error.message : error
+      );
+    }
   }
 
   return plugins.filter((plugin) => plugin.manifest.enabled);

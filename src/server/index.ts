@@ -777,7 +777,9 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
-const uiDist = path.resolve(__dirname, "../../dist/ui");
+const uiDist = process.env.HELIX_ROOT
+  ? path.join(path.resolve(process.env.HELIX_ROOT), "dist", "ui")
+  : path.resolve(__dirname, "../../dist/ui");
 app.use(express.static(uiDist));
 app.get(/^(?!\/api).*/, (_req, res, next) => {
   res.sendFile(path.join(uiDist, "index.html"), (err) => {

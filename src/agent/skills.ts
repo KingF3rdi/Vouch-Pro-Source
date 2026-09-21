@@ -4,10 +4,18 @@ import { fileURLToPath } from "node:url";
 import type { SkillSummary } from "../shared/types.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-export const SKILLS_DIR = path.resolve(__dirname, "../../skills");
+const helixRoot = process.env.HELIX_ROOT
+  ? path.resolve(process.env.HELIX_ROOT)
+  : path.resolve(__dirname, "../..");
+export const SKILLS_DIR = path.join(helixRoot, "skills");
 
 export async function listSkills(): Promise<SkillSummary[]> {
-  const entries = await fs.readdir(SKILLS_DIR, { withFileTypes: true });
+  let entries: import("node:fs").Dirent[] = [];
+  try {
+    entries = await fs.readdir(SKILLS_DIR, { withFileTypes: true });
+  } catch {
+    return [];
+  }
   const skills: SkillSummary[] = [];
 
   for (const entry of entries) {

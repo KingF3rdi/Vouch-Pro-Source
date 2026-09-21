@@ -1,4 +1,4 @@
-const { app, BrowserWindow, shell, ipcMain, Menu } = require("electron");
+const { app, BrowserWindow, shell, ipcMain, Menu, dialog } = require("electron");
 const path = require("path");
 const { spawn } = require("child_process");
 const http = require("http");
@@ -10,8 +10,25 @@ const DEV_UI = process.env.HELIX_UI_URL || "http://127.0.0.1:5173";
 let serverProcess = null;
 let pythonProcess = null;
 let mainWindow = null;
+let logStream = null;
 
-function waitForUrl(url, attempts = 80) {
+function logLine(message) {
+  const line = `[helix] ${new Date().toISOString()} ${message}\n`;
+  try {
+    if (!logStream) {
+      const logPath = path.join(app.getPath("userData"), "helix-desktop.log");
+      fs.mkdirSync(app.getPath("userData"), { recursive: true });
+      logStream = fs.createWriteStream(logPath, { flags: "a" });
+      logStream.write(`\n--- session ${new Date().toISOString()} ---\n`);
+    }
+    logStream.write(line);
+  } catch {
+    // ignore
+  }
+  console.log(message);
+}
+
+function waitForUrl(url, attempts = 120) {
   return new Promise((resolve, reject) => {
     let left = attempts;
     const tick = () => {
@@ -31,6 +48,17 @@ function waitForUrl(url, attempts = 80) {
   });
 }
 
+/** App files root (works with asar + asar.unpacked). */
+function resolveAppRoot() {
+  if (!app.isPackaged) return path.join(__dirname, "..");
+  const asarPath = app.getAppPath(); // .../resources/app.asar
+  const unpacked = asarPath.replace(/app\.asar$/i, "app.asar.unpacked");
+  if (fs.existsSync(unpacked)) return unpacked;
+  // asar disabled → getAppPath is the app folder
+  if (fs.existsSync(asarPath) && !asarPath.endsWith(".asar")) return asarPath;
+  return path.dirname(asarPath);
+}
+
 function resolvePython() {
   return process.env.HELIX_PYTHON || (process.platform === "win32" ? "python" : "python3");
 }
@@ -39,7 +67,7 @@ function resolveBackendDir() {
   if (app.isPackaged) {
     const candidates = [
       path.join(process.resourcesPath, "backend"),
-      path.join(app.getAppPath(), "backend"),
+      path.join(resolveAppRoot(), "backend"),
     ];
     for (const candidate of candidates) {
       if (fs.existsSync(path.join(candidate, "main.py"))) return candidate;
@@ -48,46 +76,91 @@ function resolveBackendDir() {
   return path.join(__dirname, "..", "backend");
 }
 
-/** Primary: TypeScript agent server (AI SDK). */
+function resolveServerEntry(appRoot) {
+  const candidates = [
+    path.join(appRoot, "dist", "server", "index.js"),
+    path.join(appRoot, "src", "server", "index.ts"),
+  ];
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return null;
+}
+
+function resolveTsxCli(appRoot) {
+  const candidates = [
+    path.join(appRoot, "node_modules", "tsx", "dist", "cli.mjs"),
+    path.join(app.getAppPath(), "node_modules", "tsx", "dist", "cli.mjs"),
+  ];
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return null;
+}
+
+/** Primary: TypeScript/Node agent server (AI SDK). */
 function startTsServer() {
   if (serverProcess) return serverProcess;
-  const root = path.join(__dirname, "..");
+  const appRoot = resolveAppRoot();
   const env = {
     ...process.env,
     HELIX_PORT: String(PORT),
-    HELIX_WORKSPACE: process.env.HELIX_WORKSPACE || (app.isPackaged ? app.getPath("userData") : process.cwd()),
+    HELIX_ROOT: appRoot,
+    HELIX_WORKSPACE:
+      process.env.HELIX_WORKSPACE ||
+      (app.isPackaged ? app.getPath("userData") : process.cwd()),
     HELIX_DESKTOP: "1",
     HELIX_MAX_TOKENS: process.env.HELIX_MAX_TOKENS || "0",
     HELIX_MAX_STEPS: process.env.HELIX_MAX_STEPS || "0",
   };
 
   if (app.isPackaged) {
-    const appPath = app.getAppPath();
-    const tsxCli = path.join(appPath, "node_modules", "tsx", "dist", "cli.mjs");
-    const serverEntry = path.join(appPath, "src", "server", "index.ts");
-    serverProcess = spawn(process.execPath, [tsxCli, serverEntry], {
-      cwd: appPath,
+    const entry = resolveServerEntry(appRoot);
+    if (!entry) {
+      logLine(`ERROR: no server entry under ${appRoot}`);
+      return null;
+    }
+    const args = entry.endsWith(".js")
+      ? [entry]
+      : (() => {
+          const tsxCli = resolveTsxCli(appRoot);
+          return tsxCli ? [tsxCli, entry] : null;
+        })();
+    if (!args) {
+      logLine("ERROR: packaged app needs dist/server/index.js (or tsx)");
+      return null;
+    }
+    logLine(`starting server entry=${entry} cwd=${appRoot}`);
+    serverProcess = spawn(process.execPath, args, {
+      cwd: appRoot,
       env: { ...env, ELECTRON_RUN_AS_NODE: "1" },
-      stdio: "inherit",
+      stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true,
     });
   } else {
+    const root = path.join(__dirname, "..");
     serverProcess = spawn("npx", ["tsx", "src/server/index.ts"], {
       cwd: root,
       env,
-      stdio: "inherit",
+      stdio: ["ignore", "pipe", "pipe"],
       shell: process.platform === "win32",
     });
   }
 
-  serverProcess.on("exit", () => {
-    serverProcess = null;
-  });
+  if (serverProcess) {
+    serverProcess.stdout?.on("data", (buf) => logLine(String(buf).trimEnd()));
+    serverProcess.stderr?.on("data", (buf) => logLine(String(buf).trimEnd()));
+    serverProcess.on("exit", (code, signal) => {
+      logLine(`server exited code=${code} signal=${signal}`);
+      serverProcess = null;
+    });
+  }
   return serverProcess;
 }
 
 /** Optional: Python FastAPI agents on a separate port. */
 function startPythonAgents() {
-  if (process.env.HELIX_ENABLE_PYTHON_AGENTS === "0") return null;
+  if (process.env.HELIX_ENABLE_PYTHON_AGENTS !== "1") return null;
   if (pythonProcess) return pythonProcess;
   const backendDir = resolveBackendDir();
   if (!fs.existsSync(path.join(backendDir, "main.py"))) return null;
@@ -100,9 +173,12 @@ function startPythonAgents() {
       env: {
         ...process.env,
         HELIX_PORT: String(PYTHON_PORT),
-        HELIX_WORKSPACE: process.env.HELIX_WORKSPACE || (app.isPackaged ? app.getPath("userData") : process.cwd()),
+        HELIX_WORKSPACE:
+          process.env.HELIX_WORKSPACE ||
+          (app.isPackaged ? app.getPath("userData") : process.cwd()),
       },
-      stdio: "inherit",
+      stdio: "ignore",
+      windowsHide: true,
     }
   );
   pythonProcess.on("exit", () => {
@@ -172,9 +248,29 @@ ipcMain.handle("window:close", () => {
 ipcMain.handle("window:isMaximized", () => Boolean(mainWindow?.isMaximized()));
 
 app.whenReady().then(async () => {
-  startTsServer();
+  logLine(`ready packaged=${app.isPackaged} platform=${process.platform}`);
+  const started = startTsServer();
   startPythonAgents();
-  await waitForUrl(`http://127.0.0.1:${PORT}/api/health`);
+
+  try {
+    if (!started && app.isPackaged) {
+      throw new Error(
+        "Could not start Helix server (missing dist/server). Reinstall or use npm start."
+      );
+    }
+    await waitForUrl(`http://127.0.0.1:${PORT}/api/health`);
+    logLine("health ok");
+  } catch (error) {
+    const logPath = path.join(app.getPath("userData"), "helix-desktop.log");
+    const message = error instanceof Error ? error.message : String(error);
+    logLine(`startup failed: ${message}`);
+    dialog.showErrorBox(
+      "Helix start failed",
+      `${message}\n\nLog file:\n${logPath}\n\nTip: install Node is not required — this build embeds the runtime. If antivirus blocked Helix, allow it and retry.`
+    );
+    app.quit();
+    return;
+  }
 
   const url = app.isPackaged ? `http://127.0.0.1:${PORT}` : DEV_UI;
   if (!app.isPackaged) {
@@ -190,12 +286,25 @@ app.whenReady().then(async () => {
 
 function shutdown() {
   if (serverProcess) {
-    serverProcess.kill();
+    try {
+      serverProcess.kill();
+    } catch {
+      // ignore
+    }
     serverProcess = null;
   }
   if (pythonProcess) {
-    pythonProcess.kill();
+    try {
+      pythonProcess.kill();
+    } catch {
+      // ignore
+    }
     pythonProcess = null;
+  }
+  try {
+    logStream?.end();
+  } catch {
+    // ignore
   }
 }
 

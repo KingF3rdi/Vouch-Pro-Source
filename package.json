@@ -14,7 +14,9 @@
     "dev:ui": "vite",
     "desktop": "concurrently -k \"npm:dev:ui\" \"wait-on http://127.0.0.1:5173 && electron .\"",
     "dev:electron": "npm run desktop",
-    "build": "tsc -p tsconfig.json --noEmit && vite build",
+    "build:server": "tsc -p tsconfig.server.json",
+    "build:ui": "vite build",
+    "build": "npm run build:server && npm run build:ui",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "backend:install": "python3 -m pip install -r backend/requirements.txt",
     "setup:free": "bash scripts/setup-free-models.sh",
@@ -24,7 +26,7 @@
     "start": "bash scripts/start-helix.sh",
     "pack": "npm run build && electron-builder --dir",
     "dist": "npm run build && electron-builder",
-    "dist:win": "npm run build && electron-builder --win",
+    "dist:win": "npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win",
     "dist:mac": "npm run build && electron-builder --mac",
     "dist:linux": "npm run build && electron-builder --linux"
   },
@@ -37,7 +39,6 @@
     "files": [
       "dist/**/*",
       "electron/**/*",
-      "src/**/*",
       "skills/**/*",
       "plugins/**/*",
       "package.json",
@@ -56,6 +57,10 @@
     ],
     "asar": true,
     "asarUnpack": [
+      "dist/**/*",
+      "skills/**/*",
+      "plugins/**/*",
+      "package.json",
       "node_modules/**/*"
     ],
     "mac": {
@@ -67,7 +72,6 @@
     },
     "win": {
       "target": [
-        "nsis",
         "portable"
       ],
       "signAndEditExecutable": false
