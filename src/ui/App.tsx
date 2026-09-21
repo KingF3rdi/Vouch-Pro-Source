@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Bug, Eye, FolderGit2, Globe, Package, Plug, SquareCode } from "lucide-react";
+import { Bug, Eye, FolderGit2, Globe, Package, Plug, Rocket, SquareCode } from "lucide-react";
 import type { AgentMode, AgentSettings, IdeTab, PluginManifest, SkillSummary } from "../shared/types";
 import { FileTree } from "./components/FileTree";
 import { EditorPane, type OpenFile } from "./components/EditorPane";
@@ -8,6 +8,7 @@ import { BrowserPanel, PreviewPanel } from "./components/FramePanels";
 import { GitHubPanel } from "./components/GitHubPanel";
 import { McpPanel } from "./components/McpPanel";
 import { ShipPanel } from "./components/ShipPanel";
+import { HostingPanel } from "./components/HostingPanel";
 import { WindowControls, useIsDesktop } from "./components/WindowControls";
 import { ModelPicker } from "./components/ModelPicker";
 import { WelcomeGate } from "./components/WelcomeGate";
@@ -173,6 +174,7 @@ export function App() {
             [
               ["editor", "Editor", SquareCode],
               ["ship", "Ship", Package],
+              ["host", "Host", Rocket],
               ...(showMoreTabs
                 ? ([
                     ["preview", "Preview", Eye],
@@ -253,6 +255,14 @@ export function App() {
           {tab === "mcp" ? <McpPanel /> : null}
           {tab === "ship" ? (
             <ShipPanel onAskAgent={() => setMode("ship")} />
+          ) : null}
+          {tab === "host" ? (
+            <HostingPanel
+              onAskAgent={(prompt) => {
+                setMode("chat");
+                window.dispatchEvent(new CustomEvent("helix:prefill-chat", { detail: { prompt } }));
+              }}
+            />
           ) : null}
         </section>
 

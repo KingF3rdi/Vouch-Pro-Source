@@ -47,6 +47,15 @@ import {
   runFullShip,
 } from "../agent/build.js";
 import {
+  assistedHostingDeploy,
+  confirmHostingLogin,
+  getHostingSession,
+  getHostingSettings,
+  recommendHost,
+  saveHostingSettings,
+  startWebsiteSetup,
+} from "../agent/hosting.js";
+import {
   HELIX_MODELS,
   getHelixModel,
   loadHelixSettings,
@@ -440,6 +449,108 @@ app.post("/api/ship/run", async (req, res) => {
   } catch (error) {
     res.status(500).json({
       error: error instanceof Error ? error.message : "Ship failed",
+    });
+  }
+});
+
+app.get("/api/hosting/status", async (req, res) => {
+  const workspace = workspaceFromQuery(
+    typeof req.query.workspace === "string" ? req.query.workspace : undefined
+  );
+  const settings = await getHostingSettings(workspace);
+  const session = await getHostingSession(workspace);
+  res.json({
+    allowCredentialedSetup: settings.allowCredentialedSetup,
+    preferredHost: settings.preferredHost,
+    hasVercelToken: Boolean(settings.vercelToken),
+    hasNetlifyToken: Boolean(settings.netlifyToken),
+    hasCloudflareToken: Boolean(settings.cloudflareToken),
+    hasCloudflareAccountId: Boolean(settings.cloudflareAccountId),
+    session,
+  });
+});
+
+app.put("/api/hosting/settings", async (req, res) => {
+  try {
+    const workspace = workspaceFromQuery(req.body?.workspace);
+    const settings = await saveHostingSettings(workspace, {
+      allowCredentialedSetup: Boolean(req.body?.allowCredentialedSetup),
+      preferredHost: req.body?.preferredHost,
+      vercelToken: typeof req.body?.vercelToken === "string" ? req.body.vercelToken : undefined,
+      netlifyToken: typeof req.body?.netlifyToken === "string" ? req.body.netlifyToken : undefined,
+      cloudflareToken:
+        typeof req.body?.cloudflareToken === "string" ? req.body.cloudflareToken : undefined,
+      cloudflareAccountId:
+        typeof req.body?.cloudflareAccountId === "string"
+          ? req.body.cloudflareAccountId
+          : undefined,
+      clearTokens: Boolean(req.body?.clearTokens),
+    });
+    res.json({
+      ok: true,
+      allowCredentialedSetup: settings.allowCredentialedSetup,
+      preferredHost: settings.preferredHost,
+      hasVercelToken: Boolean(settings.vercelToken),
+      hasNetlifyToken: Boolean(settings.netlifyToken),
+      hasCloudflareToken: Boolean(settings.cloudflareToken),
+      hasCloudflareAccountId: Boolean(settings.cloudflareAccountId),
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Hosting settings failed",
+    });
+  }
+});
+
+app.get("/api/hosting/recommend", async (req, res) => {
+  const workspace = workspaceFromQuery(
+    typeof req.query.workspace === "string" ? req.query.workspace : undefined
+  );
+  res.json(await recommendHost(workspace));
+});
+
+app.post("/api/hosting/start", async (req, res) => {
+  try {
+    const workspace = workspaceFromQuery(req.body?.workspace);
+    const mode = req.body?.mode === "credentialed" ? "credentialed" : "assisted";
+    res.json(
+      await startWebsiteSetup(workspace, {
+        mode,
+        provider: req.body?.provider,
+        projectName: req.body?.projectName,
+        relativeRoot: req.body?.relativeRoot,
+      })
+    );
+  } catch (error) {
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Hosting start failed",
+    });
+  }
+});
+
+app.post("/api/hosting/confirm-login", async (req, res) => {
+  try {
+    const workspace = workspaceFromQuery(req.body?.workspace);
+    res.json(await confirmHostingLogin(workspace));
+  } catch (error) {
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Confirm login failed",
+    });
+  }
+});
+
+app.post("/api/hosting/assisted-deploy", async (req, res) => {
+  try {
+    const workspace = workspaceFromQuery(req.body?.workspace);
+    res.json(
+      await assistedHostingDeploy(workspace, {
+        projectName: req.body?.projectName,
+        relativeRoot: req.body?.relativeRoot,
+      })
+    );
+  } catch (error) {
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Assisted deploy failed",
     });
   }
 });

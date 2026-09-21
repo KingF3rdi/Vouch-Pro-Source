@@ -9,6 +9,8 @@ release/
 .helix/sessions/
 .helix/settings.json
 .helix/learning/
+.helix/hosting/
+.helix/browser-profile/
 
 # Python
 __pycache__/

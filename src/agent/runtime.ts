@@ -16,6 +16,7 @@ import { createWebTools } from "./web.js";
 import { createGitTools, loadSecrets } from "./github.js";
 import { createMcpTools } from "./mcp.js";
 import { createBuildTools } from "./build.js";
+import { createHostingTools } from "./hosting.js";
 import { understandProject } from "./understand.js";
 import {
   getHelixModel,
@@ -76,6 +77,8 @@ function skillsForMode(mode: AgentMode, skillIds?: string[]) {
       "code-quality",
       "complex-projects",
       "build-products",
+      "games-mods",
+      "website-hosting",
       "agent-curriculum",
     ];
   }
@@ -93,6 +96,7 @@ function skillsForMode(mode: AgentMode, skillIds?: string[]) {
     "complex-projects",
     "build-products",
     "games-mods",
+    "website-hosting",
     "code-quality",
     "agent-curriculum",
   ];
@@ -132,6 +136,7 @@ export async function runAgentStream(input: RunAgentInput) {
     "complex-projects",
     "build-products",
     "games-mods",
+    "website-hosting",
     "code-quality",
   ];
   const uniqueSkillIds = [...new Set(skillIds)];
@@ -149,6 +154,7 @@ export async function runAgentStream(input: RunAgentInput) {
     ...createGitTools(workspace),
     ...createMcpTools(),
     ...createBuildTools(workspace),
+    ...createHostingTools(workspace),
     ...mergePluginTools(plugins),
   };
 
@@ -172,6 +178,7 @@ export async function runAgentStream(input: RunAgentInput) {
     "4) After meaningful edits, call quality_check and fix failures.",
     "5) After shipping or meaningful work, offer git_commit + git_push when GitHub is connected.",
     "6) Optimize for a playable/runnable slice early — then harden.",
+    "7) For going live: use hosting_* tools. Two modes — credentialed (only if user allowed + saved host tokens) or assisted (open host on their PC; they log in; you click through).",
     `Workspace root: ${workspace}`,
     `Current project map:\n${projectMap.summary}`,
     understanding
