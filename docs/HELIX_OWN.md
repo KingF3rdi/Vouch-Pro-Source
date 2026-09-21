@@ -16,6 +16,20 @@ npm start                      # train if needed + IDE
 
 Helix Free / Helix Own prefers the FT server when `:11435` is healthy.
 
+## Product builder focus
+
+Helix Own is optimized for:
+
+| Product | Scaffold |
+| --- | --- |
+| Apps / SaaS | `fullstack-ts`, `electron-app`, `react-vite`, `ts-api` |
+| Websites | `website` |
+| Games | `game-canvas` |
+| Minecraft mods | `mod-fabric` |
+| Browser extensions | `browser-extension` |
+
+Skills: `build-products`, `games-mods`, plus coding/ship/curriculum.
+
 ## Continuous learning (from every user)
 
 Helix learns **locally** from everything the user sends:
