@@ -2134,3 +2134,17 @@ button {
 .panel-switch {
   margin-left: 0.5rem;
 }
+
+.panel-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: transparent;
+}
+
+.panel-pill:hover {
+  border-color: rgba(62, 207, 142, 0.45);
+  color: var(--accent);
+}

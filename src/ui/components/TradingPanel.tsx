@@ -56,7 +56,11 @@ function money(n: number) {
   return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
 }
 
-export function TradingPanel() {
+export function TradingPanel({
+  onAskAgent,
+}: {
+  onAskAgent?: (prompt: string) => void;
+}) {
   const [status, setStatus] = useState<Status | null>(null);
   const [signals, setSignals] = useState<Signal[]>([]);
   const [autoTrade, setAutoTrade] = useState(false);
@@ -266,6 +270,21 @@ export function TradingPanel() {
             ))}
           </ul>
         </div>
+      ) : null}
+
+      {onAskAgent ? (
+        <button
+          type="button"
+          className="prompt-chip"
+          style={{ marginTop: "0.75rem" }}
+          onClick={() =>
+            onAskAgent(
+              "Scan memecoins with the trading bot, skip rugs, and run one paper auto-trade cycle. Summarize signals and any fills."
+            )
+          }
+        >
+          Ask Helix to paper-trade memes
+        </button>
       ) : null}
 
       {log ? <pre className="panel-log">{log}</pre> : null}

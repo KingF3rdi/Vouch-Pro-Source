@@ -77,19 +77,28 @@ export function AgentSidebar({
             type="button"
             className="agent-side-btn"
             onClick={() => onOpenPanel("ship")}
-            title="Ship / build artifacts"
+            title="Ship / compile"
           >
-            <Box size={14} />
-            Artifacts
+            <Package size={14} />
+            Ship
           </button>
           <button
             type="button"
             className="agent-side-btn"
             onClick={() => onOpenPanel("host")}
-            title="Hosting setup"
+            title="Hosting"
           >
-            <SlidersHorizontal size={14} />
-            Anpassen
+            <Rocket size={14} />
+            Host
+          </button>
+          <button
+            type="button"
+            className="agent-side-btn"
+            onClick={() => onOpenPanel("trade")}
+            title="Memecoin paper trading"
+          >
+            <CandlestickChart size={14} />
+            Trade
           </button>
           <div className="agent-more-wrap">
             <button
@@ -119,8 +128,8 @@ export function AgentSidebar({
                     onOpenPanel("ship");
                   }}
                 >
-                  <Package size={14} />
-                  Ship
+                  <Box size={14} />
+                  Ship Artifacts
                 </button>
                 <button
                   type="button"
@@ -129,8 +138,8 @@ export function AgentSidebar({
                     onOpenPanel("host");
                   }}
                 >
-                  <Rocket size={14} />
-                  Hosting
+                  <SlidersHorizontal size={14} />
+                  Hosting anpassen
                 </button>
                 <button
                   type="button"

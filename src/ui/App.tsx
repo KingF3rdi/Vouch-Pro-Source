@@ -227,6 +227,15 @@ export function App() {
             </div>
           </div>
           <div className="meta-pills no-drag">
+            <button type="button" className="pill panel-pill" onClick={() => openPanel("ship")}>
+              <Package size={12} /> Ship
+            </button>
+            <button type="button" className="pill panel-pill" onClick={() => openPanel("host")}>
+              <Rocket size={12} /> Host
+            </button>
+            <button type="button" className="pill panel-pill" onClick={() => openPanel("trade")}>
+              <CandlestickChart size={12} /> Trade
+            </button>
             <ModelPicker
               selectedId={helixModelId}
               onSelect={(id) => void selectHelixModel(id)}
@@ -361,7 +370,14 @@ export function App() {
 
           {view === "trade" ? (
             <div className="ide-body ide-body-only panel-body">
-              <TradingPanel />
+              <TradingPanel
+                onAskAgent={(prompt) => {
+                  setView("agent");
+                  window.dispatchEvent(
+                    new CustomEvent("helix:prefill-chat", { detail: { prompt } })
+                  );
+                }}
+              />
             </div>
           ) : null}
         </div>
