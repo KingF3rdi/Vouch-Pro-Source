@@ -8,3 +8,9 @@ release/
 .helix/secrets.json
 .helix/sessions/
 .helix/settings.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
