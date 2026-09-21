@@ -426,6 +426,11 @@ export function AgentWindow({
                 For now you can only build in the IDE — edit files, scaffold features, fix
                 TypeScript, and keep the project compiling. Hosting & trading come later.
               </p>
+              {settings?.workspace ? (
+                <p className="agent-workspace-path muted">
+                  Project folder: <code>{settings.workspace}</code>
+                </p>
+              ) : null}
               <div className="agent-starters">
                 {IDE_STARTERS.map((prompt) => (
                   <button

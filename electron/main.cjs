@@ -5,12 +5,17 @@ const http = require("http");
 const fs = require("fs");
 const { pathToFileURL } = require("url");
 const Module = require("module");
+const {
+  installOrUpdateProjectSync,
+  defaultWorkspacePath,
+} = require("./project-install.cjs");
 
 const PORT = Number(process.env.HELIX_PORT || 8787);
 const DEV_UI = process.env.HELIX_UI_URL || "http://127.0.0.1:5173";
 let serverChild = null;
 let mainWindow = null;
 let logStream = null;
+let projectInfo = null;
 
 function logLine(message) {
   const line = `[helix] ${new Date().toISOString()} ${message}\n`;
@@ -79,18 +84,27 @@ async function startPackagedServerInProcess(appRoot) {
     throw new Error(`Missing server entry:\n${entry}`);
   }
 
+  // Auto-install / update Documents/Helix/Projects/Helix Workspace
+  projectInfo = installOrUpdateProjectSync({ runNpmInstall: false });
   process.env.HELIX_PORT = String(PORT);
   process.env.HELIX_ROOT = appRoot;
-  process.env.HELIX_WORKSPACE =
-    process.env.HELIX_WORKSPACE || app.getPath("userData");
+  process.env.HELIX_WORKSPACE = projectInfo.workspace;
   process.env.HELIX_DESKTOP = "1";
   process.env.HELIX_MAX_TOKENS = process.env.HELIX_MAX_TOKENS || "0";
   process.env.HELIX_MAX_STEPS = process.env.HELIX_MAX_STEPS || "0";
+  logLine(
+    `project workspace=${projectInfo.workspace} created=${projectInfo.created.length} updated=${projectInfo.updated.length} upgraded=${projectInfo.upgraded}`
+  );
 
   try {
-    process.chdir(appRoot);
+    process.chdir(projectInfo.workspace);
   } catch (err) {
-    logLine(`chdir failed: ${err.message}`);
+    logLine(`chdir workspace failed: ${err.message}`);
+    try {
+      process.chdir(appRoot);
+    } catch {
+      // ignore
+    }
   }
 
   const prevPaths = Module._nodeModulePaths;
@@ -107,13 +121,24 @@ async function startPackagedServerInProcess(appRoot) {
   return true;
 }
 
+function ensureDevProjectWorkspace() {
+  projectInfo = installOrUpdateProjectSync({
+    workspace: process.env.HELIX_WORKSPACE || defaultWorkspacePath(),
+    runNpmInstall: false,
+  });
+  process.env.HELIX_WORKSPACE = projectInfo.workspace;
+  logLine(`dev project workspace=${projectInfo.workspace}`);
+  return projectInfo;
+}
+
 function startDevServer() {
+  ensureDevProjectWorkspace();
   const root = path.join(__dirname, "..");
   const env = {
     ...process.env,
     HELIX_PORT: String(PORT),
     HELIX_ROOT: root,
-    HELIX_WORKSPACE: process.env.HELIX_WORKSPACE || process.cwd(),
+    HELIX_WORKSPACE: process.env.HELIX_WORKSPACE,
     HELIX_DESKTOP: "1",
     HELIX_MAX_TOKENS: process.env.HELIX_MAX_TOKENS || "0",
     HELIX_MAX_STEPS: process.env.HELIX_MAX_STEPS || "0",
@@ -132,6 +157,26 @@ function startDevServer() {
   });
   serverChild.on("error", (err) => logLine(`dev server error: ${err.message}`));
   return serverChild;
+}
+
+function maybeNpmInstallInBackground(workspace) {
+  const nm = path.join(workspace, "node_modules");
+  const pkg = path.join(workspace, "package.json");
+  if (!fs.existsSync(pkg) || fs.existsSync(nm)) return;
+  logLine(`npm install starting in ${workspace}`);
+  const child = spawn(
+    process.platform === "win32" ? "npm.cmd" : "npm",
+    ["install", "--no-fund", "--no-audit"],
+    {
+      cwd: workspace,
+      stdio: ["ignore", "pipe", "pipe"],
+      shell: process.platform === "win32",
+      detached: false,
+    }
+  );
+  child.stdout?.on("data", (buf) => logLine(`[npm] ${String(buf).trimEnd()}`));
+  child.stderr?.on("data", (buf) => logLine(`[npm] ${String(buf).trimEnd()}`));
+  child.on("exit", (code) => logLine(`npm install exited code=${code}`));
 }
 
 function createWindow(loadUrl) {
@@ -230,6 +275,9 @@ app.whenReady().then(async () => {
     }
     await mainWindow.loadURL(url);
     logLine(`ui loaded in ${Date.now() - t0}ms`);
+    if (projectInfo?.workspace) {
+      maybeNpmInstallInBackground(projectInfo.workspace);
+    }
   } catch (error) {
     const logPath = path.join(app.getPath("userData"), "helix-desktop.log");
     const message = error instanceof Error ? error.message : String(error);

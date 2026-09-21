@@ -3,10 +3,13 @@ import {
   getHelixModel,
   loadHelixSettings,
 } from "./models.js";
+import { defaultWorkspacePath } from "./projectInstall.js";
 
 /** Lightweight settings — safe to call at startup without loading agent tools. */
 export async function getDefaultSettings() {
-  const workspace = path.resolve(process.env.HELIX_WORKSPACE ?? process.cwd());
+  const workspace = path.resolve(
+    process.env.HELIX_WORKSPACE || defaultWorkspacePath()
+  );
   const saved = await loadHelixSettings(workspace);
   const profile = getHelixModel(saved.modelId);
 

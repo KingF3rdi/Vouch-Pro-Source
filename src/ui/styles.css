@@ -1504,10 +1504,19 @@ button {
   background: #1f1f1f;
 }
 
-.agent-plugins {
-  margin-top: 1rem;
-  font-size: 0.75rem;
+.agent-workspace-path {
+  margin: 0 0 0.85rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
 }
+
+.agent-workspace-path code {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text);
+  word-break: break-all;
+}
+
 
 .agent-msg {
   display: flex;

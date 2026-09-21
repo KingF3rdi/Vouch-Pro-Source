@@ -42,10 +42,12 @@ export function App() {
     let cancelled = false;
 
     // Critical path first — unblock chat/workspace ASAP
-    void fetch("/api/settings")
+    void fetch("/api/project")
       .then((r) => r.json())
+      .catch(() => null)
+      .then(() => fetch("/api/settings").then((r) => r.json()))
       .then((settingsData) => {
-        if (cancelled) return;
+        if (cancelled || !settingsData) return;
         setSettings(settingsData);
         const savedId = settingsData.helixModelId || "helix-free";
         setHelixModelId(savedId);

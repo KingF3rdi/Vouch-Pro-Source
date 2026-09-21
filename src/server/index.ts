@@ -6,6 +6,7 @@ import fsSync from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { UIMessage } from "ai";
 import { getDefaultSettings } from "../agent/settings.js";
+import { installOrUpdateProject, defaultWorkspacePath } from "../agent/projectInstall.js";
 import { listSkills } from "../agent/skills.js";
 import { loadPlugins } from "../agent/plugins.js";
 import { buildProjectMap } from "../agent/projectMap.js";
@@ -79,6 +80,17 @@ function assertInside(workspace: string, targetPath: string) {
 
 loadEnvFileSync();
 
+// Ensure project folder exists / managed files are updated (desktop also does this)
+if (!process.env.HELIX_WORKSPACE) {
+  process.env.HELIX_WORKSPACE = defaultWorkspacePath();
+}
+void installOrUpdateProject({ workspace: process.env.HELIX_WORKSPACE }).then((info) => {
+  process.env.HELIX_WORKSPACE = info.workspace;
+  console.log(
+    `[helix] project ${info.workspace} · created=${info.created.length} updated=${info.updated.length}`
+  );
+});
+
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: "8mb" }));
@@ -97,6 +109,30 @@ app.get("/api/health", (_req, res) => {
 
 app.get("/api/settings", async (_req, res) => {
   res.json(await getDefaultSettings());
+});
+
+app.get("/api/project", async (_req, res) => {
+  const info = await installOrUpdateProject({
+    workspace: process.env.HELIX_WORKSPACE || defaultWorkspacePath(),
+  });
+  process.env.HELIX_WORKSPACE = info.workspace;
+  res.json(info);
+});
+
+app.post("/api/project/install", async (req, res) => {
+  try {
+    const workspace =
+      typeof req.body?.workspace === "string" && req.body.workspace.trim()
+        ? path.resolve(req.body.workspace.trim())
+        : process.env.HELIX_WORKSPACE || defaultWorkspacePath();
+    const info = await installOrUpdateProject({ workspace });
+    process.env.HELIX_WORKSPACE = info.workspace;
+    res.json({ ok: true, ...info });
+  } catch (error) {
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Project install failed",
+    });
+  }
 });
 
 app.get("/api/models", async (req, res) => {
