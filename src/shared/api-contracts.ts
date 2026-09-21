@@ -3,9 +3,16 @@
  * Keep in sync with backend/app/models/schemas.py
  */
 
-export type ProviderKind = "ollama" | "openai" | "anthropic" | "gateway";
+export type ProviderKind = "ollama" | "openai" | "anthropic" | "gateway" | "groq" | "openrouter" | "free-auto";
 export type AgentMode = "chat" | "bug-hunt" | "ship";
-export type HelixModelId = "helix-code" | "helix-astra" | "helix-fable" | "helix-local";
+export type HelixModelId =
+  | "helix-free"
+  | "helix-code"
+  | "helix-astra"
+  | "helix-fable"
+  | "helix-local"
+  | "helix-groq"
+  | "helix-openrouter";
 
 export interface HealthResponse {
   ok: boolean;
