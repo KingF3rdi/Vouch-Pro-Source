@@ -6,6 +6,14 @@ from app.models.schemas import HelixModelId, HelixModelProfile
 
 HELIX_MODELS: list[HelixModelProfile] = [
     HelixModelProfile(
+        id="helix-free",  # type: ignore[arg-type]
+        name="Helix Free",
+        description="Zero-cost coding agent via Ollama + curriculum (no paid API keys).",
+        badge="free",
+        engine="qwen2.5-coder:3b",
+        route="ollama",
+    ),
+    HelixModelProfile(
         id="helix-code",
         name="Helix Code",
         description="Helix flagship coding model — frontier agent quality (Astra / Fable class).",
@@ -34,7 +42,7 @@ HELIX_MODELS: list[HelixModelProfile] = [
         name="Helix Local",
         description="Fully local coding model via Ollama (qwen2.5-coder).",
         badge="offline",
-        engine="qwen2.5-coder:14b",
+        engine="qwen2.5-coder:3b",
         route="ollama",
     ),
 ]
@@ -45,6 +53,7 @@ def get_helix_model(model_id: str | None) -> HelixModelProfile:
         if profile.id == model_id:
             return profile
     return HELIX_MODELS[0]
+
 
 
 def settings_path(workspace: Path) -> Path:

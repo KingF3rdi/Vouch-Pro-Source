@@ -37,13 +37,15 @@ npm run desktop
 
 | Model | Engine |
 | --- | --- |
-| Helix Code | GPT‑6 Astra class |
+| **Helix Free** (default without paid keys) | Local Ollama `qwen2.5-coder` + agent curriculum |
+| Helix Code | GPT‑6 Astra class (needs key) |
 | Helix Astra | `openai/gpt-6-astra` |
 | Helix Fable | `anthropic/claude-fable-5.1` |
-| Helix Local | Ollama `qwen2.5-coder` |
+| Helix Groq / OpenRouter | Free-tier cloud (optional keys) |
+| Helix Local | Ollama offline |
 
-Set `AI_GATEWAY_API_KEY` (or OpenAI/Anthropic keys) in `.env`.
+```bash
+npm run setup:free   # install/pull free local coder
+```
 
-## Unlimited tokens
-
-- `HELIX_MAX_TOKENS=0` / `HELIX_MAX_STEPS=0` — no soft caps (hard step safety cap still applies)
+See `docs/FREE_MODELS.md`. We do **not** scrape or invent paid API keys — Helix Free is the zero-cost path.

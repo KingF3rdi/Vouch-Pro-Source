@@ -20,7 +20,7 @@ import {
   getHelixModel,
   helixModelSystemPreamble,
   loadHelixSettings,
-  resolveHelixLanguageModel,
+  resolveHelixLanguageModelAsync,
   type HelixModelId,
 } from "./models.js";
 import type { AgentMode, ProviderKind } from "../shared/types.js";
@@ -80,15 +80,26 @@ export async function runAgentStream(input: RunAgentInput) {
 
   const saved = await loadHelixSettings(workspace);
   const profile = getHelixModel(input.helixModelId ?? saved.modelId);
-  const { model, resolvedEngine } = resolveHelixLanguageModel(profile, {
+  const { model, resolvedEngine } = await resolveHelixLanguageModelAsync(profile, {
     provider: input.provider,
     model: input.model,
   });
 
-  const skillIds = skillsForMode(mode, input.skillIds);
+  const skillIds = [
+    ...skillsForMode(mode, input.skillIds),
+    // Always load behavioral curriculum for free/open models
+    ...(profile.id === "helix-free" ||
+    profile.route === "ollama" ||
+    profile.route === "free-auto" ||
+    profile.route === "groq" ||
+    profile.route === "openrouter"
+      ? (["agent-curriculum"] as string[])
+      : []),
+  ];
+  const uniqueSkillIds = [...new Set(skillIds)];
 
   const [skills, plugins, projectMap] = await Promise.all([
-    loadSkillBodies(skillIds),
+    loadSkillBodies(uniqueSkillIds),
     loadPlugins(),
     buildProjectMap(workspace),
   ]);

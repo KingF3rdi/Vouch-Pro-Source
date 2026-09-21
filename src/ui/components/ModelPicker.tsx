@@ -46,8 +46,9 @@ export function ModelPicker({
         <div className="model-menu">
           {!gatewayConfigured ? (
             <div className="model-hint">
-              Set <code>AI_GATEWAY_API_KEY</code> (or OpenAI/Anthropic keys) for Helix Code / Astra /
-              Fable. Helix Local works offline via Ollama.
+              <strong>Helix Free</strong> needs no paid keys — uses local Ollama
+              (<code>npm run setup:free</code>). Optional free tiers: Groq / OpenRouter / Gemini
+              keys in <code>.env</code>. Helix Code / Astra / Fable need a paid gateway key.
             </div>
           ) : null}
           {models.map((model) => (

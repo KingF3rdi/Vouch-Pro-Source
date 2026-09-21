@@ -5,9 +5,17 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 
-ProviderKind = Literal["ollama", "openai", "anthropic", "gateway"]
+ProviderKind = Literal["ollama", "openai", "anthropic", "gateway", "groq", "openrouter", "free-auto"]
 AgentMode = Literal["chat", "bug-hunt", "ship"]
-HelixModelId = Literal["helix-code", "helix-astra", "helix-fable", "helix-local"]
+HelixModelId = Literal[
+    "helix-free",
+    "helix-code",
+    "helix-astra",
+    "helix-fable",
+    "helix-local",
+    "helix-groq",
+    "helix-openrouter",
+]
 
 
 class HealthResponse(BaseModel):

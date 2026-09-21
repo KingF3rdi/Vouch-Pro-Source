@@ -111,14 +111,19 @@ app.get("/api/models", async (req, res) => {
     typeof req.query.workspace === "string" ? req.query.workspace : undefined
   );
   const saved = await loadHelixSettings(workspace);
+  const { listModelAvailability } = await import("../agent/models.js");
+  const availability = await listModelAvailability();
   res.json({
     models: HELIX_MODELS,
     selected: saved.modelId,
-    gatewayConfigured: Boolean(
-      process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN
-    ),
-    anthropicConfigured: Boolean(process.env.ANTHROPIC_API_KEY),
-    openaiConfigured: Boolean(process.env.OPENAI_API_KEY),
+    gatewayConfigured: availability.gatewayConfigured,
+    anthropicConfigured: availability.anthropicConfigured,
+    openaiConfigured: availability.openaiConfigured,
+    freeReady: availability.freeReady,
+    ollamaReady: availability.ollamaReady,
+    ollamaModels: availability.ollamaModels,
+    groqConfigured: availability.groqConfigured,
+    openrouterConfigured: availability.openrouterConfigured,
   });
 });
 
