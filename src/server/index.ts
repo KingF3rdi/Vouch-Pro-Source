@@ -32,6 +32,11 @@ import {
   saveMcpConfig,
   type McpConfigFile,
 } from "../agent/mcp.js";
+import {
+  detectBuildPipeline,
+  listBuildArtifacts,
+  runFullShip,
+} from "../agent/build.js";
 import type { ProviderKind } from "../shared/types.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -81,7 +86,7 @@ void reconnectMcpServers(getDefaultSettings().workspace).catch((error) => {
 });
 
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, name: "helix-agent", version: "0.3.0" });
+  res.json({ ok: true, name: "helix-agent", version: "0.4.0" });
 });
 
 app.get("/api/settings", (_req, res) => {
@@ -295,6 +300,35 @@ app.post("/api/mcp/reconnect", async (req, res) => {
   const servers = await reconnectMcpServers(workspace);
   const config = await loadMcpConfig(workspace);
   res.json({ config, servers });
+});
+
+app.get("/api/ship/pipeline", async (req, res) => {
+  const workspace = workspaceFromQuery(
+    typeof req.query.workspace === "string" ? req.query.workspace : undefined
+  );
+  res.json(await detectBuildPipeline(workspace));
+});
+
+app.get("/api/ship/artifacts", async (req, res) => {
+  const workspace = workspaceFromQuery(
+    typeof req.query.workspace === "string" ? req.query.workspace : undefined
+  );
+  const pipeline = await detectBuildPipeline(workspace);
+  res.json({
+    artifacts: await listBuildArtifacts(workspace, pipeline.artifactGlobs),
+    pipeline,
+  });
+});
+
+app.post("/api/ship/run", async (req, res) => {
+  try {
+    const workspace = workspaceFromQuery(req.body?.workspace);
+    res.json(await runFullShip(workspace));
+  } catch (error) {
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Ship failed",
+    });
+  }
 });
 
 app.get("/api/github/status", async (req, res) => {

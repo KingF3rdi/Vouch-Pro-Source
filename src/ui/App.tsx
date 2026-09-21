@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Bug, Eye, FolderGit2, Globe, Plug, SquareCode } from "lucide-react";
+import { Bug, Eye, FolderGit2, Globe, Package, Plug, SquareCode } from "lucide-react";
 import type { AgentMode, AgentSettings, IdeTab, PluginManifest, SkillSummary } from "../shared/types";
 import { FileTree } from "./components/FileTree";
 import { EditorPane, type OpenFile } from "./components/EditorPane";
@@ -7,6 +7,7 @@ import { ChatPanel } from "./components/ChatPanel";
 import { BrowserPanel, PreviewPanel } from "./components/FramePanels";
 import { GitHubPanel } from "./components/GitHubPanel";
 import { McpPanel } from "./components/McpPanel";
+import { ShipPanel } from "./components/ShipPanel";
 import { WindowControls, useIsDesktop } from "./components/WindowControls";
 
 export function App() {
@@ -14,7 +15,7 @@ export function App() {
   const [settings, setSettings] = useState<AgentSettings | null>(null);
   const [skills, setSkills] = useState<SkillSummary[]>([]);
   const [plugins, setPlugins] = useState<PluginManifest[]>([]);
-  const [activeSkills, setActiveSkills] = useState(["coding", "design", "research"]);
+  const [activeSkills, setActiveSkills] = useState(["coding", "design", "research", "ship"]);
   const [mode, setMode] = useState<AgentMode>("chat");
   const [tab, setTab] = useState<IdeTab>("editor");
   const [files, setFiles] = useState<OpenFile[]>([]);
@@ -129,6 +130,7 @@ export function App() {
               ["bugs", "Bug hunt", Bug],
               ["github", "GitHub", FolderGit2],
               ["mcp", "MCP", Plug],
+              ["ship", "Ship", Package],
             ] as const
           ).map(([id, label, Icon]) => (
             <button
@@ -138,6 +140,7 @@ export function App() {
               onClick={() => {
                 setTab(id as IdeTab);
                 if (id === "bugs") setMode("bug-hunt");
+                if (id === "ship") setMode("ship");
               }}
             >
               <Icon size={14} />
@@ -190,6 +193,9 @@ export function App() {
           ) : null}
           {tab === "github" ? <GitHubPanel /> : null}
           {tab === "mcp" ? <McpPanel /> : null}
+          {tab === "ship" ? (
+            <ShipPanel onAskAgent={() => setMode("ship")} />
+          ) : null}
         </section>
 
         <aside className="ide-right">

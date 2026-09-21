@@ -171,10 +171,15 @@ export function ChatPanel({
           "Hunt bugs in this project: map it, scan risky areas, and fix the highest-severity issue.",
           "Find and fix TypeScript / runtime errors.",
         ]
-      : [
-          "Map the project, research existing libraries online, then propose the best way to improve Helix.",
-          "Search GitHub for similar IDE agent UIs and adapt the best patterns here.",
-        ];
+      : mode === "ship"
+        ? [
+            "Detect the build pipeline, compile the project, package the final product, and list artifacts.",
+            "Run typecheck + production build + installers. Fix any compile errors until ship succeeds.",
+          ]
+        : [
+            "Map the project, research existing libraries online, then propose the best way to improve Helix.",
+            "Search GitHub for similar IDE agent UIs and adapt the best patterns here.",
+          ];
 
   return (
     <div className="chat-panel">
@@ -215,6 +220,13 @@ export function ChatPanel({
           </button>
           <button
             type="button"
+            className={mode === "ship" ? "active" : ""}
+            onClick={() => onModeChange("ship")}
+          >
+            Ship
+          </button>
+          <button
+            type="button"
             className={mode === "bug-hunt" ? "active" : ""}
             onClick={() => onModeChange("bug-hunt")}
           >
@@ -244,7 +256,9 @@ export function ChatPanel({
       <div className="chat-stage compact">
         {messages.length === 0 ? (
           <div className="empty-state compact">
-            <h2>{mode === "bug-hunt" ? "Bug hunt" : "Agent"}</h2>
+            <h2>
+              {mode === "bug-hunt" ? "Bug hunt" : mode === "ship" ? "Ship" : "Agent"}
+            </h2>
             <p>
               Sessions save to disk automatically. Plugins:{" "}
               {plugins.map((p) => p.name).join(", ") || "none"}.
@@ -317,7 +331,9 @@ export function ChatPanel({
           placeholder={
             mode === "bug-hunt"
               ? "Describe the bug or ask Helix to hunt…"
-              : "Ask Helix to map, research, and ship a change…"
+              : mode === "ship"
+                ? "Ask Helix to compile and package the final product…"
+                : "Ask Helix to map, research, and ship a change…"
           }
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {

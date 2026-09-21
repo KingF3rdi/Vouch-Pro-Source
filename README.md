@@ -36,3 +36,4 @@ Open http://127.0.0.1:5173 — pixel-identical layout to the desktop shell.
 - Project map first · web/GitHub research · Monaco editor + diffs
 - MCP host · GitHub commit/push · Bug hunt · Preview/Browser tabs
 - Chat sessions saved under `.helix/sessions/`
+- **Ship mode** — agent detects build pipeline, compiles, and packages installers/binaries (`ship_project`)
