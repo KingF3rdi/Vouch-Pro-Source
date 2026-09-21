@@ -11,6 +11,7 @@ release/
 .helix/learning/
 .helix/hosting/
 .helix/browser-profile/
+.helix/trading/
 
 # Python
 __pycache__/

@@ -19,6 +19,11 @@ export type HelixSecrets = {
     cloudflareToken?: string;
     cloudflareAccountId?: string;
   };
+  trading?: {
+    allowLiveTrading?: boolean;
+    binanceApiKey?: string;
+    binanceApiSecret?: string;
+  };
 };
 
 function secretsPath(workspace: string) {

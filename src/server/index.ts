@@ -56,6 +56,15 @@ import {
   startWebsiteSetup,
 } from "../agent/hosting.js";
 import {
+  discoverMemecoins,
+  loadTradingSettings,
+  resetPaperPortfolio,
+  runTradingCycle,
+  saveTradingSettings,
+  scanBestTrades,
+  tradingStatus,
+} from "../agent/trading.js";
+import {
   HELIX_MODELS,
   getHelixModel,
   loadHelixSettings,
@@ -553,6 +562,99 @@ app.post("/api/hosting/assisted-deploy", async (req, res) => {
       error: error instanceof Error ? error.message : "Assisted deploy failed",
     });
   }
+});
+
+app.get("/api/trading/status", async (req, res) => {
+  try {
+    const workspace = workspaceFromQuery(
+      typeof req.query.workspace === "string" ? req.query.workspace : undefined
+    );
+    res.json(await tradingStatus(workspace));
+  } catch (error) {
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Trading status failed",
+    });
+  }
+});
+
+app.put("/api/trading/settings", async (req, res) => {
+  try {
+    const workspace = workspaceFromQuery(req.body?.workspace);
+    const settings = await saveTradingSettings(workspace, req.body ?? {});
+    res.json({
+      ok: true,
+      settings: {
+        ...settings,
+        binanceApiKey: undefined,
+        binanceApiSecret: undefined,
+        hasBinanceKey: Boolean(settings.binanceApiKey),
+        hasBinanceSecret: Boolean(settings.binanceApiSecret),
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Trading settings failed",
+    });
+  }
+});
+
+app.post("/api/trading/scan", async (req, res) => {
+  try {
+    const workspace = workspaceFromQuery(req.body?.workspace);
+    res.json(await scanBestTrades(workspace, req.body?.symbols));
+  } catch (error) {
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Trading scan failed",
+    });
+  }
+});
+
+app.post("/api/trading/discover-memes", async (req, res) => {
+  try {
+    const workspace = workspaceFromQuery(req.body?.workspace);
+    const limit = Number(req.body?.limit ?? 15);
+    res.json(await discoverMemecoins(workspace, limit));
+  } catch (error) {
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Meme discovery failed",
+    });
+  }
+});
+
+app.post("/api/trading/cycle", async (req, res) => {
+  try {
+    const workspace = workspaceFromQuery(req.body?.workspace);
+    res.json(await runTradingCycle(workspace));
+  } catch (error) {
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Trading cycle failed",
+    });
+  }
+});
+
+app.post("/api/trading/reset", async (req, res) => {
+  try {
+    const workspace = workspaceFromQuery(req.body?.workspace);
+    res.json({ ok: true, portfolio: await resetPaperPortfolio(workspace) });
+  } catch (error) {
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Reset failed",
+    });
+  }
+});
+
+app.get("/api/trading/settings", async (req, res) => {
+  const workspace = workspaceFromQuery(
+    typeof req.query.workspace === "string" ? req.query.workspace : undefined
+  );
+  const settings = await loadTradingSettings(workspace);
+  res.json({
+    ...settings,
+    binanceApiKey: undefined,
+    binanceApiSecret: undefined,
+    hasBinanceKey: Boolean(settings.binanceApiKey),
+    hasBinanceSecret: Boolean(settings.binanceApiSecret),
+  });
 });
 
 app.get("/api/github/status", async (req, res) => {

@@ -30,6 +30,21 @@ Helix Own is optimized for:
 
 Skills: `build-products`, `games-mods`, plus coding/ship/curriculum.
 
+## Day trading bot (memecoins)
+
+Helix’s **Trade** tab is optimized for **memecoin** day trading:
+
+- Default watchlist: DOGE, PEPE, WIF, BONK, FLOKI, …
+- Discovers trending DEX memes via DexScreener (strict rug gate)
+- Meme breakout/pullback strategies, smaller size, faster TP
+- Blocks high rug-risk tokens automatically
+
+Paper by default. **Not financial advice.**
+
+```bash
+npx tsx scripts/smoke-trading.ts
+```
+
 ## Website hosting (two modes)
 
 1. **Credentialed** — enable “Allow credentialed host setup” in the **Host** tab, paste a Vercel/Netlify/Cloudflare token (not your password). Helix picks a host and deploys.
