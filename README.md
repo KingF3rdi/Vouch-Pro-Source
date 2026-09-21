@@ -43,7 +43,7 @@ npm run serve:ft          # FT-Server :11435
 npm run dev
 ```
 
-Siehe `docs/HELIX_OWN.md`.
+Siehe `docs/HELIX_OWN.md`. Helix lernt lokal aus Chats, Feedback und Korrekturen (`.helix/learning/`).
 ## Helix models
 
 | Model | Engine |
