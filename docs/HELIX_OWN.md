@@ -30,6 +30,15 @@ Helix Own is optimized for:
 
 Skills: `build-products`, `games-mods`, plus coding/ship/curriculum.
 
+## Website hosting (two modes)
+
+1. **Credentialed** — enable “Allow credentialed host setup” in the **Host** tab, paste a Vercel/Netlify/Cloudflare token (not your password). Helix picks a host and deploys.
+2. **Assisted** — Helix opens the host on your PC; **you** log in; Helix clicks through project/deploy. Never types your password.
+
+```bash
+npx tsx scripts/smoke-hosting.ts
+```
+
 ## Continuous learning (from every user)
 
 Helix learns **locally** from everything the user sends:
