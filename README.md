@@ -33,19 +33,24 @@ Desktop:
 npm run desktop
 ```
 
+## Helix Own (trained local agent)
+
+```bash
+npm run train:own
+npm run dev
+```
+
+Creates Ollama model `helix-own` with baked curriculum for quality code, complex projects, and understanding. See `docs/HELIX_OWN.md`.
+
 ## Helix models
 
 | Model | Engine |
 | --- | --- |
-| **Helix Free** (default without paid keys) | Local Ollama `qwen2.5-coder` + agent curriculum |
+| **Helix Own** (default without paid keys) | Local `helix-own` (qwen2.5-coder + training) |
 | Helix Code | GPT‑6 Astra class (needs key) |
 | Helix Astra | `openai/gpt-6-astra` |
 | Helix Fable | `anthropic/claude-fable-5.1` |
 | Helix Groq / OpenRouter | Free-tier cloud (optional keys) |
-| Helix Local | Ollama offline |
+| Helix Local | Raw Ollama offline |
 
-```bash
-npm run setup:free   # install/pull free local coder
-```
-
-See `docs/FREE_MODELS.md`. We do **not** scrape or invent paid API keys — Helix Free is the zero-cost path.
+See `docs/FREE_MODELS.md`. We do **not** scrape paid API keys.

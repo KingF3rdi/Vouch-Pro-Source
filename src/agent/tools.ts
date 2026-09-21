@@ -6,6 +6,9 @@ import { tool } from "ai";
 import { z } from "zod";
 import { glob } from "glob";
 import { buildProjectMap } from "./projectMap.js";
+import { understandProject } from "./understand.js";
+import { scaffoldProject } from "./scaffold.js";
+import { runQualityCheck } from "./quality.js";
 
 const execAsync = promisify(exec);
 
@@ -28,6 +31,41 @@ export function createAgentTools(workspace: string) {
         "Map the workspace structure, stack markers, and key files. Call this at the start of every project task.",
       inputSchema: z.object({}),
       execute: async () => buildProjectMap(workspace),
+    }),
+
+    understand_project: tool({
+      description:
+        "Deeply understand the codebase: architecture, entrypoints, modules, scripts, risks. Call before complex work.",
+      inputSchema: z.object({}),
+      execute: async () => understandProject(workspace),
+    }),
+
+    scaffold_project: tool({
+      description:
+        "Scaffold a complex multi-file project (ts-api, react-vite, fullstack-ts, python-fastapi, monorepo-lite). Does not overwrite existing files.",
+      inputSchema: z.object({
+        kind: z.enum([
+          "ts-api",
+          "react-vite",
+          "fullstack-ts",
+          "python-fastapi",
+          "monorepo-lite",
+        ]),
+        name: z.string().min(1),
+        relativeRoot: z
+          .string()
+          .optional()
+          .describe("Folder to create under the workspace (default: name)"),
+      }),
+      execute: async ({ kind, name, relativeRoot }) =>
+        scaffoldProject(workspace, { kind, name, relativeRoot }),
+    }),
+
+    quality_check: tool({
+      description:
+        "Run project quality gates (typecheck/lint/test/python compile). Call after meaningful edits.",
+      inputSchema: z.object({}),
+      execute: async () => runQualityCheck(workspace),
     }),
 
     list_directory: tool({
@@ -130,7 +168,7 @@ export function createAgentTools(workspace: string) {
         "Run a shell command inside the workspace. Use for builds, tests, git, and package managers. Avoid destructive commands.",
       inputSchema: z.object({
         command: z.string().min(1),
-        timeoutMs: z.number().int().positive().max(120_000).default(30_000),
+        timeoutMs: z.number().int().positive().max(600_000).default(120_000),
       }),
       execute: async ({ command, timeoutMs }) => {
         try {

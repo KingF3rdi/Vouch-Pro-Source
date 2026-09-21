@@ -11,16 +11,7 @@ HELIX_MODELS: list[HelixModelProfile] = [
         description="Zero-cost coding agent via Ollama + curriculum (no paid API keys).",
         badge="free",
         engine="qwen2.5-coder:3b",
-        route="ollama",
-    ),
-    HelixModelProfile(
-        id="helix-code",
-        name="Helix Code",
-        description="Helix flagship coding model — frontier agent quality (Astra / Fable class).",
-        badge="recommended",
-        engine="openai/gpt-6-astra",
-        route="gateway",
-    ),
+        route="free-auto",  # type: ignore[arg-type]
     HelixModelProfile(
         id="helix-astra",
         name="Helix Astra",

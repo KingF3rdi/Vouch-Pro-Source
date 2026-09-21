@@ -44,7 +44,7 @@ class HelixModelProfile(BaseModel):
     description: str
     badge: str
     engine: str
-    route: Literal["gateway", "anthropic", "openai", "ollama"]
+    route: Literal["gateway", "anthropic", "openai", "ollama", "groq", "openrouter", "free-auto"]
 
 
 class ModelsResponse(BaseModel):

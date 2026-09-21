@@ -46,9 +46,10 @@ export function ModelPicker({
         <div className="model-menu">
           {!gatewayConfigured ? (
             <div className="model-hint">
-              <strong>Helix Free</strong> needs no paid keys — uses local Ollama
-              (<code>npm run setup:free</code>). Optional free tiers: Groq / OpenRouter / Gemini
-              keys in <code>.env</code>. Helix Code / Astra / Fable need a paid gateway key.
+              <strong>Helix Own</strong> needs no paid keys — run{" "}
+              <code>npm run train:own</code> (local Ollama + curriculum). Optional free
+              tiers: Groq / OpenRouter keys in <code>.env</code>. Helix Code / Astra / Fable
+              need a paid gateway key.
             </div>
           ) : null}
           {models.map((model) => (

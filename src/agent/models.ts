@@ -35,11 +35,11 @@ export type HelixModelProfile = {
 export const HELIX_MODELS: HelixModelProfile[] = [
   {
     id: "helix-free",
-    name: "Helix Free",
+    name: "Helix Own",
     description:
-      "Zero-cost coding agent — Ollama local coder + distilled agent curriculum (auto-picks free backends).",
-    badge: "free",
-    engine: process.env.HELIX_LOCAL_MODEL || "qwen2.5-coder:3b",
+      "Trained local coding agent — quality code, complex projects, deep understanding (Ollama helix-own / qwen2.5-coder).",
+    badge: "trained",
+    engine: process.env.HELIX_LOCAL_MODEL || "helix-own",
     route: "free-auto",
   },
   {

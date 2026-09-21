@@ -18,6 +18,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "backend:install": "python3 -m pip install -r backend/requirements.txt",
     "setup:free": "bash scripts/setup-free-models.sh",
+    "train:own": "bash scripts/setup-free-models.sh",
     "pack": "npm run build && electron-builder --dir",
     "dist": "npm run build && electron-builder",
     "dist:win": "npm run build && electron-builder --win",

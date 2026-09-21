@@ -16,6 +16,7 @@ import { createWebTools } from "./web.js";
 import { createGitTools, loadSecrets } from "./github.js";
 import { createMcpTools } from "./mcp.js";
 import { createBuildTools } from "./build.js";
+import { understandProject } from "./understand.js";
 import {
   getHelixModel,
   helixModelSystemPreamble,
@@ -53,9 +54,21 @@ export async function getDefaultSettings() {
 
 function skillsForMode(mode: AgentMode, skillIds?: string[]) {
   if (skillIds?.length) return skillIds;
-  if (mode === "bug-hunt") return ["bug-hunt", "coding", "research"];
-  if (mode === "ship") return ["ship", "coding", "research"];
-  return ["coding", "design", "research", "ship"];
+  if (mode === "bug-hunt") {
+    return ["bug-hunt", "coding", "research", "code-quality", "agent-curriculum"];
+  }
+  if (mode === "ship") {
+    return ["ship", "coding", "research", "code-quality", "complex-projects", "agent-curriculum"];
+  }
+  return [
+    "coding",
+    "design",
+    "research",
+    "ship",
+    "complex-projects",
+    "code-quality",
+    "agent-curriculum",
+  ];
 }
 
 function modeBlock(mode: AgentMode) {
@@ -87,21 +100,18 @@ export async function runAgentStream(input: RunAgentInput) {
 
   const skillIds = [
     ...skillsForMode(mode, input.skillIds),
-    // Always load behavioral curriculum for free/open models
-    ...(profile.id === "helix-free" ||
-    profile.route === "ollama" ||
-    profile.route === "free-auto" ||
-    profile.route === "groq" ||
-    profile.route === "openrouter"
-      ? (["agent-curriculum"] as string[])
-      : []),
+    // Helix Own / free models always get the full training pack
+    "agent-curriculum",
+    "complex-projects",
+    "code-quality",
   ];
   const uniqueSkillIds = [...new Set(skillIds)];
 
-  const [skills, plugins, projectMap] = await Promise.all([
+  const [skills, plugins, projectMap, understanding] = await Promise.all([
     loadSkillBodies(uniqueSkillIds),
     loadPlugins(),
     buildProjectMap(workspace),
+    understandProject(workspace).catch(() => null),
   ]);
 
   const tools = {
@@ -122,19 +132,25 @@ export async function runAgentStream(input: RunAgentInput) {
 
   const system = [
     helixModelSystemPreamble({ ...profile, engine: resolvedEngine }),
-    "You are Helix, a local IDE coding agent (TypeScript runtime).",
+    "You are Helix Own — a trained local coding agent (TypeScript runtime).",
+    "You write quality code, create complex multi-file projects, and understand codebases before editing.",
     modeBlock(mode),
     "You have effectively unlimited output tokens and tool steps — finish the task fully.",
     "HARD RULES:",
-    "1) Before every project task, use the injected project map and call project_map / list_directory / read_file as needed.",
-    "2) Before building non-trivial features from scratch, search the web / GitHub for existing libraries or code to reuse.",
+    "1) Call understand_project (or project_map) before non-trivial work.",
+    "2) For greenfield complex apps, use scaffold_project then fill real logic.",
     "3) Prefer precise edits. Never invent APIs — read files or docs first.",
-    "4) After meaningful feature work, compile to a final product with detect_build_pipeline / ship_project / run_build_step.",
+    "4) After meaningful edits, call quality_check and fix failures.",
     "5) After shipping or meaningful work, offer git_commit + git_push when GitHub is connected.",
     `Workspace root: ${workspace}`,
     `Current project map:\n${projectMap.summary}`,
+    understanding
+      ? `Project understanding:\n${understanding.narrative}\nArchitecture: ${understanding.architecture.join(
+          "; "
+        )}\nEntrypoints: ${understanding.entrypoints.join(", ")}`
+      : "",
     pluginSystemPrompt(plugins),
-    skills ? `Loaded skills:\n\n${skills}` : "",
+    skills ? `Loaded skills / training:\n\n${skills}` : "",
   ]
     .filter(Boolean)
     .join("\n\n");

@@ -34,6 +34,8 @@ export function pickOllamaCoder(models: string[]): string {
   const preferred = [
     process.env.HELIX_LOCAL_MODEL,
     process.env.OLLAMA_MODEL,
+    "helix-own",
+    "helix-own:latest",
     "qwen2.5-coder:14b",
     "qwen2.5-coder:7b",
     "qwen2.5-coder:3b",
@@ -43,10 +45,12 @@ export function pickOllamaCoder(models: string[]): string {
   ].filter(Boolean) as string[];
 
   for (const want of preferred) {
-    const hit = models.find((m) => m === want || m.startsWith(`${want}:`) || m.startsWith(want));
+    const hit = models.find(
+      (m) => m === want || m === `${want}:latest` || m.startsWith(`${want}:`) || m.startsWith(want)
+    );
     if (hit) return hit;
   }
-  const coder = models.find((m) => /coder|code/i.test(m));
+  const coder = models.find((m) => /coder|code|helix/i.test(m));
   return coder ?? models[0] ?? "qwen2.5-coder:3b";
 }
 
