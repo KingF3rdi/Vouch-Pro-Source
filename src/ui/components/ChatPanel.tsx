@@ -281,8 +281,10 @@ export function ChatPanel({
             "Run typecheck + production build + installers. Fix any compile errors until ship succeeds.",
           ]
         : [
-            "Map the project, research existing libraries online, then propose the best way to improve Helix.",
-            "Search GitHub for similar IDE agent UIs and adapt the best patterns here.",
+            "Scaffold a playable browser game with TypeScript canvas, then make movement and scoring feel good.",
+            "Build a marketing website for my product — hero, clear CTA, responsive, then production build.",
+            "Create a fullstack app (API + React UI) for a simple task manager and verify typecheck.",
+            "Scaffold a Minecraft Fabric mod skeleton and add a tiny first feature with correct docs versions.",
           ];
 
   return (
@@ -379,7 +381,8 @@ export function ChatPanel({
               {mode === "bug-hunt" ? "Bug hunt" : mode === "ship" ? "Ship" : "Agent"}
             </h2>
             <p>
-              TypeScript agents (primary) · unlimited tokens. Plugins:{" "}
+              Optimized for apps, websites, games, mods — and anything with code.
+              TypeScript agents · unlimited tokens. Plugins:{" "}
               {plugins.map((p) => p.name).join(", ") || "none"}.
             </p>
             <div className="prompt-chips">

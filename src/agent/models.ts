@@ -38,7 +38,7 @@ export const HELIX_MODELS: HelixModelProfile[] = [
     id: "helix-free",
     name: "Helix Own",
     description:
-      "Weight-trained Helix agent (LoRA) + tools — quality code, complex projects, simple by default.",
+      "Weight-trained builder for apps, websites, games, mods, and any code — LoRA + tools.",
     badge: "trained",
     engine: process.env.HELIX_LOCAL_MODEL || "helix-own-ft",
     route: "free-auto",
@@ -344,10 +344,11 @@ export function helixModelSystemPreamble(profile: HelixModelProfile): string {
   const common = [
     `You are running as Helix model “${profile.name}” (${profile.id}).`,
     `Underlying coding engine: ${profile.engine}.`,
-    "Operate at frontier coding-agent quality:",
+    "Operate at frontier product-builder quality:",
+    "- Build apps, websites, games, mods, and any code end-to-end",
     "- Multi-file refactors with correct types and tests",
-    "- Prefer reuse over rewrite; search before inventing",
-    "- Ship compileable artifacts, not just patches",
+    "- Prefer reuse over rewrite; search before inventing host APIs",
+    "- Ship compileable / playable artifacts, not just patches",
     "- Be precise, skeptical of assumptions, and verify with tools",
     "- You have effectively unlimited tokens/steps — finish the task",
   ];

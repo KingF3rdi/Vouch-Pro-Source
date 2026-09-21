@@ -3,19 +3,20 @@ name: Coding
 description: Elite local software engineering — map first, reuse existing code, ship production-quality changes.
 ---
 
-# Coding skill (Claude / Cursor quality bar)
+# Coding skill — apps, websites, games, mods, any code
 
-You write code at the level of a senior engineer using Cursor or Claude Code.
+You write code at the level of a senior engineer shipping real products (SaaS apps, sites, games, mods, tools).
 
 ## Mandatory workflow (every non-trivial task)
 
-1. **Map the project first** — call `project_map` (and skim key configs / entry files) before proposing edits. Never start coding blind.
-2. **Search the internet for existing solutions** — use `web_search` / `web_fetch` / `github_code_search` to find libraries, snippets, APIs, or patterns that already solve the problem. Prefer adapting proven code over inventing from scratch.
-3. **Plan briefly** — name files you will touch and what you will reuse.
-4. **Implement** — precise, minimal, idiomatic edits. Match project style.
-5. **Verify** — run typecheck/tests via tools when available. Fix failures.
-6. **Ship** — when the user wants a finished product, call `detect_build_pipeline` then `ship_project` (or `run_build_step`) and list artifacts. Compile/package installers or binaries — do not stop at source edits.
-7. **Summarize** — what changed, what you reused, artifact paths, how to run/install.
+1. **Map the project first** — call `project_map` / `understand_project` before proposing edits. Never start coding blind.
+2. **Pick the product shape** — app, website, game, mod, library, API. Use `scaffold_project` on greenfield.
+3. **Search for existing solutions** — `web_search` / `web_fetch` / `github_code_search` for libraries, engine APIs, mod loaders. Prefer adapting proven code.
+4. **Plan briefly** — name files you will touch and the first runnable slice.
+5. **Implement** — precise, minimal, idiomatic edits. Match project style / host conventions.
+6. **Verify** — typecheck/tests/build via tools. Fix failures.
+7. **Ship** — when the user wants a finished product, call `detect_build_pipeline` then `ship_project` and list artifacts.
+8. **Summarize** — what changed, how to run/play/install.
 
 ## Quality bar
 

@@ -43,7 +43,7 @@ export function createAgentTools(workspace: string) {
 
     scaffold_project: tool({
       description:
-        "Scaffold a complex multi-file project (ts-api, react-vite, fullstack-ts, python-fastapi, monorepo-lite). Does not overwrite existing files.",
+        "Scaffold a product: ts-api, react-vite, fullstack-ts, python-fastapi, monorepo-lite, website, electron-app, game-canvas, mod-fabric, browser-extension. Does not overwrite existing files.",
       inputSchema: z.object({
         kind: z.enum([
           "ts-api",
@@ -51,6 +51,11 @@ export function createAgentTools(workspace: string) {
           "fullstack-ts",
           "python-fastapi",
           "monorepo-lite",
+          "website",
+          "electron-app",
+          "game-canvas",
+          "mod-fabric",
+          "browser-extension",
         ]),
         name: z.string().min(1),
         relativeRoot: z

@@ -75,6 +75,7 @@ function skillsForMode(mode: AgentMode, skillIds?: string[]) {
       "research",
       "code-quality",
       "complex-projects",
+      "build-products",
       "agent-curriculum",
     ];
   }
@@ -90,6 +91,8 @@ function skillsForMode(mode: AgentMode, skillIds?: string[]) {
     "security",
     "git-workflow",
     "complex-projects",
+    "build-products",
+    "games-mods",
     "code-quality",
     "agent-curriculum",
   ];
@@ -102,7 +105,7 @@ function modeBlock(mode: AgentMode) {
   if (mode === "ship") {
     return "MODE: SHIP. Detect the build pipeline, compile/package the final product, fix build errors, and report artifact paths.";
   }
-  return "MODE: BUILD. Map → research existing code → implement → typecheck/build → ship final artifacts when asked.";
+  return "MODE: BUILD. Optimized for apps, websites, games, mods, and any code product. Map → scaffold/reuse → implement → verify → ship.";
 }
 
 export async function runAgentStream(input: RunAgentInput) {
@@ -127,6 +130,8 @@ export async function runAgentStream(input: RunAgentInput) {
     // Helix Own / free models always get the full training pack
     "agent-curriculum",
     "complex-projects",
+    "build-products",
+    "games-mods",
     "code-quality",
   ];
   const uniqueSkillIds = [...new Set(skillIds)];
@@ -156,16 +161,17 @@ export async function runAgentStream(input: RunAgentInput) {
 
   const system = [
     helixModelSystemPreamble({ ...profile, engine: resolvedEngine }),
-    "You are Helix Own — a trained local coding agent (TypeScript runtime).",
-    "You write quality code, create complex multi-file projects, and understand codebases before editing.",
+    "You are Helix Own — a trained local coding agent optimized to build apps, websites, games, mods, and anything with code.",
+    "You write quality code, scaffold the right product shape, and understand codebases before editing.",
     modeBlock(mode),
     "You have effectively unlimited output tokens and tool steps — finish the task fully.",
     "HARD RULES:",
-    "1) Call understand_project (or project_map) before non-trivial work.",
-    "2) For greenfield complex apps, use scaffold_project then fill real logic.",
-    "3) Prefer precise edits. Never invent APIs — read files or docs first.",
+    "1) Call understand_project (or project_map) before non-trivial work on existing repos.",
+    "2) For greenfield products, use scaffold_project with the matching kind (website, game-canvas, mod-fabric, electron-app, fullstack-ts, …) then fill real logic.",
+    "3) Prefer precise edits. Never invent host APIs (Fabric/Forge, browser MV3, game engines) — read docs or samples first.",
     "4) After meaningful edits, call quality_check and fix failures.",
     "5) After shipping or meaningful work, offer git_commit + git_push when GitHub is connected.",
+    "6) Optimize for a playable/runnable slice early — then harden.",
     `Workspace root: ${workspace}`,
     `Current project map:\n${projectMap.summary}`,
     understanding

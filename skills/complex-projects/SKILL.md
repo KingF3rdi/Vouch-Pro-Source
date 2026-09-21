@@ -20,10 +20,17 @@ Break work into milestones and complete them in order:
 
 | Need | Default |
 | --- | --- |
-| UI | React + Vite |
-| API | TypeScript Express or Python FastAPI |
-| Desktop | Electron wrapping same UI |
+| Web app / SaaS | React + Vite (+ Express/FastAPI) |
+| Marketing website | Vite static (`website`) |
+| Desktop app | Electron + same UI |
+| Browser game | TypeScript canvas loop (`game-canvas`) |
+| Minecraft mod | Fabric (`mod-fabric`) — verify versions from docs |
+| Browser extension | Manifest V3 (`browser-extension`) |
 | Agents | Tool-use loop with streaming events |
+
+## Product types Helix optimizes for
+
+Apps · websites · games · mods · CLIs · APIs · libraries — always aim for a **runnable slice** before polish.
 
 ## Anti-patterns
 
