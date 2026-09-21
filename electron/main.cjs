@@ -1,4 +1,4 @@
-const { app, BrowserWindow, shell, ipcMain, Menu, dialog } = require("electron");
+const { app, BrowserWindow, shell, ipcMain, Menu, dialog, utilityProcess } = require("electron");
 const path = require("path");
 const { spawn } = require("child_process");
 const http = require("http");
@@ -8,6 +8,7 @@ const PORT = Number(process.env.HELIX_PORT || 8787);
 const PYTHON_PORT = Number(process.env.HELIX_PYTHON_PORT || 8788);
 const DEV_UI = process.env.HELIX_UI_URL || "http://127.0.0.1:5173";
 let serverProcess = null;
+let serverChild = null; // ChildProcess fallback
 let pythonProcess = null;
 let mainWindow = null;
 let logStream = null;
@@ -48,15 +49,18 @@ function waitForUrl(url, attempts = 120) {
   });
 }
 
-/** App files root (works with asar + asar.unpacked). */
+/** App files root (no asar — real paths for Windows portable). */
 function resolveAppRoot() {
   if (!app.isPackaged) return path.join(__dirname, "..");
-  const asarPath = app.getAppPath(); // .../resources/app.asar
-  const unpacked = asarPath.replace(/app\.asar$/i, "app.asar.unpacked");
-  if (fs.existsSync(unpacked)) return unpacked;
-  // asar disabled → getAppPath is the app folder
-  if (fs.existsSync(asarPath) && !asarPath.endsWith(".asar")) return asarPath;
-  return path.dirname(asarPath);
+  // With asar:false, getAppPath() is the resources/app folder
+  const appPath = app.getAppPath();
+  if (fs.existsSync(path.join(appPath, "dist", "server", "index.js"))) return appPath;
+  const unpacked = appPath.replace(/app\.asar$/i, "app.asar.unpacked");
+  if (fs.existsSync(path.join(unpacked, "dist", "server", "index.js"))) return unpacked;
+  if (fs.existsSync(path.join(process.resourcesPath, "app", "dist", "server", "index.js"))) {
+    return path.join(process.resourcesPath, "app");
+  }
+  return appPath;
 }
 
 function resolvePython() {
@@ -87,20 +91,9 @@ function resolveServerEntry(appRoot) {
   return null;
 }
 
-function resolveTsxCli(appRoot) {
-  const candidates = [
-    path.join(appRoot, "node_modules", "tsx", "dist", "cli.mjs"),
-    path.join(app.getAppPath(), "node_modules", "tsx", "dist", "cli.mjs"),
-  ];
-  for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) return candidate;
-  }
-  return null;
-}
-
-/** Primary: TypeScript/Node agent server (AI SDK). */
+/** Primary agent server — never re-spawn Helix.exe (portable Temp ENOENT). */
 function startTsServer() {
-  if (serverProcess) return serverProcess;
+  if (serverProcess || serverChild) return serverProcess || serverChild;
   const appRoot = resolveAppRoot();
   const env = {
     ...process.env,
@@ -120,42 +113,88 @@ function startTsServer() {
       logLine(`ERROR: no server entry under ${appRoot}`);
       return null;
     }
-    const args = entry.endsWith(".js")
-      ? [entry]
-      : (() => {
-          const tsxCli = resolveTsxCli(appRoot);
-          return tsxCli ? [tsxCli, entry] : null;
-        })();
-    if (!args) {
-      logLine("ERROR: packaged app needs dist/server/index.js (or tsx)");
+
+    // Prefer boot script next to main (always outside asar when electron/ is packed in asar —
+    // copy boot into unpacked via asarUnpack, or resolve from __dirname which is app.asar/electron)
+    const bootCandidates = [
+      path.join(appRoot, "electron", "server-boot.cjs"),
+      path.join(__dirname, "server-boot.cjs"),
+    ];
+    const boot = bootCandidates.find((p) => fs.existsSync(p));
+    if (!boot) {
+      logLine("ERROR: missing electron/server-boot.cjs");
       return null;
     }
-    logLine(`starting server entry=${entry} cwd=${appRoot}`);
-    serverProcess = spawn(process.execPath, args, {
-      cwd: appRoot,
-      env: { ...env, ELECTRON_RUN_AS_NODE: "1" },
-      stdio: ["ignore", "pipe", "pipe"],
-      windowsHide: true,
-    });
-  } else {
-    const root = path.join(__dirname, "..");
-    serverProcess = spawn("npx", ["tsx", "src/server/index.ts"], {
-      cwd: root,
-      env,
-      stdio: ["ignore", "pipe", "pipe"],
-      shell: process.platform === "win32",
-    });
+
+    const forkEnv = {
+      ...env,
+      HELIX_SERVER_ENTRY: entry,
+    };
+
+    logLine(`starting utilityProcess boot=${boot} entry=${entry}`);
+    try {
+      serverProcess = utilityProcess.fork(boot, [], {
+        cwd: appRoot,
+        env: forkEnv,
+        stdio: "pipe",
+        serviceName: "helix-server",
+      });
+      serverProcess.on("exit", (code) => {
+        logLine(`utilityProcess exited code=${code}`);
+        serverProcess = null;
+      });
+      if (serverProcess.stdout) {
+        serverProcess.stdout.on("data", (buf) => logLine(String(buf).trimEnd()));
+      }
+      if (serverProcess.stderr) {
+        serverProcess.stderr.on("data", (buf) => logLine(String(buf).trimEnd()));
+      }
+      return serverProcess;
+    } catch (error) {
+      logLine(
+        `utilityProcess.fork failed: ${error instanceof Error ? error.message : error}`
+      );
+      // Last resort: system node if present (not Helix.exe)
+      const nodeCmd = process.platform === "win32" ? "node.exe" : "node";
+      try {
+        serverChild = spawn(nodeCmd, [boot], {
+          cwd: appRoot,
+          env: forkEnv,
+          stdio: ["ignore", "pipe", "pipe"],
+          windowsHide: true,
+          shell: false,
+        });
+        serverChild.stdout?.on("data", (buf) => logLine(String(buf).trimEnd()));
+        serverChild.stderr?.on("data", (buf) => logLine(String(buf).trimEnd()));
+        serverChild.on("exit", (code, signal) => {
+          logLine(`node child exited code=${code} signal=${signal}`);
+          serverChild = null;
+        });
+        serverChild.on("error", (err) => {
+          logLine(`node child error: ${err.message}`);
+        });
+        return serverChild;
+      } catch (err2) {
+        logLine(`fallback node spawn failed: ${err2 instanceof Error ? err2.message : err2}`);
+        return null;
+      }
+    }
   }
 
-  if (serverProcess) {
-    serverProcess.stdout?.on("data", (buf) => logLine(String(buf).trimEnd()));
-    serverProcess.stderr?.on("data", (buf) => logLine(String(buf).trimEnd()));
-    serverProcess.on("exit", (code, signal) => {
-      logLine(`server exited code=${code} signal=${signal}`);
-      serverProcess = null;
-    });
-  }
-  return serverProcess;
+  const root = path.join(__dirname, "..");
+  serverChild = spawn("npx", ["tsx", "src/server/index.ts"], {
+    cwd: root,
+    env,
+    stdio: ["ignore", "pipe", "pipe"],
+    shell: process.platform === "win32",
+  });
+  serverChild.stdout?.on("data", (buf) => logLine(String(buf).trimEnd()));
+  serverChild.stderr?.on("data", (buf) => logLine(String(buf).trimEnd()));
+  serverChild.on("exit", (code, signal) => {
+    logLine(`dev server exited code=${code} signal=${signal}`);
+    serverChild = null;
+  });
+  return serverChild;
 }
 
 /** Optional: Python FastAPI agents on a separate port. */
@@ -292,6 +331,14 @@ function shutdown() {
       // ignore
     }
     serverProcess = null;
+  }
+  if (serverChild) {
+    try {
+      serverChild.kill();
+    } catch {
+      // ignore
+    }
+    serverChild = null;
   }
   if (pythonProcess) {
     try {

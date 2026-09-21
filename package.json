@@ -55,14 +55,7 @@
         ]
       }
     ],
-    "asar": true,
-    "asarUnpack": [
-      "dist/**/*",
-      "skills/**/*",
-      "plugins/**/*",
-      "package.json",
-      "node_modules/**/*"
-    ],
+    "asar": false,
     "mac": {
       "category": "public.app-category.developer-tools",
       "target": [
@@ -72,7 +65,8 @@
     },
     "win": {
       "target": [
-        "portable"
+        "portable",
+        "nsis"
       ],
       "signAndEditExecutable": false
     },
