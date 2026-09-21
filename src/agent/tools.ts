@@ -9,6 +9,7 @@ import { buildProjectMap } from "./projectMap.js";
 import { understandProject } from "./understand.js";
 import { scaffoldProject } from "./scaffold.js";
 import { runQualityCheck } from "./quality.js";
+import { applyPatch, explainCode, findTodos, runTests } from "./essentialTools.js";
 
 const execAsync = promisify(exec);
 
@@ -66,6 +67,43 @@ export function createAgentTools(workspace: string) {
         "Run project quality gates (typecheck/lint/test/python compile). Call after meaningful edits.",
       inputSchema: z.object({}),
       execute: async () => runQualityCheck(workspace),
+    }),
+
+    apply_patch: tool({
+      description:
+        "Exact search-replace edit inside a file. Prefer this over rewriting whole files for small changes.",
+      inputSchema: z.object({
+        relativePath: z.string(),
+        oldText: z.string().min(1),
+        newText: z.string(),
+        replaceAll: z.boolean().default(false),
+      }),
+      execute: async ({ relativePath, oldText, newText, replaceAll }) =>
+        applyPatch(workspace, relativePath, oldText, newText, replaceAll),
+    }),
+
+    explain_code: tool({
+      description: "Read a file and return a preview plus structural notes for understanding.",
+      inputSchema: z.object({
+        relativePath: z.string(),
+        maxChars: z.number().int().positive().max(50_000).default(12_000),
+      }),
+      execute: async ({ relativePath, maxChars }) =>
+        explainCode(workspace, relativePath, maxChars),
+    }),
+
+    find_todos: tool({
+      description: "Find TODO/FIXME/HACK markers in the workspace.",
+      inputSchema: z.object({
+        maxMatches: z.number().int().positive().max(100).default(40),
+      }),
+      execute: async ({ maxMatches }) => findTodos(workspace, maxMatches),
+    }),
+
+    run_tests: tool({
+      description: "Run the project's test suite (npm test or pytest).",
+      inputSchema: z.object({}),
+      execute: async () => runTests(workspace),
     }),
 
     list_directory: tool({

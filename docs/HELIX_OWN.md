@@ -1,42 +1,23 @@
-# Helix Own — trained local coding agent
+# Helix Own — weight training
 
-Helix Own is our **own agent**: open weights + baked curriculum + IDE tools.
-It is trained for **quality code**, **complex projects**, and **codebase understanding**.
-
-> We cannot scrape paid API keys or retrain GPT-class weights from scratch.
-> “Training” here = Modelfile system distillation + skill packs + tool workflows.
-
-## Train / install
+Real **LoRA SFT** on `Qwen/Qwen2.5-Coder-0.5B-Instruct` using our curriculum dataset.
 
 ```bash
-npm run train:own   # alias: npm run setup:free
+npm run train:weights          # LoRA train → training/output/helix-own-lora
+npm run serve:ft               # OpenAI-compatible server :11435
+npm start                      # train if needed + IDE
 ```
 
-This:
+## Artifacts
 
-1. Pulls `qwen2.5-coder:3b`
-2. Creates Ollama model **`helix-own`** from `ollama/HelixOwn.Modelfile`
-3. Sets workspace default to Helix Own (`helix-free` profile)
+- Dataset: `training/dataset/helix_own_sft.jsonl`
+- Adapter: `training/output/helix-own-lora/adapter/` (~28MB)
+- Meta: `training/output/helix-own-lora/helix_own_ft.json`
 
-## What it can do
+Helix Free / Helix Own prefers the FT server when `:11435` is healthy.
 
-| Capability | How |
-| --- | --- |
-| Understand complex repos | `understand_project` + project map injected into every chat |
-| Quality code | `quality_check` + `skills/code-quality` |
-| Complex greenfield apps | `scaffold_project` + `skills/complex-projects` |
-| Fix/verify loop | unlimited tool steps until checks pass |
+## Simple usage
 
-## Skills (training pack)
-
-- `skills/agent-curriculum`
-- `skills/complex-projects`
-- `skills/code-quality`
-
-## Run
-
-```bash
-npm run dev
-```
-
-Pick **Helix Own** in the model picker (default without paid keys).
+1. `npm start`
+2. Welcome → **Loslegen**
+3. Chat with Helix Own (essential skills + tools on by default)

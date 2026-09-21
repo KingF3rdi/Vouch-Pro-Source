@@ -55,16 +55,40 @@ export async function getDefaultSettings() {
 function skillsForMode(mode: AgentMode, skillIds?: string[]) {
   if (skillIds?.length) return skillIds;
   if (mode === "bug-hunt") {
-    return ["bug-hunt", "coding", "research", "code-quality", "agent-curriculum"];
+    return [
+      "bug-hunt",
+      "debugging",
+      "testing",
+      "coding",
+      "research",
+      "code-quality",
+      "security",
+      "agent-curriculum",
+    ];
   }
   if (mode === "ship") {
-    return ["ship", "coding", "research", "code-quality", "complex-projects", "agent-curriculum"];
+    return [
+      "ship",
+      "coding",
+      "testing",
+      "docs",
+      "research",
+      "code-quality",
+      "complex-projects",
+      "agent-curriculum",
+    ];
   }
   return [
     "coding",
     "design",
     "research",
     "ship",
+    "debugging",
+    "testing",
+    "refactor",
+    "docs",
+    "security",
+    "git-workflow",
     "complex-projects",
     "code-quality",
     "agent-curriculum",

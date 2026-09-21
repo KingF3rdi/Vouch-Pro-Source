@@ -13,10 +13,24 @@ export type FreeBackend =
   | { id: "gemini"; label: string; model: string; ready: boolean };
 
 const OLLAMA_BASE = process.env.OLLAMA_BASE_URL ?? "http://127.0.0.1:11434/v1";
+const FT_BASE = process.env.HELIX_FT_BASE_URL ?? "http://127.0.0.1:11435/v1";
 const OLLAMA_TAGS = (process.env.OLLAMA_BASE_URL ?? "http://127.0.0.1:11434/v1").replace(
   /\/v1\/?$/,
   "/api/tags"
 );
+
+export async function probeFineTuneServer(): Promise<boolean> {
+  try {
+    const res = await fetch(FT_BASE.replace(/\/v1\/?$/, "/health"), {
+      signal: AbortSignal.timeout(1200),
+    });
+    if (!res.ok) return false;
+    const data = (await res.json()) as { ok?: boolean };
+    return Boolean(data.ok);
+  } catch {
+    return false;
+  }
+}
 
 export async function probeOllama(): Promise<{ ready: boolean; models: string[] }> {
   try {
@@ -56,9 +70,16 @@ export function pickOllamaCoder(models: string[]): string {
 
 /** Sync create of OpenAI-compatible free clients (keys from env only). */
 export function createFreeLanguageModel(
-  backend: "ollama" | "groq" | "openrouter",
+  backend: "ollama" | "groq" | "openrouter" | "ft",
   modelId: string
 ): LanguageModel {
+  if (backend === "ft") {
+    const client = createOpenAI({
+      baseURL: FT_BASE,
+      apiKey: "helix-own-ft",
+    });
+    return client(modelId);
+  }
   if (backend === "ollama") {
     const client = createOpenAI({
       baseURL: OLLAMA_BASE,

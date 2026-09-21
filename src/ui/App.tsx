@@ -10,14 +10,28 @@ import { McpPanel } from "./components/McpPanel";
 import { ShipPanel } from "./components/ShipPanel";
 import { WindowControls, useIsDesktop } from "./components/WindowControls";
 import { ModelPicker } from "./components/ModelPicker";
+import { WelcomeGate } from "./components/WelcomeGate";
+
+const ESSENTIAL_SKILLS = [
+  "coding",
+  "debugging",
+  "testing",
+  "refactor",
+  "docs",
+  "security",
+  "git-workflow",
+  "complex-projects",
+  "code-quality",
+  "agent-curriculum",
+];
 
 export function App() {
   const isDesktop = useIsDesktop();
   const [settings, setSettings] = useState<AgentSettings | null>(null);
   const [skills, setSkills] = useState<SkillSummary[]>([]);
   const [plugins, setPlugins] = useState<PluginManifest[]>([]);
-  const [activeSkills, setActiveSkills] = useState(["coding", "design", "research", "ship"]);
-  const [helixModelId, setHelixModelId] = useState("helix-code");
+  const [activeSkills, setActiveSkills] = useState(ESSENTIAL_SKILLS);
+  const [helixModelId, setHelixModelId] = useState("helix-free");
   const [mode, setMode] = useState<AgentMode>("chat");
   const [tab, setTab] = useState<IdeTab>("editor");
   const [files, setFiles] = useState<OpenFile[]>([]);
@@ -28,6 +42,8 @@ export function App() {
     "https://github.com/search?q=coding+agent+ide&type=repositories"
   );
   const [mapSummary, setMapSummary] = useState<string>("");
+  const [ftReady, setFtReady] = useState(false);
+  const [showMoreTabs, setShowMoreTabs] = useState(false);
 
   useEffect(() => {
     void Promise.all([
@@ -35,12 +51,21 @@ export function App() {
       fetch("/api/skills").then((r) => r.json()),
       fetch("/api/plugins").then((r) => r.json()),
       fetch("/api/project/map").then((r) => r.json()),
-    ]).then(([settingsData, skillsData, pluginsData, mapData]) => {
+      fetch("/api/models").then((r) => r.json()),
+    ]).then(([settingsData, skillsData, pluginsData, mapData, modelsData]) => {
       setSettings(settingsData);
       if (settingsData.helixModelId) setHelixModelId(settingsData.helixModelId);
+      else setHelixModelId("helix-free");
       setSkills(skillsData.skills ?? []);
       setPlugins(pluginsData.plugins ?? []);
       setMapSummary(mapData.summary ?? "");
+      setFtReady(Boolean(modelsData.ftReady));
+      // Keep essential skills on by default; merge any known ids
+      const ids = new Set([
+        ...ESSENTIAL_SKILLS,
+        ...((skillsData.skills as SkillSummary[]) ?? []).map((s) => s.id),
+      ]);
+      setActiveSkills([...ids].filter((id) => ESSENTIAL_SKILLS.includes(id) || ["design", "research", "ship", "coding"].includes(id)));
     });
   }, []);
 
@@ -111,19 +136,33 @@ export function App() {
   }
 
   const workspaceLabel = settings?.workspace?.split(/[/\\]/).pop() || "workspace";
+  void workspaceLabel;
 
   return (
     <div className={`ide-shell${isDesktop ? " is-desktop" : ""}${isDesktop && window.helixDesktop?.platform === "darwin" ? " is-mac" : ""}`}>
+      <WelcomeGate
+        trained={ftReady}
+        onStart={() => {
+          setTab("editor");
+          setMode("chat");
+          void selectHelixModel("helix-free");
+        }}
+      />
       <header className="ide-topbar titlebar-drag">
         <div className="brand-mark no-drag">
           <div className="brand-glyph" aria-hidden />
           <div>
             <strong>Helix</strong>
-            <span className="muted"> IDE · {workspaceLabel}</span>
+            <span className="muted"> · {workspaceLabel}</span>
           </div>
         </div>
         <div className="meta-pills no-drag">
           <ModelPicker selectedId={helixModelId} onSelect={(id) => void selectHelixModel(id)} />
+          {ftReady ? (
+            <span className="pill">
+              weights <strong>LoRA</strong>
+            </span>
+          ) : null}
           {isDesktop ? (
             <span className="pill">
               shell <strong>desktop</strong>
@@ -134,12 +173,16 @@ export function App() {
           {(
             [
               ["editor", "Editor", SquareCode],
-              ["preview", "Preview", Eye],
-              ["browser", "Browser", Globe],
-              ["bugs", "Bug hunt", Bug],
-              ["github", "GitHub", FolderGit2],
-              ["mcp", "MCP", Plug],
               ["ship", "Ship", Package],
+              ...(showMoreTabs
+                ? ([
+                    ["preview", "Preview", Eye],
+                    ["browser", "Browser", Globe],
+                    ["bugs", "Bugs", Bug],
+                    ["github", "GitHub", FolderGit2],
+                    ["mcp", "MCP", Plug],
+                  ] as const)
+                : []),
             ] as const
           ).map(([id, label, Icon]) => (
             <button
@@ -156,6 +199,13 @@ export function App() {
               {label}
             </button>
           ))}
+          <button
+            type="button"
+            className="ghost-btn tab-more"
+            onClick={() => setShowMoreTabs((v) => !v)}
+          >
+            {showMoreTabs ? "Weniger" : "Mehr"}
+          </button>
         </nav>
         <WindowControls />
       </header>

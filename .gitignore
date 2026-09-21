@@ -14,3 +14,8 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+
+# Training artifacts (keep dataset; ignore huge checkpoints)
+training/output/**/checkpoints/
+training/output/**/runs/
+training/output/**/checkpoints/

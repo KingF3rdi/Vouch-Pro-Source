@@ -33,15 +33,17 @@ Desktop:
 npm run desktop
 ```
 
-## Helix Own (trained local agent)
+## Helix Own (weight-trained)
 
 ```bash
-npm run train:own
+npm start                 # einfach: trainiert bei Bedarf + startet IDE
+# oder:
+npm run train:weights     # LoRA SFT
+npm run serve:ft          # FT-Server :11435
 npm run dev
 ```
 
-Creates Ollama model `helix-own` with baked curriculum for quality code, complex projects, and understanding. See `docs/HELIX_OWN.md`.
-
+Siehe `docs/HELIX_OWN.md`.
 ## Helix models
 
 | Model | Engine |

@@ -1,0 +1,8 @@
+{
+  "base_model": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
+  "adapter_path": "/workspace/training/output/helix-own-lora/adapter",
+  "steps": 25,
+  "method": "lora-sft",
+  "dataset": "/workspace/training/dataset/helix_own_sft.jsonl",
+  "samples": 40
+}

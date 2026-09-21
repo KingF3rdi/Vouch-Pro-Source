@@ -122,6 +122,7 @@ app.get("/api/models", async (req, res) => {
     freeReady: availability.freeReady,
     ollamaReady: availability.ollamaReady,
     ollamaModels: availability.ollamaModels,
+    ftReady: availability.ftReady,
     groqConfigured: availability.groqConfigured,
     openrouterConfigured: availability.openrouterConfigured,
   });

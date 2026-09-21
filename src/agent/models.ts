@@ -8,6 +8,7 @@ import {
   createFreeLanguageModel,
   freeBackendStatus,
   pickOllamaCoder,
+  probeFineTuneServer,
   probeOllama,
 } from "./freeProviders.js";
 
@@ -37,9 +38,9 @@ export const HELIX_MODELS: HelixModelProfile[] = [
     id: "helix-free",
     name: "Helix Own",
     description:
-      "Trained local coding agent — quality code, complex projects, deep understanding (Ollama helix-own / qwen2.5-coder).",
+      "Weight-trained Helix agent (LoRA) + tools — quality code, complex projects, simple by default.",
     badge: "trained",
-    engine: process.env.HELIX_LOCAL_MODEL || "helix-own",
+    engine: process.env.HELIX_LOCAL_MODEL || "helix-own-ft",
     route: "free-auto",
   },
   {
@@ -180,8 +181,15 @@ export async function resolveHelixLanguageModelAsync(
     };
   }
 
-  // Helix Free: auto-pick best free backend
+  // Helix Free: prefer weight-trained FT server, then Ollama, then free cloud
   if (profile.route === "free-auto" || profile.id === "helix-free") {
+    if (await probeFineTuneServer()) {
+      return {
+        model: createFreeLanguageModel("ft", "helix-own-ft"),
+        profile: getHelixModel("helix-free"),
+        resolvedEngine: "helix-own-ft (LoRA)",
+      };
+    }
     const ollama = await probeOllama();
     if (ollama.ready) {
       const engine = pickOllamaCoder(ollama.models);
@@ -357,10 +365,12 @@ export function helixModelSystemPreamble(profile: HelixModelProfile): string {
 export async function listModelAvailability() {
   const ollama = await probeOllama();
   const status = freeBackendStatus();
+  const ftReady = await probeFineTuneServer();
   return {
     ...status,
     ollamaReady: ollama.ready,
     ollamaModels: ollama.models,
-    freeReady: ollama.ready || status.groqConfigured || status.openrouterConfigured,
+    ftReady,
+    freeReady: ftReady || ollama.ready || status.groqConfigured || status.openrouterConfigured,
   };
 }

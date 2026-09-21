@@ -988,3 +988,47 @@ button {
     overflow: auto;
   }
 }
+
+.welcome-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: rgba(8, 10, 13, 0.72);
+  backdrop-filter: blur(10px);
+}
+
+.welcome-card {
+  width: min(420px, calc(100vw - 2rem));
+  padding: 2rem;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--bg-2), var(--bg-1));
+  text-align: center;
+  display: grid;
+  gap: 0.75rem;
+  justify-items: center;
+}
+
+.welcome-card h1 {
+  margin: 0;
+  font-size: 1.75rem;
+  letter-spacing: -0.04em;
+}
+
+.welcome-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.welcome-cta {
+  min-width: 180px;
+  margin-top: 0.5rem;
+}
+
+.tab-more {
+  margin-left: 0.25rem;
+  opacity: 0.8;
+}
