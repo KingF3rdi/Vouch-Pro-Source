@@ -17,6 +17,7 @@ import {
 import { buildProjectMap } from "./projectMap.js";
 import { createWebTools } from "./web.js";
 import { createGitTools, loadSecrets } from "./github.js";
+import { createMcpTools } from "./mcp.js";
 import type { ProviderKind } from "../shared/types.js";
 
 export type AgentMode = "chat" | "bug-hunt";
@@ -100,6 +101,7 @@ export async function runAgentStream(input: RunAgentInput) {
     ...createAgentTools(workspace),
     ...createWebTools(),
     ...createGitTools(workspace),
+    ...createMcpTools(),
     ...mergePluginTools(plugins),
   };
 

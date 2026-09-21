@@ -16,7 +16,7 @@ export type AgentSettings = {
 
 export type AgentMode = "chat" | "bug-hunt";
 
-export type IdeTab = "editor" | "preview" | "browser" | "bugs" | "github";
+export type IdeTab = "editor" | "preview" | "browser" | "bugs" | "github" | "mcp";
 
 export type PluginManifest = {
   id: string;

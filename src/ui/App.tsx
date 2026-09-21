@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Bug, Eye, FolderGit2, Globe, SquareCode } from "lucide-react";
+import { Bug, Eye, FolderGit2, Globe, Plug, SquareCode } from "lucide-react";
 import type { AgentMode, AgentSettings, IdeTab, PluginManifest, SkillSummary } from "../shared/types";
 import { FileTree } from "./components/FileTree";
-import { EditorPane } from "./components/EditorPane";
+import { EditorPane, type OpenFile } from "./components/EditorPane";
 import { ChatPanel } from "./components/ChatPanel";
 import { BrowserPanel, PreviewPanel } from "./components/FramePanels";
 import { GitHubPanel } from "./components/GitHubPanel";
+import { McpPanel } from "./components/McpPanel";
 
 export function App() {
   const [settings, setSettings] = useState<AgentSettings | null>(null);
@@ -14,11 +15,13 @@ export function App() {
   const [activeSkills, setActiveSkills] = useState(["coding", "design", "research"]);
   const [mode, setMode] = useState<AgentMode>("chat");
   const [tab, setTab] = useState<IdeTab>("editor");
-  const [openPath, setOpenPath] = useState<string | null>(null);
-  const [fileContent, setFileContent] = useState("");
-  const [savedContent, setSavedContent] = useState("");
+  const [files, setFiles] = useState<OpenFile[]>([]);
+  const [activePath, setActivePath] = useState<string | null>(null);
+  const [showDiff, setShowDiff] = useState(false);
   const [previewUrl, setPreviewUrl] = useState("http://127.0.0.1:5173");
-  const [browserUrl, setBrowserUrl] = useState("https://github.com/search?q=coding+agent+ide&type=repositories");
+  const [browserUrl, setBrowserUrl] = useState(
+    "https://github.com/search?q=coding+agent+ide&type=repositories"
+  );
   const [mapSummary, setMapSummary] = useState<string>("");
 
   useEffect(() => {
@@ -36,23 +39,52 @@ export function App() {
   }, []);
 
   async function openFile(path: string) {
-    const res = await fetch(`/api/fs/file?path=${encodeURIComponent(path)}`);
-    const data = await res.json();
+    const existing = files.find((f) => f.path === path);
+    if (existing) {
+      setActivePath(path);
+      setTab("editor");
+      return;
+    }
+    const [fileRes, diffRes] = await Promise.all([
+      fetch(`/api/fs/file?path=${encodeURIComponent(path)}`),
+      fetch(`/api/git/diff?path=${encodeURIComponent(path)}`),
+    ]);
+    const data = await fileRes.json();
+    const diff = await diffRes.json();
     if (data.error) return;
-    setOpenPath(path);
-    setFileContent(data.content ?? "");
-    setSavedContent(data.content ?? "");
+    const next: OpenFile = {
+      path,
+      content: data.content ?? "",
+      savedContent: data.content ?? "",
+      originalContent: diff.original ?? data.content ?? "",
+    };
+    setFiles((prev) => [...prev, next]);
+    setActivePath(path);
     setTab("editor");
   }
 
-  async function saveFile() {
-    if (!openPath) return;
+  async function saveFile(path: string) {
+    const file = files.find((f) => f.path === path);
+    if (!file) return;
     const res = await fetch("/api/fs/file", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path: openPath, content: fileContent }),
+      body: JSON.stringify({ path, content: file.content }),
     });
-    if (res.ok) setSavedContent(fileContent);
+    if (!res.ok) return;
+    setFiles((prev) =>
+      prev.map((f) => (f.path === path ? { ...f, savedContent: f.content } : f))
+    );
+  }
+
+  function closeFile(path: string) {
+    setFiles((prev) => {
+      const next = prev.filter((f) => f.path !== path);
+      if (activePath === path) {
+        setActivePath(next[next.length - 1]?.path ?? null);
+      }
+      return next;
+    });
   }
 
   function toggleSkill(id: string) {
@@ -61,20 +93,19 @@ export function App() {
     );
   }
 
-  const dirty = openPath !== null && fileContent !== savedContent;
   const workspaceLabel = settings?.workspace?.split(/[/\\]/).pop() || "workspace";
 
   return (
     <div className="ide-shell">
-      <header className="ide-topbar">
-        <div className="brand-mark">
+      <header className="ide-topbar titlebar-drag">
+        <div className="brand-mark no-drag">
           <div className="brand-glyph" aria-hidden />
           <div>
             <strong>Helix</strong>
             <span className="muted"> IDE · {workspaceLabel}</span>
           </div>
         </div>
-        <div className="meta-pills">
+        <div className="meta-pills no-drag">
           <span className="pill">
             provider <strong>{settings?.provider ?? "…"}</strong>
           </span>
@@ -82,7 +113,7 @@ export function App() {
             model <strong>{settings?.model ?? "…"}</strong>
           </span>
         </div>
-        <nav className="ide-tabs">
+        <nav className="ide-tabs no-drag">
           {(
             [
               ["editor", "Editor", SquareCode],
@@ -90,6 +121,7 @@ export function App() {
               ["browser", "Browser", Globe],
               ["bugs", "Bug hunt", Bug],
               ["github", "GitHub", FolderGit2],
+              ["mcp", "MCP", Plug],
             ] as const
           ).map(([id, label, Icon]) => (
             <button
@@ -97,9 +129,8 @@ export function App() {
               type="button"
               className={tab === id ? "active" : ""}
               onClick={() => {
-                setTab(id);
+                setTab(id as IdeTab);
                 if (id === "bugs") setMode("bug-hunt");
-                if (id === "editor" && mode === "bug-hunt") setMode("chat");
               }}
             >
               <Icon size={14} />
@@ -111,7 +142,7 @@ export function App() {
 
       <div className="ide-body">
         <aside className="ide-left">
-          <FileTree onOpenFile={(path) => void openFile(path)} activePath={openPath} />
+          <FileTree onOpenFile={(path) => void openFile(path)} activePath={activePath} />
           <div className="map-card">
             <div className="pane-label">Project map</div>
             <pre>{mapSummary || "Loading map…"}</pre>
@@ -121,11 +152,16 @@ export function App() {
         <section className="ide-center">
           {tab === "editor" ? (
             <EditorPane
-              path={openPath}
-              value={fileContent}
-              onChange={setFileContent}
-              onSave={() => void saveFile()}
-              dirty={dirty}
+              files={files}
+              activePath={activePath}
+              onSelect={setActivePath}
+              onClose={closeFile}
+              onChange={(path, value) =>
+                setFiles((prev) => prev.map((f) => (f.path === path ? { ...f, content: value } : f)))
+              }
+              onSave={(path) => void saveFile(path)}
+              showDiff={showDiff}
+              onToggleDiff={() => setShowDiff((v) => !v)}
             />
           ) : null}
           {tab === "preview" ? (
@@ -139,13 +175,13 @@ export function App() {
               <div className="pane-label">Bug hunt</div>
               <h2>Hunt defects like a senior engineer</h2>
               <p>
-                Switch the agent to Bug hunt mode (already on). It maps the project, searches for
-                known issues online, isolates root causes, patches, and verifies.
+                Agent mode is Bug hunt. It maps the project, checks known issues online, isolates
+                root causes, patches, and verifies.
               </p>
-              <p className="muted">Use the chat on the right to start a hunt.</p>
             </div>
           ) : null}
           {tab === "github" ? <GitHubPanel /> : null}
+          {tab === "mcp" ? <McpPanel /> : null}
         </section>
 
         <aside className="ide-right">

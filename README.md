@@ -1,50 +1,55 @@
 # Helix
 
-Local coding AI **IDE** with a Cursor / Claude-quality agent. Runs on your PC.
+Local coding AI **IDE** — Cursor/Claude-quality agent, diffs, MCP, sessions, and desktop installers.
 
-## What it does
+## Features
 
-- **Maps the project** before work (always injected + `project_map` tool)
-- **Searches the web / GitHub** for existing code so it does not reinvent everything
-- **Own IDE**: file tree, Monaco editor, chat agent
-- **Bug hunt** mode for systematic debugging
-- **Preview** and **Browser** tabs
-- **GitHub connect** for automated commit & push
+- **Project map first** on every agent task
+- **Web + GitHub research** before building from scratch
+- **IDE**: file tree (git badges), multi-file tabs, Monaco editor, **side-by-side diff**
+- **Saved chats** in `.helix/sessions/`
+- **MCP plugin host** via `.helix/mcp.json`
+- **GitHub** connect → commit & push
+- **Preview / Browser / Bug hunt** tabs
+- **Desktop app** (Electron) that loads the **same UI** as the browser
 
-## Quick start
+## Quick start (browser)
 
 ```bash
 cp .env.example .env
 npm install
-ollama pull llama3.2   # optional local model
 npm run dev
 ```
 
-Open **http://127.0.0.1:5173**
+Open http://127.0.0.1:5173
 
-Desktop window:
+## Desktop app (same look as browser)
 
 ```bash
 npm run dev:electron
 ```
 
+### Installers (Windows / macOS / Linux)
+
+```bash
+npm run dist        # current platform
+npm run dist:win    # NSIS + portable
+npm run dist:mac    # dmg + zip
+npm run dist:linux  # AppImage + deb
+```
+
+Artifacts land in `release/`.
+
 ## GitHub
 
-1. Open the **GitHub** tab in the IDE
-2. Paste a personal access token with `repo` scope
-3. Use **Commit & Push**, or ask the agent to `git_commit` / `git_push`
+GitHub tab → paste a `repo`-scoped PAT → **Commit & Push**.  
+Stored in `.helix/secrets.json` (gitignored). Or set `GITHUB_TOKEN` in `.env`.
 
-Tokens are stored in `.helix/secrets.json` (gitignored). You can also set `GITHUB_TOKEN` in `.env`.
+## MCP
 
-## Skills
+Edit the **MCP** tab (writes `.helix/mcp.json`), then **Save config** / **Reconnect**.  
+Agent tools: `mcp_list_servers`, `mcp_call_tool`.
 
-| Skill | Role |
-| --- | --- |
-| Coding | Senior-engineer workflow: map → research → edit → verify |
-| Design | Distinctive UI craft |
-| Research | Find reusable libraries / snippets online |
-| Bug hunt | Reproduce, isolate, patch, verify |
+## Sessions
 
-## Agent tools
-
-`project_map`, `list_directory`, `read_file`, `write_file`, `search_files`, `run_terminal`, `web_search`, `github_code_search`, `web_fetch`, `git_commit`, `git_push`, plus plugins in `plugins/`.
+Chats auto-save under `.helix/sessions/`. Use **New** in the agent rail to start another thread.

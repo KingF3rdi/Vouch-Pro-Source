@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "example_memory": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-memory"
+      ],
+      "disabled": true
+    }
+  }
+}

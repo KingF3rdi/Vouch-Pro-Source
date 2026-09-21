@@ -15,6 +15,23 @@ import {
   saveSecrets,
   loadSecrets,
 } from "../agent/github.js";
+import { getFileDiff, getGitStatus } from "../agent/gitDiff.js";
+import {
+  createSession,
+  deleteSession,
+  getSession,
+  listSessions,
+  saveSession,
+  type StoredSession,
+} from "../agent/sessions.js";
+import {
+  ensureDefaultMcpConfig,
+  listMcpStates,
+  loadMcpConfig,
+  reconnectMcpServers,
+  saveMcpConfig,
+  type McpConfigFile,
+} from "../agent/mcp.js";
 import type { ProviderKind } from "../shared/types.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -58,8 +75,13 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "8mb" }));
 
+// Warm MCP connections from .helix/mcp.json (disabled servers are skipped)
+void reconnectMcpServers(getDefaultSettings().workspace).catch((error) => {
+  console.warn("[helix] MCP startup:", error instanceof Error ? error.message : error);
+});
+
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, name: "helix-agent", version: "0.2.0" });
+  res.json({ ok: true, name: "helix-agent", version: "0.3.0" });
 });
 
 app.get("/api/settings", (_req, res) => {
@@ -157,6 +179,122 @@ app.put("/api/fs/file", async (req, res) => {
       error: error instanceof Error ? error.message : "Write failed",
     });
   }
+});
+
+app.get("/api/git/status", async (req, res) => {
+  const workspace = workspaceFromQuery(
+    typeof req.query.workspace === "string" ? req.query.workspace : undefined
+  );
+  res.json({ files: await getGitStatus(workspace) });
+});
+
+app.get("/api/git/diff", async (req, res) => {
+  try {
+    const workspace = workspaceFromQuery(
+      typeof req.query.workspace === "string" ? req.query.workspace : undefined
+    );
+    const relative = typeof req.query.path === "string" ? req.query.path : "";
+    if (!relative) {
+      res.status(400).json({ error: "path required" });
+      return;
+    }
+    res.json(await getFileDiff(workspace, relative));
+  } catch (error) {
+    res.status(400).json({
+      error: error instanceof Error ? error.message : "Diff failed",
+    });
+  }
+});
+
+app.post("/api/git/diff", async (req, res) => {
+  try {
+    const workspace = workspaceFromQuery(req.body?.workspace);
+    const relative = String(req.body?.path ?? "");
+    if (!relative) {
+      res.status(400).json({ error: "path required" });
+      return;
+    }
+    res.json(await getFileDiff(workspace, relative, req.body?.content));
+  } catch (error) {
+    res.status(400).json({
+      error: error instanceof Error ? error.message : "Diff failed",
+    });
+  }
+});
+
+app.get("/api/sessions", async (req, res) => {
+  const workspace = workspaceFromQuery(
+    typeof req.query.workspace === "string" ? req.query.workspace : undefined
+  );
+  res.json({ sessions: await listSessions(workspace) });
+});
+
+app.post("/api/sessions", async (req, res) => {
+  const workspace = workspaceFromQuery(req.body?.workspace);
+  res.json({
+    session: await createSession(workspace, {
+      title: req.body?.title,
+      mode: req.body?.mode,
+      skillIds: req.body?.skillIds,
+    }),
+  });
+});
+
+app.get("/api/sessions/:id", async (req, res) => {
+  const workspace = workspaceFromQuery(
+    typeof req.query.workspace === "string" ? req.query.workspace : undefined
+  );
+  const session = await getSession(workspace, req.params.id);
+  if (!session) {
+    res.status(404).json({ error: "not found" });
+    return;
+  }
+  res.json({ session });
+});
+
+app.put("/api/sessions/:id", async (req, res) => {
+  const workspace = workspaceFromQuery(req.body?.workspace);
+  const existing = await getSession(workspace, req.params.id);
+  if (!existing) {
+    res.status(404).json({ error: "not found" });
+    return;
+  }
+  const next = await saveSession(workspace, {
+    ...existing,
+    ...(req.body as Partial<StoredSession>),
+    id: existing.id,
+  });
+  res.json({ session: next });
+});
+
+app.delete("/api/sessions/:id", async (req, res) => {
+  const workspace = workspaceFromQuery(
+    typeof req.query.workspace === "string" ? req.query.workspace : undefined
+  );
+  await deleteSession(workspace, req.params.id);
+  res.json({ ok: true });
+});
+
+app.get("/api/mcp", async (req, res) => {
+  const workspace = workspaceFromQuery(
+    typeof req.query.workspace === "string" ? req.query.workspace : undefined
+  );
+  const config = await ensureDefaultMcpConfig(workspace);
+  res.json({ config, servers: listMcpStates(config) });
+});
+
+app.put("/api/mcp/config", async (req, res) => {
+  const workspace = workspaceFromQuery(req.body?.workspace);
+  const config = await saveMcpConfig(workspace, req.body?.config as McpConfigFile);
+  const servers = await reconnectMcpServers(workspace);
+  res.json({ config, servers });
+});
+
+app.post("/api/mcp/reconnect", async (req, res) => {
+  const workspace = workspaceFromQuery(req.body?.workspace);
+  const servers = await reconnectMcpServers(workspace);
+  const config = await loadMcpConfig(workspace);
+  res.json({ config, servers });
 });
 
 app.get("/api/github/status", async (req, res) => {

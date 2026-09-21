@@ -1,7 +1,9 @@
 node_modules/
 dist/
+release/
 .env
 *.log
 .DS_Store
 .playwright-mcp/
 .helix/secrets.json
+.helix/sessions/

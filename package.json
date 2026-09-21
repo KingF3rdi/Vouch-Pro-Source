@@ -1,26 +1,78 @@
 {
   "name": "helix-agent",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "private": true,
-  "description": "Local coding AI agent with a Cursor/Claude-style UI, plugins, and built-in skills",
+  "description": "Local coding AI IDE with Cursor/Claude-style agent, MCP, diffs, and GitHub",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
     "dev": "concurrently -k \"npm:dev:server\" \"npm:dev:ui\"",
     "dev:server": "tsx watch src/server/index.ts",
     "dev:ui": "vite",
-    "dev:electron": "concurrently -k \"npm:dev:server\" \"npm:dev:ui\" \"wait-on http://127.0.0.1:5173 http://127.0.0.1:8787/api/health && electron .\"",
+    "dev:electron": "concurrently -k \"npm:dev:ui\" \"wait-on http://127.0.0.1:5173 && electron .\"",
     "build": "tsc -p tsconfig.server.json && vite build",
     "start": "tsx src/server/index.ts",
-    "typecheck": "tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.json --noEmit",
+    "pack": "npm run build && electron-builder --dir",
+    "dist": "npm run build && electron-builder",
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "dist:linux": "npm run build && electron-builder --linux"
+  },
+  "build": {
+    "appId": "dev.helix.agent",
+    "productName": "Helix",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "src/**/*",
+      "skills/**/*",
+      "plugins/**/*",
+      "package.json",
+      "node_modules/**/*"
+    ],
+    "extraResources": [],
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "linux": {
+      "category": "Development",
+      "target": [
+        "AppImage",
+        "deb"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.17",
     "@ai-sdk/openai": "^2.0.32",
     "@ai-sdk/react": "^2.0.48",
+    "@modelcontextprotocol/sdk": "^1.18.0",
     "@monaco-editor/react": "^4.7.0",
     "ai": "^5.0.48",
     "cors": "^2.8.5",
+    "diff": "^8.0.2",
     "express": "^5.1.0",
     "glob": "^11.0.3",
     "lucide-react": "^0.544.0",
@@ -28,10 +80,12 @@
     "react-dom": "^19.1.1",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
+    "tsx": "^4.20.5",
     "zod": "^4.1.5"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
+    "@types/diff": "^7.0.2",
     "@types/express": "^5.0.3",
     "@types/node": "^24.3.1",
     "@types/react": "^19.1.12",
@@ -39,7 +93,7 @@
     "@vitejs/plugin-react": "^5.0.2",
     "concurrently": "^9.2.1",
     "electron": "^38.0.0",
-    "tsx": "^4.20.5",
+    "electron-builder": "^26.0.12",
     "typescript": "^5.9.2",
     "vite": "^7.1.5",
     "wait-on": "^8.0.4"
