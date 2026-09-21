@@ -1,60 +1,47 @@
 # Helix architecture rules
 
-Strict front-end / back-end separation for this coding IDE with autonomous AI agents.
+Hybrid agent architecture for this coding IDE — **agents are not Python-only**.
 
 ## Tech stack
 
 | Layer | Languages & frameworks |
 | --- | --- |
-| **Back-end & agents** | Python — FastAPI, LangChain/CrewAI, Pydantic |
-| **Front-end & desktop UI** | TypeScript — React, Next.js (or Vite React), Monaco Editor, Tauri |
+| **TypeScript agents** (primary) | Node / Express, Vercel AI SDK, tool-calling in `src/agent/` |
+| **Python agents** (optional) | FastAPI, LangChain, Pydantic in `backend/` |
+| **Front-end & desktop UI** | TypeScript — React, Monaco, Electron/Tauri |
 
-## Rules (always)
+## Rules
 
-1. **Architecture strictness**
-   - AI logic, LLM orchestration, data processing, and agent tools → **Python only**
-   - UI, editor components, and client infrastructure → **TypeScript only**
+1. **Agents may be TypeScript and/or Python**
+   - Default chat/agent runtime: **TypeScript** (`src/agent` + `src/server`)
+   - Optional second runtime: **Python** FastAPI agents (`backend/`, port `HELIX_PYTHON_PORT`, default 8788)
+   - UI stays TypeScript; never put React/Monaco in Python
 
 2. **Communication**
-   - Structured JSON over **REST (FastAPI)** and/or **WebSockets** for realtime between TS client and Python agents
+   - Structured JSON over REST (and WebSockets where useful)
+   - Same IDE API shapes where both backends expose them
 
 3. **Type safety**
-   - Clean **Pydantic** models in Python
-   - Matching **TypeScript interfaces** for the same payloads
+   - Shared TypeScript types in `src/shared/`
+   - Pydantic models in Python when the Python runtime is used
 
 4. **Agent design**
-   - Modular Python agents with **tool use / function calling**
-   - Clear responsibilities and error boundaries per agent
+   - Modular tool-use agents with clear responsibilities and error boundaries
+   - Language of implementation is not a quality gate — use TS or Python as needed
 
 5. **Performance**
-   - Keep the TypeScript front-end non-blocking
-   - Offload compute-heavy work asynchronously to the Python back-end
+   - Keep the React UI non-blocking; stream agent work asynchronously
 
 ## Layout
 
 ```
-backend/                 # FastAPI + agents (Python only)
-  app/agents/            # CodingAgent + tools (function calling)
-  app/models/schemas.py  # Pydantic contracts
-  app/api/routes.py      # REST + WebSocket /api/ws/agent
-src/ui/                  # React IDE (TypeScript only)
-src/shared/api-contracts.ts  # Mirrored TS interfaces
-electron/                # Desktop shell (spawns Python uvicorn)
+src/agent/               # TypeScript coding agents + tools (primary)
+src/server/              # Express API + AI SDK chat stream
+src/ui/                  # React IDE
+backend/                 # Optional Python FastAPI agents
+electron/                # Desktop shell (spawns TS server by default)
 ```
-
-## Agent stream protocol
-
-Python emits `AgentEvent` (`status` | `token` | `tool_start` | `tool_result` | `error` | `done`) via:
-
-- `POST /api/chat` → NDJSON
-- `WS /api/ws/agent` → JSON frames (preferred)
-
-TypeScript must not call LLMs directly; it only renders events.
 
 ## Unlimited tokens
 
-Defaults (`HELIX_MAX_TOKENS=0`, `HELIX_MAX_STEPS=0`) remove soft caps so agents behave like Cursor/Claude Code:
-
-- Full provider output budget per model call
-- Tool loop continues until the model stops calling tools (hard cap `HELIX_HARD_STEP_CAP`)
-- File tools read complete files when `HELIX_TOOL_READ_MAX_CHARS=0`
+Defaults (`HELIX_MAX_TOKENS=0`, `HELIX_MAX_STEPS=0`) remove soft caps so agents behave like Cursor/Claude Code.

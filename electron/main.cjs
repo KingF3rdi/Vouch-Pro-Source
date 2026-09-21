@@ -5,8 +5,10 @@ const http = require("http");
 const fs = require("fs");
 
 const PORT = Number(process.env.HELIX_PORT || 8787);
+const PYTHON_PORT = Number(process.env.HELIX_PYTHON_PORT || 8788);
 const DEV_UI = process.env.HELIX_UI_URL || "http://127.0.0.1:5173";
 let serverProcess = null;
+let pythonProcess = null;
 let mainWindow = null;
 
 function waitForUrl(url, attempts = 80) {
@@ -29,6 +31,10 @@ function waitForUrl(url, attempts = 80) {
   });
 }
 
+function resolvePython() {
+  return process.env.HELIX_PYTHON || (process.platform === "win32" ? "python" : "python3");
+}
+
 function resolveBackendDir() {
   if (app.isPackaged) {
     const candidates = [
@@ -42,34 +48,67 @@ function resolveBackendDir() {
   return path.join(__dirname, "..", "backend");
 }
 
-function resolvePython() {
-  return process.env.HELIX_PYTHON || (process.platform === "win32" ? "python" : "python3");
-}
-
-function startServer() {
+/** Primary: TypeScript agent server (AI SDK). */
+function startTsServer() {
   if (serverProcess) return serverProcess;
-  const backendDir = resolveBackendDir();
+  const root = path.join(__dirname, "..");
   const env = {
     ...process.env,
     HELIX_PORT: String(PORT),
     HELIX_WORKSPACE: process.env.HELIX_WORKSPACE || (app.isPackaged ? app.getPath("userData") : process.cwd()),
     HELIX_DESKTOP: "1",
+    HELIX_MAX_TOKENS: process.env.HELIX_MAX_TOKENS || "0",
+    HELIX_MAX_STEPS: process.env.HELIX_MAX_STEPS || "0",
   };
 
-  serverProcess = spawn(
-    resolvePython(),
-    ["-m", "uvicorn", "main:app", "--host", "127.0.0.1", "--port", String(PORT)],
-    {
-      cwd: backendDir,
+  if (app.isPackaged) {
+    const appPath = app.getAppPath();
+    const tsxCli = path.join(appPath, "node_modules", "tsx", "dist", "cli.mjs");
+    const serverEntry = path.join(appPath, "src", "server", "index.ts");
+    serverProcess = spawn(process.execPath, [tsxCli, serverEntry], {
+      cwd: appPath,
+      env: { ...env, ELECTRON_RUN_AS_NODE: "1" },
+      stdio: "inherit",
+    });
+  } else {
+    serverProcess = spawn("npx", ["tsx", "src/server/index.ts"], {
+      cwd: root,
       env,
       stdio: "inherit",
-    }
-  );
+      shell: process.platform === "win32",
+    });
+  }
 
   serverProcess.on("exit", () => {
     serverProcess = null;
   });
   return serverProcess;
+}
+
+/** Optional: Python FastAPI agents on a separate port. */
+function startPythonAgents() {
+  if (process.env.HELIX_ENABLE_PYTHON_AGENTS === "0") return null;
+  if (pythonProcess) return pythonProcess;
+  const backendDir = resolveBackendDir();
+  if (!fs.existsSync(path.join(backendDir, "main.py"))) return null;
+
+  pythonProcess = spawn(
+    resolvePython(),
+    ["-m", "uvicorn", "main:app", "--host", "127.0.0.1", "--port", String(PYTHON_PORT)],
+    {
+      cwd: backendDir,
+      env: {
+        ...process.env,
+        HELIX_PORT: String(PYTHON_PORT),
+        HELIX_WORKSPACE: process.env.HELIX_WORKSPACE || (app.isPackaged ? app.getPath("userData") : process.cwd()),
+      },
+      stdio: "inherit",
+    }
+  );
+  pythonProcess.on("exit", () => {
+    pythonProcess = null;
+  });
+  return pythonProcess;
 }
 
 function createWindow(loadUrl) {
@@ -133,7 +172,8 @@ ipcMain.handle("window:close", () => {
 ipcMain.handle("window:isMaximized", () => Boolean(mainWindow?.isMaximized()));
 
 app.whenReady().then(async () => {
-  startServer();
+  startTsServer();
+  startPythonAgents();
   await waitForUrl(`http://127.0.0.1:${PORT}/api/health`);
 
   const url = app.isPackaged ? `http://127.0.0.1:${PORT}` : DEV_UI;
@@ -152,6 +192,10 @@ function shutdown() {
   if (serverProcess) {
     serverProcess.kill();
     serverProcess = null;
+  }
+  if (pythonProcess) {
+    pythonProcess.kill();
+    pythonProcess = null;
   }
 }
 

@@ -2,31 +2,32 @@
 
 Desktop coding IDE with autonomous AI agents.
 
-## Architecture (strict)
+## Architecture
+
+**Agents are not Python-only.**
 
 | Layer | Stack |
 | --- | --- |
-| **Back-end & agents** | Python — FastAPI, Pydantic, LangChain-ready tools |
-| **Front-end & desktop** | TypeScript — React, Monaco, Electron/Tauri |
+| **TypeScript agents (primary)** | Node / Express, Vercel AI SDK — `src/agent/` |
+| **Python agents (optional)** | FastAPI / LangChain — `backend/` on port 8788 |
+| **Front-end & desktop** | React, Monaco, Electron |
 
 See `ARCHITECTURE.md` and `AGENTS.md`.
 
 ## Quick start
 
 ```bash
-# Python agents API
-npm run backend:install
-# or: pip install -r backend/requirements.txt
-
-# UI + Python API
 export HELIX_WORKSPACE=$PWD
-npm run dev
+npm run dev          # TS agent API :8787 + UI
+# optional:
+npm run dev:all      # also start Python agents on :8788
 ```
 
 - UI: http://127.0.0.1:5173  
-- API: http://127.0.0.1:8787/api/health (`backend: python-fastapi`)
+- TS agents: http://127.0.0.1:8787/api/health (`backend: typescript-agent`)
+- Python agents (optional): http://127.0.0.1:8788/api/health
 
-Desktop (same UI):
+Desktop:
 
 ```bash
 npm run desktop
@@ -43,20 +44,6 @@ npm run desktop
 
 Set `AI_GATEWAY_API_KEY` (or OpenAI/Anthropic keys) in `.env`.
 
-## Unlimited tokens & frontier agent quality
+## Unlimited tokens
 
-Helix is tuned to match Cursor / Claude-style coding agents:
-
-- **Full tool-use loop** in Python (LangChain function calling): map → search → edit → build → ship
-- **`HELIX_MAX_TOKENS=0`** — no soft output cap (provider maximum)
-- **`HELIX_MAX_STEPS=0`** — keep tool-calling until the task is done (hard safety cap `HELIX_HARD_STEP_CAP`, default 1000)
-- **`HELIX_TOOL_READ_MAX_CHARS=0`** — tools read full files
-
-Quality equals the underlying engine: Helix Code/Astra/Fable need gateway or provider keys; Helix Local needs Ollama.
-
-```
-backend/               # FastAPI + Python agents / tools
-src/ui/                # React IDE (TypeScript)
-src/shared/            # TS interfaces mirroring Pydantic schemas
-ARCHITECTURE.md        # stack rules
-```
+- `HELIX_MAX_TOKENS=0` / `HELIX_MAX_STEPS=0` — no soft caps (hard step safety cap still applies)

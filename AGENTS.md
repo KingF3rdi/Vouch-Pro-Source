@@ -1,10 +1,9 @@
 # Agent instructions for Helix
 
-When generating or changing code in this repo, follow `ARCHITECTURE.md` strictly:
+Follow `ARCHITECTURE.md`:
 
-- Python for agents, LLM orchestration, tools, and data APIs (FastAPI + Pydantic).
-- TypeScript for UI, Monaco, client state, and Tauri desktop shell.
-- Never put agent/tool/LLM orchestration in TypeScript.
-- Never put React/Monaco/desktop chrome in Python.
-- Keep API contracts mirrored: Pydantic ↔ TypeScript interfaces.
-- Prefer WebSocket streams for agent tokens/tool events; REST for CRUD.
+- **Agents are not Python-only.** Prefer TypeScript agents in `src/agent/` for the IDE chat loop (AI SDK).
+- Python FastAPI agents in `backend/` are an optional second runtime — keep them working, don’t delete them.
+- UI, Monaco, and desktop chrome stay TypeScript.
+- Modular tool-use agents with clear error boundaries.
+- Unlimited token/step budget by default (`HELIX_MAX_TOKENS=0`, `HELIX_MAX_STEPS=0`).

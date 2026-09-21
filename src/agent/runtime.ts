@@ -102,10 +102,18 @@ export async function runAgentStream(input: RunAgentInput) {
     ...mergePluginTools(plugins),
   };
 
+  const maxStepsEnv = Number(process.env.HELIX_MAX_STEPS ?? "0");
+  const hardCap = Number(process.env.HELIX_HARD_STEP_CAP ?? "1000");
+  const maxSteps =
+    maxStepsEnv <= 0
+      ? hardCap
+      : Math.min(maxStepsEnv, hardCap);
+
   const system = [
     helixModelSystemPreamble({ ...profile, engine: resolvedEngine }),
-    "You are Helix, a local IDE coding agent.",
+    "You are Helix, a local IDE coding agent (TypeScript runtime).",
     modeBlock(mode),
+    "You have effectively unlimited output tokens and tool steps — finish the task fully.",
     "HARD RULES:",
     "1) Before every project task, use the injected project map and call project_map / list_directory / read_file as needed.",
     "2) Before building non-trivial features from scratch, search the web / GitHub for existing libraries or code to reuse.",
@@ -125,6 +133,6 @@ export async function runAgentStream(input: RunAgentInput) {
     system,
     messages: input.messages,
     tools,
-    stopWhen: stepCountIs(mode === "ship" ? 32 : 24),
+    stopWhen: stepCountIs(maxSteps),
   });
 }

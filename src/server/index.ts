@@ -93,7 +93,13 @@ void getDefaultSettings()
   });
 
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, name: "helix-agent", version: "0.5.0" });
+  res.json({
+    ok: true,
+    name: "helix-agent",
+    version: "0.6.0",
+    backend: "typescript-agent",
+    agents: ["typescript", "python-optional"],
+  });
 });
 
 app.get("/api/settings", async (_req, res) => {
