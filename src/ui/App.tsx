@@ -136,7 +136,6 @@ export function App() {
   }
 
   const workspaceLabel = settings?.workspace?.split(/[/\\]/).pop() || "workspace";
-  void workspaceLabel;
 
   return (
     <div className={`ide-shell${isDesktop ? " is-desktop" : ""}${isDesktop && window.helixDesktop?.platform === "darwin" ? " is-mac" : ""}`}>
