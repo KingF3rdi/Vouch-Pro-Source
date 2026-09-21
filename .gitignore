@@ -1,8 +1,6 @@
-__pycache__/
-*.pyc
-venv/
-.env
-*.db
 node_modules/
-.next/
-uploads/
+dist/
+.env
+*.log
+.DS_Store
+.playwright-mcp/

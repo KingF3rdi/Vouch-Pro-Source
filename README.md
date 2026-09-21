@@ -5,7 +5,6 @@ Local coding AI agent with a Cursor / Claude-style interface. Runs on your PC, w
 ## Quick start
 
 ```bash
-cd helix
 cp .env.example .env
 npm install
 
@@ -35,7 +34,7 @@ npm run dev:electron
 
 ## Configure
 
-Edit `helix/.env`:
+Edit `.env`:
 
 - `HELIX_PROVIDER=ollama|openai|anthropic`
 - `HELIX_WORKSPACE=/path/to/project` (defaults to the process cwd)
