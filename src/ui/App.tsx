@@ -47,12 +47,28 @@ export function App() {
       fetch("/api/models").then((r) => r.json()),
     ]).then(([settingsData, skillsData, pluginsData, mapData, modelsData]) => {
       setSettings(settingsData);
-      if (settingsData.helixModelId) setHelixModelId(settingsData.helixModelId);
-      else setHelixModelId("helix-free");
+      // Prefer Helix Own when free backends are ready — paid models without keys break chat
+      const freeReady = Boolean(modelsData.freeReady);
+      const savedId = settingsData.helixModelId || "helix-free";
+      const preferFree =
+        freeReady &&
+        (savedId === "helix-code" ||
+          savedId === "helix-astra" ||
+          savedId === "helix-fable") &&
+        !modelsData.gatewayConfigured &&
+        !modelsData.openaiConfigured &&
+        !modelsData.anthropicConfigured;
+      const nextId = preferFree ? "helix-free" : savedId;
+      setHelixModelId(nextId);
+      if (preferFree) {
+        void fetch("/api/models/selected", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ modelId: "helix-free" }),
+        });
+      }
       const models = modelsData.models ?? [];
-      const selected =
-        models.find((m: { id: string }) => m.id === (settingsData.helixModelId || "helix-free")) ??
-        models[0];
+      const selected = models.find((m: { id: string }) => m.id === nextId) ?? models[0];
       if (selected?.name) setModelLabel(selected.name);
       setSkills(skillsData.skills ?? []);
       setPlugins(pluginsData.plugins ?? []);
@@ -151,92 +167,91 @@ export function App() {
         }}
       />
 
-      {view === "agent" ? (
-        <>
-          <div className="agent-chrome titlebar-drag">
-            <div className="brand-mark no-drag">
-              <div className="brand-glyph" aria-hidden />
-              <div>
-                <strong>Helix</strong>
-                <span className="muted"> · Agent</span>
-              </div>
+      {/* Keep Agent mounted when switching to IDE — unmounting aborted chat/streams */}
+      <div className={`shell-layer${view === "agent" ? " is-active" : " is-hidden"}`}>
+        <div className="agent-chrome titlebar-drag">
+          <div className="brand-mark no-drag">
+            <div className="brand-glyph" aria-hidden />
+            <div>
+              <strong>Helix</strong>
+              <span className="muted"> · Agent</span>
             </div>
-            <div className="meta-pills no-drag">
-              <ModelPicker
-                selectedId={helixModelId}
-                onSelect={(id) => void selectHelixModel(id)}
-              />
-            </div>
-            <WindowControls />
           </div>
-          <AgentWindow
-            settings={settings}
-            helixModelId={helixModelId}
-            modelLabel={modelLabel}
-            skills={skills}
-            plugins={plugins}
-            activeSkills={activeSkills}
-            workspaceLabel={workspaceLabel}
-            onOpenIde={() => setView("ide")}
-          />
-        </>
-      ) : (
-        <>
-          <header className="ide-topbar titlebar-drag">
-            <button
-              type="button"
-              className="ghost-btn no-drag back-agent"
-              onClick={() => setView("agent")}
-            >
-              <ArrowLeft size={14} />
-              Agent
-            </button>
-            <div className="brand-mark no-drag">
-              <div className="brand-glyph" aria-hidden />
-              <div>
-                <strong>Helix</strong>
-                <span className="muted"> · IDE · {workspaceLabel}</span>
-              </div>
-            </div>
-            <div className="meta-pills no-drag">
-              <ModelPicker
-                selectedId={helixModelId}
-                onSelect={(id) => void selectHelixModel(id)}
-              />
-              <span className="pill">
-                scope <strong>build</strong>
-              </span>
-            </div>
-            <WindowControls />
-          </header>
+          <div className="meta-pills no-drag">
+            <ModelPicker
+              selectedId={helixModelId}
+              onSelect={(id) => void selectHelixModel(id)}
+            />
+          </div>
+          <WindowControls />
+        </div>
+        <AgentWindow
+          settings={settings}
+          helixModelId={helixModelId}
+          modelLabel={modelLabel}
+          skills={skills}
+          plugins={plugins}
+          activeSkills={activeSkills}
+          workspaceLabel={workspaceLabel}
+          onOpenIde={() => setView("ide")}
+        />
+      </div>
 
-          <div className="ide-body ide-body-only">
-            <aside className="ide-left">
-              <FileTree onOpenFile={(path) => void openFile(path)} activePath={activePath} />
-              <div className="map-card">
-                <div className="pane-label">Project map</div>
-                <pre>{mapSummary || "Loading map…"}</pre>
-              </div>
-            </aside>
-            <section className="ide-center">
-              <EditorPane
-                files={files}
-                activePath={activePath}
-                onSelect={setActivePath}
-                onClose={closeFile}
-                onChange={(path, value) =>
-                  setFiles((prev) =>
-                    prev.map((f) => (f.path === path ? { ...f, content: value } : f))
-                  )
-                }
-                onSave={(path) => void saveFile(path)}
-                showDiff={showDiff}
-                onToggleDiff={() => setShowDiff((v) => !v)}
-              />
-            </section>
+      <div className={`shell-layer${view === "ide" ? " is-active" : " is-hidden"}`}>
+        <header className="ide-topbar titlebar-drag">
+          <button
+            type="button"
+            className="ghost-btn no-drag back-agent"
+            onClick={() => setView("agent")}
+          >
+            <ArrowLeft size={14} />
+            Agent
+          </button>
+          <div className="brand-mark no-drag">
+            <div className="brand-glyph" aria-hidden />
+            <div>
+              <strong>Helix</strong>
+              <span className="muted"> · IDE · {workspaceLabel}</span>
+            </div>
           </div>
-        </>
-      )}
+          <div className="meta-pills no-drag">
+            <ModelPicker
+              selectedId={helixModelId}
+              onSelect={(id) => void selectHelixModel(id)}
+            />
+            <span className="pill">
+              scope <strong>build</strong>
+            </span>
+          </div>
+          <WindowControls />
+        </header>
+
+        <div className="ide-body ide-body-only">
+          <aside className="ide-left">
+            <FileTree onOpenFile={(path) => void openFile(path)} activePath={activePath} />
+            <div className="map-card">
+              <div className="pane-label">Project map</div>
+              <pre>{mapSummary || "Loading map…"}</pre>
+            </div>
+          </aside>
+          <section className="ide-center">
+            <EditorPane
+              files={files}
+              activePath={activePath}
+              onSelect={setActivePath}
+              onClose={closeFile}
+              onChange={(path, value) =>
+                setFiles((prev) =>
+                  prev.map((f) => (f.path === path ? { ...f, content: value } : f))
+                )
+              }
+              onSave={(path) => void saveFile(path)}
+              showDiff={showDiff}
+              onToggleDiff={() => setShowDiff((v) => !v)}
+            />
+          </section>
+        </div>
+      </div>
     </div>
   );
 }

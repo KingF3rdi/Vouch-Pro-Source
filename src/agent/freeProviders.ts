@@ -68,33 +68,40 @@ export function pickOllamaCoder(models: string[]): string {
   return coder ?? models[0] ?? "qwen2.5-coder:3b";
 }
 
-/** Sync create of OpenAI-compatible free clients (keys from env only). */
+/** Sync create of OpenAI-compatible free clients (keys from env only).
+ * Always use `.chat()` — default `provider(model)` hits OpenAI Responses API,
+ * which Ollama / Helix FT / Groq-compatible servers do not implement.
+ */
 export function createFreeLanguageModel(
   backend: "ollama" | "groq" | "openrouter" | "ft",
   modelId: string
 ): LanguageModel {
   if (backend === "ft") {
     const client = createOpenAI({
+      name: "helix-ft",
       baseURL: FT_BASE,
       apiKey: "helix-own-ft",
     });
-    return client(modelId);
+    return client.chat(modelId);
   }
   if (backend === "ollama") {
     const client = createOpenAI({
+      name: "ollama",
       baseURL: OLLAMA_BASE,
       apiKey: process.env.OLLAMA_API_KEY ?? "ollama",
     });
-    return client(modelId);
+    return client.chat(modelId);
   }
   if (backend === "groq") {
     const client = createOpenAI({
+      name: "groq",
       baseURL: "https://api.groq.com/openai/v1",
       apiKey: process.env.GROQ_API_KEY,
     });
-    return client(modelId);
+    return client.chat(modelId);
   }
   const client = createOpenAI({
+    name: "openrouter",
     baseURL: "https://openrouter.ai/api/v1",
     apiKey: process.env.OPENROUTER_API_KEY,
     headers: {
@@ -102,7 +109,7 @@ export function createFreeLanguageModel(
       "X-Title": "Helix Agent",
     },
   });
-  return client(modelId);
+  return client.chat(modelId);
 }
 
 export function freeBackendStatus() {

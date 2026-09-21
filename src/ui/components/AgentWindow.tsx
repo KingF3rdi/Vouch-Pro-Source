@@ -87,6 +87,8 @@ export function AgentWindow({
   const bottomRef = useRef<HTMLDivElement>(null);
   const saveTimer = useRef<number | null>(null);
   const lastLearnedCount = useRef(0);
+  const loadingSessionRef = useRef(false);
+  const skipEmptySaveRef = useRef(false);
   const workspace = settings?.workspace;
   const qs = workspace ? `?workspace=${encodeURIComponent(workspace)}` : "";
   const withWorkspace = (body: Record<string, unknown> = {}) =>
@@ -119,8 +121,12 @@ export function AgentWindow({
     []
   );
 
-  const { messages, sendMessage, status, error, setMessages } = useChat({
-    id: sessionId ?? "pending",
+  // Stable chat id — tying useChat to sessionId remounts and wipes messages
+  // when switching sessions / after ensureSession, so the chat looked empty.
+  const chatInstanceId = useRef(`helix-${crypto.randomUUID()}`);
+
+  const { messages, sendMessage, status, error, setMessages, stop } = useChat({
+    id: chatInstanceId.current,
     transport,
   });
   const busy = status === "submitted" || status === "streaming";
@@ -204,23 +210,48 @@ export function AgentWindow({
   }
 
   async function createNewSession() {
+    if (busy) {
+      try {
+        stop();
+      } catch {
+        // ignore
+      }
+    }
     const res = await fetch("/api/sessions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(withWorkspace({ mode, skillIds: activeSkills })),
     });
     const data = await res.json();
-    setSessionId(data.session.id);
     setMessages([]);
+    setSessionId(data.session.id);
     await refreshSessions();
   }
 
   async function loadSession(id: string) {
-    const res = await fetch(`/api/sessions/${id}${qs}`);
-    const data = await res.json();
-    if (!data.session) return;
-    setSessionId(data.session.id);
-    setMessages((data.session.messages as UIMessage[]) ?? []);
+    loadingSessionRef.current = true;
+    skipEmptySaveRef.current = true;
+    try {
+      const res = await fetch(`/api/sessions/${id}${qs}`);
+      const data = await res.json();
+      if (!data.session) return;
+      if (busy) {
+        try {
+          stop();
+        } catch {
+          // ignore
+        }
+      }
+      const loaded = (data.session.messages as UIMessage[]) ?? [];
+      setSessionId(data.session.id);
+      setMessages(loaded);
+      lastLearnedCount.current = loaded.length;
+    } finally {
+      window.setTimeout(() => {
+        loadingSessionRef.current = false;
+        skipEmptySaveRef.current = false;
+      }, 500);
+    }
   }
 
   async function removeSession(id: string) {
@@ -273,10 +304,14 @@ export function AgentWindow({
   }
 
   useEffect(() => {
+    if (!settings?.workspace) return;
     void ensureSession();
     void refreshLearning();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspace]);
+
+  // Don't start chats until settings (workspace + model) are loaded
+  const chatReady = Boolean(settings?.workspace && sessionId);
 
   useEffect(() => {
     function onPrefill(ev: Event) {
@@ -293,8 +328,12 @@ export function AgentWindow({
 
   useEffect(() => {
     if (!sessionId || status === "streaming" || status === "submitted") return;
+    if (loadingSessionRef.current) return;
+    // Don't overwrite a loaded session with empty messages during switch
+    if (skipEmptySaveRef.current && messages.length === 0) return;
     if (saveTimer.current) window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(() => {
+      if (loadingSessionRef.current) return;
       void fetch(`/api/sessions/${sessionId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -321,7 +360,7 @@ export function AgentWindow({
 
   function submitPrompt(text: string) {
     const trimmed = text.trim();
-    if (!trimmed || busy || !sessionId) return;
+    if (!trimmed || busy || !chatReady) return;
     void fetch("/api/learning/observe", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -498,8 +537,18 @@ export function AgentWindow({
 
           {error ? (
             <div className="agent-error">
-              {error.message}
-              <div className="muted">Check model settings in IDE, or set keys in `.env`.</div>
+              {error.message || "Chat failed"}
+              <div className="muted">
+                Model: {modelLabel}. Prefer <strong>Helix Own</strong> (local). For cloud models set
+                keys in <code>.env</code>. Switching Agent ↔ IDE no longer resets the chat.
+              </div>
+            </div>
+          ) : null}
+
+          {!settings ? (
+            <div className="agent-thinking-pulse">
+              <LoaderCircle size={14} className="spin" />
+              <span>Loading workspace…</span>
             </div>
           ) : null}
 
@@ -594,7 +643,7 @@ export function AgentWindow({
               <button
                 type="submit"
                 className="agent-send"
-                disabled={busy || !input.trim()}
+                disabled={busy || !input.trim() || !chatReady}
                 aria-label="Send"
               >
                 <ArrowUp size={16} />

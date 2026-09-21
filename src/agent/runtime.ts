@@ -128,10 +128,17 @@ export async function runAgentStream(input: RunAgentInput) {
 
   const saved = await loadHelixSettings(workspace);
   const profile = getHelixModel(input.helixModelId ?? saved.modelId);
-  const { model, resolvedEngine } = await resolveHelixLanguageModelAsync(profile, {
-    provider: input.provider,
-    model: input.model,
-  });
+  // When a Helix model id is set, resolve from that profile only —
+  // ignore stale provider/model echoes from the client settings object.
+  const { model, resolvedEngine } = await resolveHelixLanguageModelAsync(
+    profile,
+    input.helixModelId
+      ? undefined
+      : {
+          provider: input.provider,
+          model: input.model,
+        }
+  );
 
   const skillIds = [
     ...skillsForMode(mode, input.skillIds),

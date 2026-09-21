@@ -1980,3 +1980,19 @@ button {
 .agent-send:disabled {
   opacity: 0.35;
 }
+
+/* Keep Agent + IDE mounted; only one visible */
+.shell-layer {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.shell-layer.is-hidden {
+  display: none !important;
+}
+
+.shell-layer.is-active {
+  display: flex;
+}

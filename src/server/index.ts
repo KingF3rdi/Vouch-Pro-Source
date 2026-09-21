@@ -771,6 +771,11 @@ app.post("/api/chat", async (req, res) => {
     result.pipeUIMessageStreamToResponse(res, {
       sendReasoning: true,
       sendSources: false,
+      onError: (error) => {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error("[helix] chat stream error:", message);
+        return message;
+      },
     });
   } catch (error) {
     console.error("[helix] chat error", error);
