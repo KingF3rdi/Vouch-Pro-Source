@@ -39,41 +39,58 @@ export function App() {
   const [ftReady, setFtReady] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+
+    // Critical path first — unblock chat/workspace ASAP
+    void fetch("/api/settings")
+      .then((r) => r.json())
+      .then((settingsData) => {
+        if (cancelled) return;
+        setSettings(settingsData);
+        const savedId = settingsData.helixModelId || "helix-free";
+        setHelixModelId(savedId);
+      });
+
+    void fetch("/api/models")
+      .then((r) => r.json())
+      .then((modelsData) => {
+        if (cancelled) return;
+        setFtReady(Boolean(modelsData.ftReady));
+        const freeReady = Boolean(modelsData.freeReady);
+        setHelixModelId((savedId) => {
+          const preferFree =
+            freeReady &&
+            (savedId === "helix-code" ||
+              savedId === "helix-astra" ||
+              savedId === "helix-fable") &&
+            !modelsData.gatewayConfigured &&
+            !modelsData.openaiConfigured &&
+            !modelsData.anthropicConfigured;
+          const nextId = preferFree ? "helix-free" : savedId;
+          if (preferFree) {
+            void fetch("/api/models/selected", {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ modelId: "helix-free" }),
+            });
+          }
+          const models = modelsData.models ?? [];
+          const selected = models.find((m: { id: string }) => m.id === nextId) ?? models[0];
+          if (selected?.name) setModelLabel(selected.name);
+          return nextId;
+        });
+      });
+
+    // Secondary — does not block first paint / chat ready
     void Promise.all([
-      fetch("/api/settings").then((r) => r.json()),
       fetch("/api/skills").then((r) => r.json()),
       fetch("/api/plugins").then((r) => r.json()),
       fetch("/api/project/map").then((r) => r.json()),
-      fetch("/api/models").then((r) => r.json()),
-    ]).then(([settingsData, skillsData, pluginsData, mapData, modelsData]) => {
-      setSettings(settingsData);
-      // Prefer Helix Own when free backends are ready — paid models without keys break chat
-      const freeReady = Boolean(modelsData.freeReady);
-      const savedId = settingsData.helixModelId || "helix-free";
-      const preferFree =
-        freeReady &&
-        (savedId === "helix-code" ||
-          savedId === "helix-astra" ||
-          savedId === "helix-fable") &&
-        !modelsData.gatewayConfigured &&
-        !modelsData.openaiConfigured &&
-        !modelsData.anthropicConfigured;
-      const nextId = preferFree ? "helix-free" : savedId;
-      setHelixModelId(nextId);
-      if (preferFree) {
-        void fetch("/api/models/selected", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ modelId: "helix-free" }),
-        });
-      }
-      const models = modelsData.models ?? [];
-      const selected = models.find((m: { id: string }) => m.id === nextId) ?? models[0];
-      if (selected?.name) setModelLabel(selected.name);
+    ]).then(([skillsData, pluginsData, mapData]) => {
+      if (cancelled) return;
       setSkills(skillsData.skills ?? []);
       setPlugins(pluginsData.plugins ?? []);
       setMapSummary(mapData.summary ?? "");
-      setFtReady(Boolean(modelsData.ftReady));
       const ids = new Set([
         ...ESSENTIAL_SKILLS,
         ...((skillsData.skills as SkillSummary[]) ?? []).map((s) => s.id),
@@ -84,6 +101,10 @@ export function App() {
         )
       );
     });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function selectHelixModel(id: string) {

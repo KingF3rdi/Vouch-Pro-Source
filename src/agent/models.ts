@@ -363,10 +363,13 @@ export function helixModelSystemPreamble(profile: HelixModelProfile): string {
   return common.join("\n");
 }
 
-export async function listModelAvailability() {
-  const ollama = await probeOllama();
+let availabilityCache:
+  | { at: number; value: Awaited<ReturnType<typeof listModelAvailabilityUncached>> }
+  | null = null;
+
+async function listModelAvailabilityUncached() {
   const status = freeBackendStatus();
-  const ftReady = await probeFineTuneServer();
+  const [ollama, ftReady] = await Promise.all([probeOllama(), probeFineTuneServer()]);
   return {
     ...status,
     ollamaReady: ollama.ready,
@@ -374,4 +377,14 @@ export async function listModelAvailability() {
     ftReady,
     freeReady: ftReady || ollama.ready || status.groqConfigured || status.openrouterConfigured,
   };
+}
+
+export async function listModelAvailability() {
+  const now = Date.now();
+  if (availabilityCache && now - availabilityCache.at < 20_000) {
+    return availabilityCache.value;
+  }
+  const value = await listModelAvailabilityUncached();
+  availabilityCache = { at: now, value };
+  return value;
 }

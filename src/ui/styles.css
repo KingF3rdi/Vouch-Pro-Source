@@ -8,7 +8,7 @@
   --muted: #8b95a7;
   --accent: #3ecf8e;
   --accent-dim: rgba(62, 207, 142, 0.14);
-  --font-sans: "Sora", sans-serif;
+  --font-sans: "Segoe UI", "SF Pro Text", "Helvetica Neue", sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
   color-scheme: dark;
 }

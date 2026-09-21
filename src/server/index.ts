@@ -2,9 +2,10 @@ import express from "express";
 import cors from "cors";
 import path from "node:path";
 import fs from "node:fs/promises";
+import fsSync from "node:fs";
 import { fileURLToPath } from "node:url";
-import { convertToModelMessages, type UIMessage } from "ai";
-import { getDefaultSettings, runAgentStream, type AgentMode } from "../agent/runtime.js";
+import type { UIMessage } from "ai";
+import { getDefaultSettings } from "../agent/settings.js";
 import { listSkills } from "../agent/skills.js";
 import { loadPlugins } from "../agent/plugins.js";
 import { buildProjectMap } from "../agent/projectMap.js";
@@ -34,51 +35,21 @@ import {
   startRetrainJob,
 } from "../agent/learning.js";
 import {
-  ensureDefaultMcpConfig,
-  listMcpStates,
-  loadMcpConfig,
-  reconnectMcpServers,
-  saveMcpConfig,
-  type McpConfigFile,
-} from "../agent/mcp.js";
-import {
-  detectBuildPipeline,
-  listBuildArtifacts,
-  runFullShip,
-} from "../agent/build.js";
-import {
-  assistedHostingDeploy,
-  confirmHostingLogin,
-  getHostingSession,
-  getHostingSettings,
-  recommendHost,
-  saveHostingSettings,
-  startWebsiteSetup,
-} from "../agent/hosting.js";
-import {
-  discoverMemecoins,
-  loadTradingSettings,
-  resetPaperPortfolio,
-  runTradingCycle,
-  saveTradingSettings,
-  scanBestTrades,
-  tradingStatus,
-} from "../agent/trading.js";
-import {
   HELIX_MODELS,
   getHelixModel,
   loadHelixSettings,
   saveHelixSettings,
 } from "../agent/models.js";
-import type { ProviderKind } from "../shared/types.js";
+import type { AgentMode, ProviderKind } from "../shared/types.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.HELIX_PORT ?? 8787);
+const bootStarted = Date.now();
 
-async function loadEnvFile() {
+function loadEnvFileSync() {
   try {
     const envPath = path.resolve(process.cwd(), ".env");
-    const raw = await fs.readFile(envPath, "utf8");
+    const raw = fsSync.readFileSync(envPath, "utf8");
     for (const line of raw.split(/\r?\n/)) {
       const trimmed = line.trim();
       if (!trimmed || trimmed.startsWith("#")) continue;
@@ -106,19 +77,13 @@ function assertInside(workspace: string, targetPath: string) {
   return resolved;
 }
 
-await loadEnvFile();
+loadEnvFileSync();
 
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: "8mb" }));
 
-// Warm MCP connections from .helix/mcp.json (disabled servers are skipped)
-void getDefaultSettings()
-  .then((settings) => reconnectMcpServers(settings.workspace))
-  .catch((error) => {
-    console.warn("[helix] MCP startup:", error instanceof Error ? error.message : error);
-  });
-
+// Health first — Electron polls this to open the UI
 app.get("/api/health", (_req, res) => {
   res.json({
     ok: true,
@@ -126,6 +91,7 @@ app.get("/api/health", (_req, res) => {
     version: "0.6.0",
     backend: "typescript-agent",
     agents: ["typescript", "python-optional"],
+    bootMs: Date.now() - bootStarted,
   });
 });
 
@@ -415,21 +381,24 @@ app.get("/api/mcp", async (req, res) => {
   const workspace = workspaceFromQuery(
     typeof req.query.workspace === "string" ? req.query.workspace : undefined
   );
-  const config = await ensureDefaultMcpConfig(workspace);
-  res.json({ config, servers: listMcpStates(config) });
+  const mcp = await import("../agent/mcp.js");
+  const config = await mcp.ensureDefaultMcpConfig(workspace);
+  res.json({ config, servers: mcp.listMcpStates(config) });
 });
 
 app.put("/api/mcp/config", async (req, res) => {
   const workspace = workspaceFromQuery(req.body?.workspace);
-  const config = await saveMcpConfig(workspace, req.body?.config as McpConfigFile);
-  const servers = await reconnectMcpServers(workspace);
+  const mcp = await import("../agent/mcp.js");
+  const config = await mcp.saveMcpConfig(workspace, req.body?.config);
+  const servers = await mcp.reconnectMcpServers(workspace);
   res.json({ config, servers });
 });
 
 app.post("/api/mcp/reconnect", async (req, res) => {
   const workspace = workspaceFromQuery(req.body?.workspace);
-  const servers = await reconnectMcpServers(workspace);
-  const config = await loadMcpConfig(workspace);
+  const mcp = await import("../agent/mcp.js");
+  const servers = await mcp.reconnectMcpServers(workspace);
+  const config = await mcp.loadMcpConfig(workspace);
   res.json({ config, servers });
 });
 
@@ -437,16 +406,18 @@ app.get("/api/ship/pipeline", async (req, res) => {
   const workspace = workspaceFromQuery(
     typeof req.query.workspace === "string" ? req.query.workspace : undefined
   );
-  res.json(await detectBuildPipeline(workspace));
+  const build = await import("../agent/build.js");
+  res.json(await build.detectBuildPipeline(workspace));
 });
 
 app.get("/api/ship/artifacts", async (req, res) => {
   const workspace = workspaceFromQuery(
     typeof req.query.workspace === "string" ? req.query.workspace : undefined
   );
-  const pipeline = await detectBuildPipeline(workspace);
+  const build = await import("../agent/build.js");
+  const pipeline = await build.detectBuildPipeline(workspace);
   res.json({
-    artifacts: await listBuildArtifacts(workspace, pipeline.artifactGlobs),
+    artifacts: await build.listBuildArtifacts(workspace, pipeline.artifactGlobs),
     pipeline,
   });
 });
@@ -454,7 +425,8 @@ app.get("/api/ship/artifacts", async (req, res) => {
 app.post("/api/ship/run", async (req, res) => {
   try {
     const workspace = workspaceFromQuery(req.body?.workspace);
-    res.json(await runFullShip(workspace));
+    const build = await import("../agent/build.js");
+    res.json(await build.runFullShip(workspace));
   } catch (error) {
     res.status(500).json({
       error: error instanceof Error ? error.message : "Ship failed",
@@ -466,8 +438,9 @@ app.get("/api/hosting/status", async (req, res) => {
   const workspace = workspaceFromQuery(
     typeof req.query.workspace === "string" ? req.query.workspace : undefined
   );
-  const settings = await getHostingSettings(workspace);
-  const session = await getHostingSession(workspace);
+  const hosting = await import("../agent/hosting.js");
+  const settings = await hosting.getHostingSettings(workspace);
+  const session = await hosting.getHostingSession(workspace);
   res.json({
     allowCredentialedSetup: settings.allowCredentialedSetup,
     preferredHost: settings.preferredHost,
@@ -482,7 +455,8 @@ app.get("/api/hosting/status", async (req, res) => {
 app.put("/api/hosting/settings", async (req, res) => {
   try {
     const workspace = workspaceFromQuery(req.body?.workspace);
-    const settings = await saveHostingSettings(workspace, {
+    const hosting = await import("../agent/hosting.js");
+    const settings = await hosting.saveHostingSettings(workspace, {
       allowCredentialedSetup: Boolean(req.body?.allowCredentialedSetup),
       preferredHost: req.body?.preferredHost,
       vercelToken: typeof req.body?.vercelToken === "string" ? req.body.vercelToken : undefined,
@@ -515,15 +489,17 @@ app.get("/api/hosting/recommend", async (req, res) => {
   const workspace = workspaceFromQuery(
     typeof req.query.workspace === "string" ? req.query.workspace : undefined
   );
-  res.json(await recommendHost(workspace));
+  const hosting = await import("../agent/hosting.js");
+  res.json(await hosting.recommendHost(workspace));
 });
 
 app.post("/api/hosting/start", async (req, res) => {
   try {
     const workspace = workspaceFromQuery(req.body?.workspace);
     const mode = req.body?.mode === "credentialed" ? "credentialed" : "assisted";
+    const hosting = await import("../agent/hosting.js");
     res.json(
-      await startWebsiteSetup(workspace, {
+      await hosting.startWebsiteSetup(workspace, {
         mode,
         provider: req.body?.provider,
         projectName: req.body?.projectName,
@@ -540,7 +516,8 @@ app.post("/api/hosting/start", async (req, res) => {
 app.post("/api/hosting/confirm-login", async (req, res) => {
   try {
     const workspace = workspaceFromQuery(req.body?.workspace);
-    res.json(await confirmHostingLogin(workspace));
+    const hosting = await import("../agent/hosting.js");
+    res.json(await hosting.confirmHostingLogin(workspace));
   } catch (error) {
     res.status(500).json({
       error: error instanceof Error ? error.message : "Confirm login failed",
@@ -551,8 +528,9 @@ app.post("/api/hosting/confirm-login", async (req, res) => {
 app.post("/api/hosting/assisted-deploy", async (req, res) => {
   try {
     const workspace = workspaceFromQuery(req.body?.workspace);
+    const hosting = await import("../agent/hosting.js");
     res.json(
-      await assistedHostingDeploy(workspace, {
+      await hosting.assistedHostingDeploy(workspace, {
         projectName: req.body?.projectName,
         relativeRoot: req.body?.relativeRoot,
       })
@@ -569,7 +547,8 @@ app.get("/api/trading/status", async (req, res) => {
     const workspace = workspaceFromQuery(
       typeof req.query.workspace === "string" ? req.query.workspace : undefined
     );
-    res.json(await tradingStatus(workspace));
+    const trading = await import("../agent/trading.js");
+    res.json(await trading.tradingStatus(workspace));
   } catch (error) {
     res.status(500).json({
       error: error instanceof Error ? error.message : "Trading status failed",
@@ -580,7 +559,8 @@ app.get("/api/trading/status", async (req, res) => {
 app.put("/api/trading/settings", async (req, res) => {
   try {
     const workspace = workspaceFromQuery(req.body?.workspace);
-    const settings = await saveTradingSettings(workspace, req.body ?? {});
+    const trading = await import("../agent/trading.js");
+    const settings = await trading.saveTradingSettings(workspace, req.body ?? {});
     res.json({
       ok: true,
       settings: {
@@ -601,7 +581,8 @@ app.put("/api/trading/settings", async (req, res) => {
 app.post("/api/trading/scan", async (req, res) => {
   try {
     const workspace = workspaceFromQuery(req.body?.workspace);
-    res.json(await scanBestTrades(workspace, req.body?.symbols));
+    const trading = await import("../agent/trading.js");
+    res.json(await trading.scanBestTrades(workspace, req.body?.symbols));
   } catch (error) {
     res.status(500).json({
       error: error instanceof Error ? error.message : "Trading scan failed",
@@ -613,7 +594,8 @@ app.post("/api/trading/discover-memes", async (req, res) => {
   try {
     const workspace = workspaceFromQuery(req.body?.workspace);
     const limit = Number(req.body?.limit ?? 15);
-    res.json(await discoverMemecoins(workspace, limit));
+    const trading = await import("../agent/trading.js");
+    res.json(await trading.discoverMemecoins(workspace, limit));
   } catch (error) {
     res.status(500).json({
       error: error instanceof Error ? error.message : "Meme discovery failed",
@@ -624,7 +606,8 @@ app.post("/api/trading/discover-memes", async (req, res) => {
 app.post("/api/trading/cycle", async (req, res) => {
   try {
     const workspace = workspaceFromQuery(req.body?.workspace);
-    res.json(await runTradingCycle(workspace));
+    const trading = await import("../agent/trading.js");
+    res.json(await trading.runTradingCycle(workspace));
   } catch (error) {
     res.status(500).json({
       error: error instanceof Error ? error.message : "Trading cycle failed",
@@ -635,7 +618,8 @@ app.post("/api/trading/cycle", async (req, res) => {
 app.post("/api/trading/reset", async (req, res) => {
   try {
     const workspace = workspaceFromQuery(req.body?.workspace);
-    res.json({ ok: true, portfolio: await resetPaperPortfolio(workspace) });
+    const trading = await import("../agent/trading.js");
+    res.json({ ok: true, portfolio: await trading.resetPaperPortfolio(workspace) });
   } catch (error) {
     res.status(500).json({
       error: error instanceof Error ? error.message : "Reset failed",
@@ -647,7 +631,8 @@ app.get("/api/trading/settings", async (req, res) => {
   const workspace = workspaceFromQuery(
     typeof req.query.workspace === "string" ? req.query.workspace : undefined
   );
-  const settings = await loadTradingSettings(workspace);
+  const trading = await import("../agent/trading.js");
+  const settings = await trading.loadTradingSettings(workspace);
   res.json({
     ...settings,
     binanceApiKey: undefined,
@@ -758,6 +743,11 @@ app.post("/api/chat", async (req, res) => {
       return;
     }
 
+    const [{ convertToModelMessages }, { runAgentStream }] = await Promise.all([
+      import("ai"),
+      import("../agent/runtime.js"),
+    ]);
+
     const result = await runAgentStream({
       messages: convertToModelMessages(messages),
       skillIds,
@@ -796,11 +786,15 @@ app.get(/^(?!\/api).*/, (_req, res, next) => {
 });
 
 app.listen(PORT, "127.0.0.1", () => {
-  void getDefaultSettings().then((settings) => {
-    console.log(`Helix agent listening on http://127.0.0.1:${PORT}`);
-    console.log(
-      `Helix model: ${settings.helixModelName} (${settings.helixModelId}) → ${settings.model}`
-    );
-    console.log(`Workspace: ${settings.workspace}`);
-  });
+  console.log(
+    `Helix agent listening on http://127.0.0.1:${PORT} (boot ${Date.now() - bootStarted}ms)`
+  );
+  void getDefaultSettings()
+    .then((settings) => {
+      console.log(
+        `Helix model: ${settings.helixModelName} (${settings.helixModelId}) → ${settings.model}`
+      );
+      console.log(`Workspace: ${settings.workspace}`);
+    })
+    .catch(() => undefined);
 });

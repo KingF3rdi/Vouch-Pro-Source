@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 /**
  * First-run welcome — one clear action to start Helix Own.
@@ -10,11 +10,11 @@ export function WelcomeGate({
   onStart: () => void;
   trained: boolean;
 }) {
-  const [hidden, setHidden] = useState(false);
-
-  useEffect(() => {
-    if (localStorage.getItem("helix.welcome.done") === "1") setHidden(true);
-  }, []);
+  const [hidden, setHidden] = useState(
+    () =>
+      typeof localStorage !== "undefined" &&
+      localStorage.getItem("helix.welcome.done") === "1"
+  );
 
   if (hidden) return null;
 

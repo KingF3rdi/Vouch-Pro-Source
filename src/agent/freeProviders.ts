@@ -22,7 +22,7 @@ const OLLAMA_TAGS = (process.env.OLLAMA_BASE_URL ?? "http://127.0.0.1:11434/v1")
 export async function probeFineTuneServer(): Promise<boolean> {
   try {
     const res = await fetch(FT_BASE.replace(/\/v1\/?$/, "/health"), {
-      signal: AbortSignal.timeout(1200),
+      signal: AbortSignal.timeout(400),
     });
     if (!res.ok) return false;
     const data = (await res.json()) as { ok?: boolean };
@@ -34,7 +34,7 @@ export async function probeFineTuneServer(): Promise<boolean> {
 
 export async function probeOllama(): Promise<{ ready: boolean; models: string[] }> {
   try {
-    const res = await fetch(OLLAMA_TAGS, { signal: AbortSignal.timeout(1500) });
+    const res = await fetch(OLLAMA_TAGS, { signal: AbortSignal.timeout(400) });
     if (!res.ok) return { ready: false, models: [] };
     const data = (await res.json()) as { models?: Array<{ name?: string }> };
     const models = (data.models ?? []).map((m) => m.name ?? "").filter(Boolean);

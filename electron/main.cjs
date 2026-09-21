@@ -28,7 +28,7 @@ function logLine(message) {
   console.log(message);
 }
 
-function waitForUrl(url, attempts = 160) {
+function waitForUrl(url, attempts = 200, intervalMs = 40) {
   return new Promise((resolve, reject) => {
     let left = attempts;
     const tick = () => {
@@ -38,11 +38,15 @@ function waitForUrl(url, attempts = 160) {
         else retry();
       });
       req.on("error", retry);
+      req.setTimeout(800, () => {
+        req.destroy();
+        retry();
+      });
     };
     const retry = () => {
       left -= 1;
       if (left <= 0) reject(new Error(`Timed out waiting for ${url}`));
-      else setTimeout(tick, 250);
+      else setTimeout(tick, intervalMs);
     };
     tick();
   });
@@ -89,7 +93,6 @@ async function startPackagedServerInProcess(appRoot) {
     logLine(`chdir failed: ${err.message}`);
   }
 
-  // Prefer app node_modules when resolving deps from the bundled tree
   const prevPaths = Module._nodeModulePaths;
   Module._nodeModulePaths = function (from) {
     const paths = prevPaths.call(this, from);
@@ -137,9 +140,9 @@ function createWindow(loadUrl) {
     height: 900,
     minWidth: 1100,
     minHeight: 700,
-    backgroundColor: "#0b0d10",
+    backgroundColor: "#121212",
     title: "Helix",
-    show: true,
+    show: false,
     frame: false,
     autoHideMenuBar: true,
     trafficLightPosition: { x: 16, y: 16 },
@@ -149,10 +152,15 @@ function createWindow(loadUrl) {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
+      backgroundThrottling: false,
     },
   });
 
   Menu.setApplicationMenu(null);
+
+  mainWindow.once("ready-to-show", () => {
+    mainWindow?.show();
+  });
 
   mainWindow.on("maximize", () => mainWindow.webContents.send("window:maximized", true));
   mainWindow.on("unmaximize", () => mainWindow.webContents.send("window:maximized", false));
@@ -169,11 +177,13 @@ function showBootPage(title, body) {
   const html = `data:text/html;charset=utf-8,${encodeURIComponent(`<!doctype html>
 <html><head><meta charset="utf-8"/><title>Helix</title>
 <style>
-  html,body{height:100%;margin:0;background:#0b0d10;color:#e8ecf3;font:15px/1.45 system-ui,sans-serif}
+  html,body{height:100%;margin:0;background:#121212;color:#e8ecf3;font:15px/1.45 Segoe UI,system-ui,sans-serif}
   main{min-height:100%;display:grid;place-content:center;gap:.75rem;padding:2rem;text-align:center}
   h1{margin:0;font-size:1.6rem;letter-spacing:-.03em}
   p{margin:0;opacity:.75;max-width:36rem}
-</style></head><body><main><h1>${title}</h1><p>${body}</p></main></body></html>`)}`;
+  .dot{width:.55rem;height:.55rem;border-radius:999px;background:#3ecf8e;margin:.4rem auto 0;animation:pulse 1s ease infinite}
+  @keyframes pulse{50%{opacity:.35;transform:scale(.85)}}
+</style></head><body><main><h1>${title}</h1><p>${body}</p><div class="dot"></div></main></body></html>`)}`;
   createWindow(html);
 }
 
@@ -192,6 +202,7 @@ ipcMain.handle("window:close", () => {
 ipcMain.handle("window:isMaximized", () => Boolean(mainWindow?.isMaximized()));
 
 app.whenReady().then(async () => {
+  const t0 = Date.now();
   process.on("uncaughtException", (error) => {
     logLine(`uncaughtException: ${error?.stack || error}`);
   });
@@ -200,7 +211,7 @@ app.whenReady().then(async () => {
   });
 
   logLine(`ready packaged=${app.isPackaged} platform=${process.platform} exe=${process.execPath}`);
-  showBootPage("Helix", "Starting local agent…");
+  showBootPage("Helix", "Starting…");
 
   try {
     if (app.isPackaged) {
@@ -210,15 +221,15 @@ app.whenReady().then(async () => {
     } else {
       startDevServer();
     }
-
     await waitForUrl(`http://127.0.0.1:${PORT}/api/health`);
-    logLine("health ok");
+    logLine(`health ok in ${Date.now() - t0}ms`);
 
     const url = app.isPackaged ? `http://127.0.0.1:${PORT}` : DEV_UI;
     if (!app.isPackaged) {
       await waitForUrl(DEV_UI).catch(() => undefined);
     }
     await mainWindow.loadURL(url);
+    logLine(`ui loaded in ${Date.now() - t0}ms`);
   } catch (error) {
     const logPath = path.join(app.getPath("userData"), "helix-desktop.log");
     const message = error instanceof Error ? error.message : String(error);
@@ -233,6 +244,7 @@ app.whenReady().then(async () => {
           `<h1 style="font-family:system-ui">Start failed</h1><pre>${message}\n\n${logPath}</pre>`
         )}`
       );
+      mainWindow.show();
     }
   }
 });

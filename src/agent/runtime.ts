@@ -27,9 +27,11 @@ import {
   resolveHelixLanguageModelAsync,
   type HelixModelId,
 } from "./models.js";
+import { getDefaultSettings } from "./settings.js";
 import type { AgentMode, ProviderKind } from "../shared/types.js";
 
 export type { AgentMode };
+export { getDefaultSettings };
 
 export type RunAgentInput = {
   messages: ModelMessage[];
@@ -40,20 +42,6 @@ export type RunAgentInput = {
   helixModelId?: HelixModelId | string;
   mode?: AgentMode;
 };
-
-export async function getDefaultSettings() {
-  const workspace = path.resolve(process.env.HELIX_WORKSPACE ?? process.cwd());
-  const saved = await loadHelixSettings(workspace);
-  const profile = getHelixModel(saved.modelId);
-
-  return {
-    provider: profile.route === "gateway" ? "gateway" : profile.route === "ollama" ? "ollama" : profile.route,
-    model: profile.engine,
-    helixModelId: profile.id,
-    helixModelName: profile.name,
-    workspace,
-  };
-}
 
 function skillsForMode(mode: AgentMode, skillIds?: string[]) {
   if (skillIds?.length) return skillIds;
