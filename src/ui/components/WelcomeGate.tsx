@@ -24,8 +24,8 @@ export function WelcomeGate({
         <div className="brand-glyph" aria-hidden />
         <h1>Helix Own</h1>
         <p>
-          Dein Builder für Apps, Websites, Games, Mods und jeden Code.
-          Ein Klick — verstehen, bauen, prüfen. Lernt lokal aus allem, was du schickst.
+          Agent-Fenster wie gewohnt — erstmal nur Build in der IDE: Dateien, Features,
+          TypeScript, Compile. Hosting & Trading kommen später.
           {trained ? " LoRA-Weights geladen." : " Startet mit lokalem Modell."}
         </p>
         <button
