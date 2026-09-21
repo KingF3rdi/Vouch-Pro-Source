@@ -133,7 +133,7 @@ const SLASH_COMMANDS: SlashCommand[] = [
     hint: "Build-Fehler beheben",
     kind: "prompt",
     value:
-      "Run quality_check and ship_project. Fix every failure until typecheck and production build succeed.",
+      "Call fix_failed_build now. Fix every diagnostic with apply_patch, then re-run quality_check and ship_project until ok:true. Do not stop while mustFix is true.",
   },
   {
     id: "test",

@@ -71,16 +71,18 @@ export function ShipPanel({
           failedStep?.stderr?.slice(-2000) ||
           failedStep?.stdout?.slice(-1200) ||
           "Build failed";
-        setFailed({
+        const failInfo = {
           step: data.failedStep ?? failedStep?.step,
           errorSummary: String(summary),
-        });
+        };
+        setFailed(failInfo);
         setLog(
           JSON.stringify(
             {
               ok: false,
               failedStep: data.failedStep?.id ?? failedStep?.step?.id,
               errorSummary: String(summary).slice(-800),
+              diagnostics: data.diagnostics ?? [],
               steps: results.map((r) => ({
                 id: r.step?.id,
                 ok: r.ok,
@@ -91,6 +93,13 @@ export function ShipPanel({
             2
           )
         );
+        // Auto-hand off to the agent so failed builds get fixed, not left red.
+        if (onAskAgent) {
+          const stepLabel = failInfo.step?.label || failInfo.step?.command || "build";
+          onAskAgent(
+            `The ship/build FAILED on “${stepLabel}”. You MUST fix it now: call fix_failed_build, read diagnostics, apply_patch each error, and re-run ship_project until ok:true. Do not stop while mustFix is true.\n\nError:\n${failInfo.errorSummary.slice(-1800)}`
+          );
+        }
       } else {
         setFailed(null);
         setLog(

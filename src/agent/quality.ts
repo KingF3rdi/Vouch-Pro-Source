@@ -6,6 +6,7 @@ import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { enrichFailure } from "./diagnostics.js";
 
 const execAsync = promisify(exec);
 
@@ -99,11 +100,26 @@ export async function runQualityCheck(workspace: string): Promise<QualityReport>
   }
 
   const ok = checks.every((c) => c.ok);
+  if (ok) {
+    return {
+      ok: true,
+      checks,
+      summary: `All ${checks.length} quality checks passed.`,
+      mustFix: false as const,
+      diagnostics: [] as ReturnType<typeof enrichFailure>["diagnostics"],
+    };
+  }
+
+  const failedText = checks
+    .filter((c) => !c.ok)
+    .map((c) => `${c.id}\n${c.stderr}\n${c.stdout}`)
+    .join("\n");
+  const enrich = enrichFailure(failedText);
+
   return {
-    ok,
+    ok: false,
     checks,
-    summary: ok
-      ? `All ${checks.length} quality checks passed.`
-      : `Quality failed at: ${checks.filter((c) => !c.ok).map((c) => c.id).join(", ")}`,
+    summary: `Quality failed at: ${checks.filter((c) => !c.ok).map((c) => c.id).join(", ")}. Fix diagnostics then re-run quality_check.`,
+    ...enrich,
   };
 }

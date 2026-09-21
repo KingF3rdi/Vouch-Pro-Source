@@ -5,6 +5,8 @@ import { promisify } from "node:util";
 import { tool } from "ai";
 import { z } from "zod";
 import { glob } from "glob";
+import { enrichFailure } from "./diagnostics.js";
+import { runQualityCheck } from "./quality.js";
 
 const execAsync = promisify(exec);
 
@@ -243,20 +245,23 @@ export async function runFullShip(workspace: string) {
     if (!result.ok) {
       const stderr = String(result.stderr ?? "");
       const stdout = String(result.stdout ?? "");
+      const enrich = enrichFailure(`${stderr}\n${stdout}`);
       return {
         ok: false,
         failedStep: step,
         errorSummary: (stderr || stdout || "Build failed").slice(-2_500),
-        hint: "Fix the code (apply_patch / write_file), then call ship_project or run_build_step again until ok.",
+        hint: "MUST FIX: apply_patch / write_file for each diagnostic, then call ship_project or fix_failed_build again until ok:true. Do not stop.",
         pipeline,
         results,
         artifacts: await listBuildArtifacts(workspace, pipeline.artifactGlobs),
+        ...enrich,
       };
     }
   }
 
   return {
     ok: true,
+    mustFix: false as const,
     pipeline,
     results,
     artifacts: await listBuildArtifacts(workspace, pipeline.artifactGlobs),
@@ -285,9 +290,43 @@ export function createBuildTools(workspace: string) {
 
     ship_project: tool({
       description:
-        "Compile and package the project end-to-end: typecheck → build/compile → package installers/binaries, then list artifacts.",
+        "Compile and package the project end-to-end: typecheck → build/compile → package. If ok:false / mustFix:true, you MUST fix diagnostics and re-run until green.",
       inputSchema: z.object({}),
       execute: async () => runFullShip(workspace),
+    }),
+
+    fix_failed_build: tool({
+      description:
+        "Diagnose the current failed typecheck/build: run quality_check + detect pipeline typecheck, return structured diagnostics. Then fix with apply_patch and re-run until ok.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        const quality = await runQualityCheck(workspace);
+        if (!quality.ok) {
+          return {
+            ok: false as const,
+            phase: "quality_check",
+            ...quality,
+            instruction:
+              "Fix every diagnostic with apply_patch, then call fix_failed_build or quality_check again. Do not stop while mustFix is true.",
+          };
+        }
+        const ship = await runFullShip(workspace);
+        if (!ship.ok) {
+          return {
+            ...ship,
+            phase: "ship_project",
+            instruction:
+              "Fix every diagnostic with apply_patch / write_file, then call ship_project or fix_failed_build again until ok:true.",
+          };
+        }
+        return {
+          ok: true as const,
+          mustFix: false as const,
+          phase: "done",
+          summary: "Quality and ship are green.",
+          artifacts: ship.artifacts,
+        };
+      },
     }),
 
     list_build_artifacts: tool({

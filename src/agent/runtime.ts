@@ -174,11 +174,12 @@ export async function runAgentStream(input: RunAgentInput) {
     "Communication: short status updates between tool batches. Prefer concrete file paths and commands over essays.",
     modeBlock(mode),
     "You have effectively unlimited output tokens and tool steps — finish the task fully.",
+    "BUILD FAILURE RULE (non-negotiable): If quality_check, ship_project, run_build_step, or fix_failed_build returns ok:false or mustFix:true, you MUST keep fixing (read_file → apply_patch → re-run) until ok:true. Never end the turn with a failed build. Never say you are done while mustFix is true.",
     "HARD RULES:",
     "1) Call project_map or understand_project before non-trivial work on existing repos.",
     "2) For greenfield products, use scaffold_project with the matching kind (website, game-canvas, mod-fabric, electron-app, fullstack-ts, …) then fill real logic. Create folders with create_directory and files with write_file / apply_patch.",
     "3) Prefer precise edits. Never invent host APIs (Fabric/Forge, browser MV3, game engines) — read docs or samples first.",
-    "4) After meaningful edits, call quality_check. If typecheck/build/ship fails, read the stderr, fix the code, and re-run until green — do not leave failed builds.",
+    "4) After meaningful edits, call quality_check. On failure call fix_failed_build and repair every diagnostic.",
     "5) After shipping or meaningful work, offer git_commit + git_push when GitHub is connected.",
     "6) Optimize for a playable/runnable slice early — then harden.",
     "7) For going live: use hosting_* tools. Two modes — credentialed (only if user allowed + saved host tokens) or assisted (open host on their PC; they log in; you click through).",
@@ -192,6 +193,8 @@ export async function runAgentStream(input: RunAgentInput) {
     .join("\n\n");
 
   let stepCounter = 0;
+  let pendingBuildFix = false;
+
   return streamText({
     model,
     system,
@@ -199,8 +202,53 @@ export async function runAgentStream(input: RunAgentInput) {
     tools,
     stopWhen: stepCountIs(maxSteps),
     experimental_transform: smoothStream({ delayInMs: 12 }),
-    prepareStep: async ({ stepNumber }) => {
-      // Keep the agent in a Cursor/Claude-style tool loop; never “answer only” after step 0.
+    prepareStep: async ({ stepNumber, steps }) => {
+      const last = steps[steps.length - 1];
+      if (last?.toolResults?.length) {
+        for (const tr of last.toolResults) {
+          const name = (tr as { toolName?: string }).toolName || "";
+          const output = (tr as { output?: unknown }).output;
+          if (!output || typeof output !== "object") continue;
+          const o = output as { ok?: boolean; mustFix?: boolean };
+          const buildTool =
+            /quality_check|ship_project|run_build_step|fix_failed_build|run_tests/.test(name);
+          if (buildTool && (o.mustFix === true || o.ok === false)) {
+            pendingBuildFix = true;
+          }
+          if (buildTool && o.ok === true) {
+            pendingBuildFix = false;
+          }
+        }
+      }
+
+      // After a failed build, force tool use until green — do not allow a text-only “done”.
+      if (pendingBuildFix) {
+        return {
+          toolChoice: "required" as const,
+          activeTools: [
+            "fix_failed_build",
+            "quality_check",
+            "ship_project",
+            "run_build_step",
+            "read_file",
+            "apply_patch",
+            "write_file",
+            "create_directory",
+            "run_terminal",
+            "todo_write",
+            "todo_read",
+            "project_map",
+            "list_directory",
+            "search_files",
+            "explain_code",
+          ],
+        };
+      }
+
+      if (mode === "ship" && stepNumber === 0) {
+        return { toolChoice: "required" as const };
+      }
+
       if (stepNumber === 0) {
         return { toolChoice: "auto" as const };
       }
@@ -209,8 +257,18 @@ export async function runAgentStream(input: RunAgentInput) {
     onStepFinish: ({ toolCalls, toolResults, finishReason }) => {
       stepCounter += 1;
       const toolsUsed = toolCalls.map((t) => t.toolName).join(", ") || "none";
+      for (const tr of toolResults) {
+        const name = (tr as { toolName?: string }).toolName || "";
+        const output = (tr as { output?: unknown }).output;
+        if (!output || typeof output !== "object") continue;
+        const o = output as { ok?: boolean; mustFix?: boolean };
+        const buildTool =
+          /quality_check|ship_project|run_build_step|fix_failed_build|run_tests/.test(name);
+        if (buildTool && (o.mustFix === true || o.ok === false)) pendingBuildFix = true;
+        if (buildTool && o.ok === true) pendingBuildFix = false;
+      }
       console.log(
-        `[helix] step ${stepCounter} · tools=${toolsUsed} · results=${toolResults.length} · ${finishReason}`
+        `[helix] step ${stepCounter} · tools=${toolsUsed} · results=${toolResults.length} · ${finishReason} · pendingBuildFix=${pendingBuildFix}`
       );
     },
   });
