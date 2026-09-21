@@ -24,7 +24,8 @@ export function WelcomeGate({
         <div className="brand-glyph" aria-hidden />
         <h1>Helix Own</h1>
         <p>
-          Dein trainierter Coding-Agent. Ein Klick — verstehen, bauen, prüfen.
+          Dein Builder für Apps, Websites, Games, Mods und jeden Code.
+          Ein Klick — verstehen, bauen, prüfen. Lernt lokal aus allem, was du schickst.
           {trained ? " LoRA-Weights geladen." : " Startet mit lokalem Modell."}
         </p>
         <button

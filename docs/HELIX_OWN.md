@@ -16,6 +16,36 @@ npm start                      # train if needed + IDE
 
 Helix Free / Helix Own prefers the FT server when `:11435` is healthy.
 
+## Product builder focus
+
+Helix Own is optimized for:
+
+| Product | Scaffold |
+| --- | --- |
+| Apps / SaaS | `fullstack-ts`, `electron-app`, `react-vite`, `ts-api` |
+| Websites | `website` |
+| Games | `game-canvas` |
+| Minecraft mods | `mod-fabric` |
+| Browser extensions | `browser-extension` |
+
+Skills: `build-products`, `games-mods`, plus coding/ship/curriculum.
+
+## Continuous learning (from every user)
+
+Helix learns **locally** from everything the user sends:
+
+1. Every prompt → `.helix/learning/user_inbox.jsonl` (raw archive)
+2. Every chat turn (incl. tool use) → `.helix/learning/user_examples.jsonl`
+3. Thumbs up/down (+ optional correction) → feedback examples
+4. After N new examples (`retrainEvery`, default 8) → automatic LoRA retrain on base + user data
+
+Toggle **Learning on** in the chat toolbar. Data never leaves the machine (`privacy: local-only`).
+
+```bash
+npx tsx scripts/smoke-learning.ts
+curl -X POST http://127.0.0.1:8787/api/learning/retrain
+```
+
 ## Simple usage
 
 1. `npm start`

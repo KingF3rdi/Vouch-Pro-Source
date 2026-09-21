@@ -65,7 +65,13 @@ export async function createSession(
     createdAt: now,
     updatedAt: now,
     mode: input?.mode ?? "chat",
-    skillIds: input?.skillIds ?? ["coding", "design", "research"],
+    skillIds: input?.skillIds ?? [
+      "coding",
+      "design",
+      "research",
+      "build-products",
+      "games-mods",
+    ],
     messages: [],
   };
   await fs.writeFile(sessionPath(workspace, session.id), JSON.stringify(session, null, 2));

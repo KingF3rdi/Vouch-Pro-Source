@@ -35,6 +35,8 @@ npm run desktop
 
 ## Helix Own (weight-trained)
 
+Optimized to build **apps, websites, games, mods, and anything with code**.
+
 ```bash
 npm start                 # einfach: trainiert bei Bedarf + startet IDE
 # oder:
@@ -43,7 +45,9 @@ npm run serve:ft          # FT-Server :11435
 npm run dev
 ```
 
-Siehe `docs/HELIX_OWN.md`.
+Scaffolds: `website`, `game-canvas`, `mod-fabric`, `browser-extension`, `electron-app`, `fullstack-ts`, …
+
+Siehe `docs/HELIX_OWN.md`. Helix lernt lokal aus Chats, Feedback und Korrekturen (`.helix/learning/`).
 ## Helix models
 
 | Model | Engine |

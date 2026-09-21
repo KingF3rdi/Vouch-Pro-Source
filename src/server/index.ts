@@ -25,6 +25,15 @@ import {
   type StoredSession,
 } from "../agent/sessions.js";
 import {
+  ingestMessages,
+  learningStatus,
+  loadLearningSettings,
+  observeUserInput,
+  recordFeedback,
+  saveLearningSettings,
+  startRetrainJob,
+} from "../agent/learning.js";
+import {
   ensureDefaultMcpConfig,
   listMcpStates,
   loadMcpConfig,
@@ -312,7 +321,68 @@ app.put("/api/sessions/:id", async (req, res) => {
     ...(req.body as Partial<StoredSession>),
     id: existing.id,
   });
-  res.json({ session: next });
+  // Continuous learning: ingest every saved conversation locally
+  const learn = await ingestMessages(workspace, next.messages, "session").catch((error) => {
+    console.warn("[helix] learning ingest:", error instanceof Error ? error.message : error);
+    return null;
+  });
+  res.json({ session: next, learning: learn });
+});
+
+app.get("/api/learning", async (req, res) => {
+  const workspace = workspaceFromQuery(
+    typeof req.query.workspace === "string" ? req.query.workspace : undefined
+  );
+  res.json(await learningStatus(workspace));
+});
+
+app.put("/api/learning/settings", async (req, res) => {
+  const workspace = workspaceFromQuery(req.body?.workspace);
+  const settings = await saveLearningSettings(workspace, req.body ?? {});
+  res.json({ settings });
+});
+
+app.post("/api/learning/ingest", async (req, res) => {
+  const workspace = workspaceFromQuery(req.body?.workspace);
+  const messages = Array.isArray(req.body?.messages) ? req.body.messages : [];
+  const result = await ingestMessages(workspace, messages, req.body?.source ?? "chat");
+  res.json(result);
+});
+
+app.post("/api/learning/feedback", async (req, res) => {
+  const workspace = workspaceFromQuery(req.body?.workspace);
+  const result = await recordFeedback(workspace, {
+    userText: String(req.body?.userText ?? ""),
+    assistantText: String(req.body?.assistantText ?? ""),
+    rating: req.body?.rating === "down" ? "down" : "up",
+    correction: typeof req.body?.correction === "string" ? req.body.correction : undefined,
+  });
+  const settings = await loadLearningSettings(workspace);
+  let retrainStarted = false;
+  if (
+    result.added > 0 &&
+    settings.autoRetrain &&
+    settings.pendingSinceTrain >= settings.retrainEvery
+  ) {
+    retrainStarted = startRetrainJob(workspace);
+  }
+  res.json({ ...result, retrainStarted });
+});
+
+app.post("/api/learning/retrain", async (req, res) => {
+  const workspace = workspaceFromQuery(req.body?.workspace);
+  const started = startRetrainJob(workspace);
+  res.json({ ok: true, started, status: await learningStatus(workspace) });
+});
+
+app.post("/api/learning/observe", async (req, res) => {
+  const workspace = workspaceFromQuery(req.body?.workspace);
+  const result = await observeUserInput(workspace, {
+    text: String(req.body?.text ?? ""),
+    kind: typeof req.body?.kind === "string" ? req.body.kind : "user",
+    meta: req.body?.meta && typeof req.body.meta === "object" ? req.body.meta : undefined,
+  });
+  res.json(result);
 });
 
 app.delete("/api/sessions/:id", async (req, res) => {
