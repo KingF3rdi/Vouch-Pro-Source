@@ -6,7 +6,7 @@ import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { enrichFailure } from "./diagnostics.js";
+import { enrichFailure, type BuildDiagnostic } from "./diagnostics.js";
 
 const execAsync = promisify(exec);
 
@@ -20,6 +20,9 @@ export type QualityReport = {
     stderr: string;
   }>;
   summary: string;
+  mustFix: boolean;
+  diagnostics: BuildDiagnostic[];
+  nextSteps?: string[];
 };
 
 async function exists(p: string) {
@@ -68,6 +71,8 @@ export async function runQualityCheck(workspace: string): Promise<QualityReport>
       ok: true,
       checks: [],
       summary: "No automated quality commands detected — manually verify the change.",
+      mustFix: false,
+      diagnostics: [],
     };
   }
 

@@ -99,7 +99,7 @@ function modeBlock(mode: AgentMode) {
     return "MODE: BUG HUNT. Prioritize finding and fixing defects. Reproduce, isolate, patch, verify.";
   }
   if (mode === "ship") {
-    return "MODE: SHIP. Detect the build pipeline, compile/package the final product, fix build errors, and report artifact paths.";
+    return "MODE: SHIP. Detect the build pipeline, compile/package the final product. If anything fails, call fix_failed_build and keep patching until ok:true — never leave a failed build.";
   }
   return "MODE: BUILD. Optimized for apps, websites, games, mods, and any code product. Map → scaffold/reuse → implement → verify → ship.";
 }

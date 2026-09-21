@@ -303,8 +303,7 @@ export function createBuildTools(workspace: string) {
         const quality = await runQualityCheck(workspace);
         if (!quality.ok) {
           return {
-            ok: false as const,
-            phase: "quality_check",
+            phase: "quality_check" as const,
             ...quality,
             instruction:
               "Fix every diagnostic with apply_patch, then call fix_failed_build or quality_check again. Do not stop while mustFix is true.",
