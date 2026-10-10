@@ -105,11 +105,7 @@ public final class PunishmentManager {
         broadcastBan(player.getName(), reason, DurationParser.format(durationMs), false);
     }
 
-    /**
-     * Staff name-ban: {@code /ac ban <player> <duration> <reason>}.
-     *
-     * @return error message, or null on success
-     */
+
     public String manualBan(CommandSender staff, OfflinePlayer target, long durationMs, String reason) {
         String name = target.getName() != null ? target.getName() : "unknown";
         String source = staff.getName();
@@ -124,11 +120,7 @@ public final class PunishmentManager {
         return null;
     }
 
-    /**
-     * Staff IP-ban: {@code /ac ip ban <player> <duration> <reason>}.
-     *
-     * @return error message, or null on success
-     */
+
     public String manualIpBan(CommandSender staff, OfflinePlayer target, long durationMs, String reason) {
         String name = target.getName() != null ? target.getName() : "unknown";
         String ip = resolveIp(target);
@@ -142,7 +134,7 @@ public final class PunishmentManager {
         long expiresAt = expires == null ? -1L : expires.getTime();
 
         Bukkit.getBanList(BanList.Type.IP).addBan(ip, reason, expires, source);
-        // Also name-ban so the account itself cannot reconnect from another IP
+
         Bukkit.getBanList(BanList.Type.NAME).addBan(name, reason + " [IP]", expires, source);
 
         BanLogEntry banEntry = new BanLogEntry(

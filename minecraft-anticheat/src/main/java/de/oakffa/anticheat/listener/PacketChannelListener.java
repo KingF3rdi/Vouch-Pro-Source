@@ -11,16 +11,13 @@ import org.bukkit.plugin.messaging.PluginMessageListener;
 
 import java.nio.charset.StandardCharsets;
 
-/**
- * Listens for client brand and custom plugin channels (ghost-client heuristics).
- */
 public final class PacketChannelListener implements Listener, PluginMessageListener {
 
     private final CheckManager checkManager;
 
     public PacketChannelListener(CheckManager checkManager, PlayerDataManager ignored) {
         this.checkManager = checkManager;
-        // Brand channel registration happens in plugin onEnable via messenger — see OakFFAPlugin
+
     }
 
     public void register(org.bukkit.plugin.java.JavaPlugin plugin) {
@@ -47,7 +44,7 @@ public final class PacketChannelListener implements Listener, PluginMessageListe
         if (message == null || message.length == 0) {
             return "unknown";
         }
-        // Brand is typically a VarInt-prefixed UTF-8 string
+
         int index = 0;
         int length = 0;
         int shift = 0;

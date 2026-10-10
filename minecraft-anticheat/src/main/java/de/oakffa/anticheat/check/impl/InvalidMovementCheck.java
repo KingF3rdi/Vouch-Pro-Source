@@ -10,9 +10,6 @@ import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
 
-/**
- * Flags impossible movement deltas that typically come from forged move packets.
- */
 public final class InvalidMovementCheck extends Check {
 
     public InvalidMovementCheck(CheckManager manager) {
@@ -64,7 +61,7 @@ public final class InvalidMovementCheck extends Check {
             return;
         }
 
-        // Ignore tiny look-only packets
+
         if (horizontal < 0.001 && Math.abs(dy) < 0.001) {
             return;
         }
@@ -78,7 +75,7 @@ public final class InvalidMovementCheck extends Check {
             speedBonus += 0.15;
         }
         if (player.getVelocity().lengthSquared() > 0.25) {
-            // knockback / explosions — be lenient
+
             speedBonus += Math.min(2.0, player.getVelocity().length());
         }
 

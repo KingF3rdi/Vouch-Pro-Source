@@ -25,26 +25,26 @@ public abstract class Check {
     public abstract int getMaxVl();
 
     public void onMove(Player player, PlayerData data, PlayerMoveEvent event) {
-        // optional
+
     }
 
     public void onBrand(Player player, PlayerData data, String brand) {
-        // optional
+
     }
 
     public void onPluginMessage(Player player, PlayerData data, String channel, byte[] payload) {
-        // optional
+
     }
 
     public void onJoin(Player player, PlayerData data) {
-        // optional
+
     }
 
     protected void flag(Player player, PlayerData data, String detail) {
         int vl = data.addVl(name, 1);
         manager.getPunishmentManager().flag(player, data, name, vl, detail, getWeight());
         if (vl >= getMaxVl()) {
-            // soft reset after reporting so VL can climb again on continued abuse
+
             data.decayVl(name, Math.max(1, getMaxVl() / 2));
         }
     }

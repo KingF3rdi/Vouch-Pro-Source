@@ -11,11 +11,6 @@ import org.bukkit.util.Vector;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Lightweight Grim-style movement prediction.
- * Simulates plausible client ticks (inputs × friction/gravity) and returns the
- * best offset versus the observed delta.
- */
 public final class MovementPredictor {
 
     private static final double GRAVITY = 0.08;
@@ -37,7 +32,7 @@ public final class MovementPredictor {
         }
 
         Vector actual = to.toVector().subtract(from.toVector());
-        // Pure look packet
+
         if (actual.lengthSquared() < 1.0E-8) {
             return PredictionResult.ok(0, 0, 0);
         }
@@ -62,9 +57,9 @@ public final class MovementPredictor {
         List<Vector> candidates = new ArrayList<>(36);
         double[] inputs = {-1.0, 0.0, 1.0};
 
-        // No-input decay
+
         candidates.add(step(lastVel.clone(), 0, 0, speed, wasOnGround, false, yaw));
-        // Jump / no-jump with input grid (yaw-relative, Grim-style)
+
         for (double forward : inputs) {
             for (double strafe : inputs) {
                 candidates.add(step(lastVel.clone(), forward, strafe, speed, wasOnGround, false, yaw));
@@ -74,7 +69,7 @@ public final class MovementPredictor {
             }
         }
 
-        // Knockback / external velocity branch — trust server velocity as a candidate
+
         Vector serverVel = player.getVelocity().clone();
         if (serverVel.lengthSquared() > 0.0001) {
             candidates.add(serverVel.clone());
@@ -105,12 +100,12 @@ public final class MovementPredictor {
         double hActual = Math.hypot(actual.getX(), actual.getZ());
         double hPred = bestPred == null ? 0 : Math.hypot(bestPred.getX(), bestPred.getZ());
         double hOffset = Math.max(0, Math.abs(hActual - hPred) - hTol);
-        // Also consider full 3D miss vs best candidate
+
         double fullOffset = Math.max(0, best - Math.hypot(hTol, vTol));
         double vOffset = bestPred == null ? 0
                 : Math.max(0, Math.abs(actual.getY() - bestPred.getY()) - vTol);
 
-        // Prefer the stricter of component offsets vs residual 3D offset
+
         double offset = Math.max(fullOffset, Math.hypot(hOffset, vOffset));
 
         return new PredictionResult(false, offset, hOffset, vOffset, bestPred == null ? actual : bestPred, actual);
@@ -118,7 +113,7 @@ public final class MovementPredictor {
 
     private static Vector step(Vector vel, double forward, double strafe, double speed,
                                boolean onGround, boolean jump, float yaw) {
-        // Normalize input like vanilla
+
         double length = Math.hypot(forward, strafe);
         if (length > 1.0E-4) {
             if (length > 1.0) {
@@ -131,7 +126,7 @@ public final class MovementPredictor {
             double rad = Math.toRadians(yaw);
             double sin = Math.sin(rad);
             double cos = Math.cos(rad);
-            // Vanilla-ish: move relative to look yaw
+
             double mx = strafe * cos - forward * sin;
             double mz = forward * cos + strafe * sin;
             vel.setX(vel.getX() + mx * inputForce);
@@ -142,7 +137,7 @@ public final class MovementPredictor {
             vel.setY(JUMP);
         }
 
-        // Gravity + drag
+
         if (!onGround || jump) {
             vel.setY((vel.getY() - GRAVITY) * DRAG);
         } else if (Math.abs(vel.getY()) < 0.005) {
@@ -151,7 +146,7 @@ public final class MovementPredictor {
             vel.setY(vel.getY() * DRAG - GRAVITY);
         }
 
-        // Horizontal friction
+
         double friction = onGround && !jump ? GROUND_FRICTION * AIR_FRICTION : AIR_FRICTION;
         vel.setX(vel.getX() * friction);
         vel.setZ(vel.getZ() * friction);

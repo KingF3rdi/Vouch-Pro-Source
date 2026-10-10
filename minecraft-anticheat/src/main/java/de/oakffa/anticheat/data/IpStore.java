@@ -11,7 +11,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** Persists last-seen IPs so offline IP bans still work. */
 public final class IpStore {
 
     private final OakFFAPlugin plugin;
@@ -47,7 +46,7 @@ public final class IpStore {
                     nameIndex.put(name.toLowerCase(Locale.ROOT), uuid);
                 }
             } catch (IllegalArgumentException ignored) {
-                // skip
+
             }
         }
     }
@@ -56,7 +55,7 @@ public final class IpStore {
         FileConfiguration yaml = new YamlConfiguration();
         for (Map.Entry<UUID, String> e : ips.entrySet()) {
             yaml.set("players." + e.getKey() + ".ip", e.getValue());
-            // name may be missing; keep whatever is in nameIndex reverse
+
         }
         for (Map.Entry<String, UUID> e : nameIndex.entrySet()) {
             yaml.set("players." + e.getValue() + ".name", e.getKey());

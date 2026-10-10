@@ -7,9 +7,6 @@ import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerMoveEvent;
 
-/**
- * Heuristic bad-packet patterns: impossible on-ground claims, sprinting while sneaking, etc.
- */
 public final class BadPacketsCheck extends Check {
 
     public BadPacketsCheck(CheckManager manager) {
@@ -41,7 +38,7 @@ public final class BadPacketsCheck extends Check {
 
         double dy = to.getY() - from.getY();
 
-        // Claiming ground while falling fast is a common spoof
+
         if (player.isOnGround() && dy < -0.6) {
             flag(player, data, String.format("onGround while falling dy=%.3f", dy));
         }
@@ -50,7 +47,7 @@ public final class BadPacketsCheck extends Check {
             flag(player, data, "sprint + sneak packet combination");
         }
 
-        // Impossible pitch jitter combined with zero pos change but absurd yaw wrap
+
         float yawDelta = Math.abs(wrap(to.getYaw() - from.getYaw()));
         if (yawDelta > 350.0f) {
             flag(player, data, "impossible yaw wrap " + yawDelta);

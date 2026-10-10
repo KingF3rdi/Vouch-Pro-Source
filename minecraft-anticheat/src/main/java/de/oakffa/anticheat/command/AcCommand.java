@@ -65,7 +65,7 @@ public final class AcCommand implements CommandExecutor, TabCompleter {
             case "ban" -> handleBan(sender, args, false);
             case "ip" -> {
                 if (args.length >= 2 && args[1].equalsIgnoreCase("ban")) {
-                    // /ac ip ban <player> <duration> <reason...>
+
                     handleBan(sender, shiftIpBanArgs(args), true);
                 } else {
                     sender.sendMessage(messages.component("&e/ac ip ban <player> <duration> <reason>"));
@@ -101,12 +101,9 @@ public final class AcCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
-    /**
-     * Converts {@code /ac ip ban <player> <dur> <reason...>} args into the same shape as
-     * {@code /ac ban <player> <dur> <reason...>} (keeps a dummy index-0 token).
-     */
+
     private static String[] shiftIpBanArgs(String[] args) {
-        // args: [ip, ban, player, duration, reason...]
+
         if (args.length < 3) {
             return new String[]{"ban"};
         }
@@ -121,7 +118,7 @@ public final class AcCommand implements CommandExecutor, TabCompleter {
             messages.send(sender, messages.get("no-permission", "%prefix%&cYou do not have permission."), Map.of());
             return;
         }
-        // args: [ban|ipban, player, duration, reason...]
+
         if (args.length < 4) {
             if (ipBan) {
                 sender.sendMessage(messages.component("&e/ac ip ban <player> <duration> <reason>"));

@@ -10,10 +10,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.util.Vector;
 
-/**
- * Grim-style simulation check: compare observed movement to predicted physics.
- * High offset → flag + setback (ban only via accumulated flags / threshold).
- */
 public final class SimulationCheck extends Check {
 
     public SimulationCheck(CheckManager manager) {
@@ -64,7 +60,7 @@ public final class SimulationCheck extends Check {
         }
 
         double threshold = manager.getConfig().getSimulationOffsetThreshold();
-        // Decay streak when clean
+
         if (result.offset() <= threshold * 0.5) {
             data.setSimulationStreak(0);
             manager.getSetbackManager().rememberValid(player, to);
@@ -79,13 +75,13 @@ public final class SimulationCheck extends Check {
                 flag(player, data, String.format("offset=%.4f h=%.4f v=%.4f ping=%d",
                         result.offset(), result.horizontalOffset(), result.verticalOffset(), player.getPing()));
                 if (manager.getConfig().isSetbacksEnabled()) {
-                    event.setTo(from); // cancel this illegal step client-side as far as Bukkit can
+                    event.setTo(from);
                     manager.getSetbackManager().setback(player,
                             String.format("Simulation offset %.4f", result.offset()));
                 }
             }
         } else {
-            // Mild overage — don't setback, just reduce confidence
+
             data.setSimulationStreak(Math.max(0, data.getSimulationStreak() - 1));
             manager.getSetbackManager().rememberValid(player, to);
         }

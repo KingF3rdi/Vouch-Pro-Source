@@ -8,10 +8,6 @@ import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerMoveEvent;
 
-/**
- * Detects timer / wrong-tick usage and impossible action rates.
- * Uses a balance buffer + consecutive-sample streaks so lag spikes rarely ban.
- */
 public final class TickAbuseCheck extends Check {
 
     public enum ActionType {
@@ -55,7 +51,7 @@ public final class TickAbuseCheck extends Check {
             return;
         }
 
-        // Look-only packets are normal and frequent — only count position ticks for timer
+
         boolean moved = from.getX() != to.getX() || from.getY() != to.getY() || from.getZ() != to.getZ();
         if (!moved) {
             return;
@@ -72,13 +68,13 @@ public final class TickAbuseCheck extends Check {
         long delta = Math.max(1L, now - last);
         data.setLastMovePacketMs(now);
 
-        // Expected ~50ms between position ticks at 20 TPS.
-        // Fast client (timer): delta small → balance climbs.
-        // Lag: delta large → balance drops (forgiven).
+
+
+
         long expected = 50L;
         long balance = data.getTickBalanceMs() + expected - delta;
 
-        // Clamp so lag recovery cannot hide endless timer forever, but lag won't spike VL
+
         int maxBalance = manager.getConfig().getTickAbuseMaxBalanceMs();
         int minBalance = manager.getConfig().getTickAbuseMinBalanceMs();
         if (balance > maxBalance) {
@@ -90,7 +86,7 @@ public final class TickAbuseCheck extends Check {
         data.setTickBalanceMs(balance);
 
         int ping = Math.max(0, player.getPing());
-        int pingBonus = Math.min(150, ping / 2); // high ping → need higher balance to flag
+        int pingBonus = Math.min(150, ping / 2);
         int flagBalance = manager.getConfig().getTickAbuseFlagBalanceMs() + pingBonus;
 
         if (balance >= flagBalance) {
@@ -102,12 +98,12 @@ public final class TickAbuseCheck extends Check {
         int needed = manager.getConfig().getTickAbuseTimerStreak();
         if (data.getTimerStreak() >= needed) {
             data.setTimerStreak(0);
-            // Soften balance after a flag so we don't machine-gun flags
+
             data.setTickBalanceMs(Math.max(0, balance / 2));
             flag(player, data, String.format("timer balance=%dms ping=%d streak=%d", balance, ping, needed));
         }
 
-        // Also track raw move rate over 1s as a secondary, lenient check
+
         data.pushMoveTimestamp(now, 40);
         int moves = data.countRecentMoves(1000L);
         int maxMoves = manager.getConfig().getTickAbuseMaxMovesPerSecond() + (ping > 200 ? 6 : 0);
@@ -147,7 +143,7 @@ public final class TickAbuseCheck extends Check {
             data.setActionBurstStreak(Math.max(0, data.getActionBurstStreak() - 1));
         }
 
-        // Wrong-tick style: many attacks with almost no move packets while not in vehicle/lag
+
         if (type == ActionType.ATTACK) {
             int moves = data.countRecentMoves(500L);
             int attacks = data.countRecentActions(500L);
@@ -178,7 +174,7 @@ public final class TickAbuseCheck extends Check {
         if (data.isExemptNextMove()) {
             return true;
         }
-        // Extreme lag — do not judge tick rate
+
         return player.getPing() >= manager.getConfig().getTickAbuseMaxPingExempt();
     }
 }

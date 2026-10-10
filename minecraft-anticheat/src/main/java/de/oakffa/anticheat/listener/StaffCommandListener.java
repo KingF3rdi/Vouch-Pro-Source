@@ -10,9 +10,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.server.ServerCommandEvent;
 
-/**
- * Logs every command executed by staff (and console) for {@code /ac staff logs}.
- */
 public final class StaffCommandListener implements Listener {
 
     private final StaffLogStore staffLogStore;
@@ -45,7 +42,7 @@ public final class StaffCommandListener implements Listener {
         if (command == null || command.isBlank()) {
             return;
         }
-        // Always log console commands that look staff-related (/ac, ban, kick, op, lp, …)
+
         String lower = command.toLowerCase();
         if (!(lower.startsWith("ac") || lower.startsWith("oakffaac")
                 || lower.startsWith("ban") || lower.startsWith("kick") || lower.startsWith("op ")

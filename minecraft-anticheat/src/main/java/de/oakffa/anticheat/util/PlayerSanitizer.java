@@ -9,15 +9,12 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
 
-/**
- * Inventory / ender-chest / stats wipe helpers for {@code /ac clear} and {@code /ac wipe}.
- */
 public final class PlayerSanitizer {
 
     private PlayerSanitizer() {
     }
 
-    /** Clears main inventory, armor, offhand, and cursor. */
+
     public static void clearInventory(Player player) {
         player.getInventory().clear();
         player.getInventory().setArmorContents(null);
@@ -27,9 +24,7 @@ public final class PlayerSanitizer {
         player.updateInventory();
     }
 
-    /**
-     * Full wipe: inventory, ender chest, XP, effects, and Minecraft statistics.
-     */
+
     public static void wipePlayer(Player player) {
         clearInventory(player);
         player.getEnderChest().clear();
@@ -70,7 +65,7 @@ public final class PlayerSanitizer {
                             try {
                                 player.setStatistic(statistic, type, 0);
                             } catch (IllegalArgumentException ignored) {
-                                // statistic not applicable to this entity
+
                             }
                         }
                     }
@@ -82,16 +77,16 @@ public final class PlayerSanitizer {
                             try {
                                 player.setStatistic(statistic, material, 0);
                             } catch (IllegalArgumentException ignored) {
-                                // statistic not applicable to this material
+
                             }
                         }
                     }
                     default -> {
-                        // ignore future types
+
                     }
                 }
             } catch (IllegalArgumentException ignored) {
-                // some statistics cannot be set to zero on certain platforms
+
             }
         }
     }

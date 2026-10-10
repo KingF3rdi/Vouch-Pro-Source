@@ -7,10 +7,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.server.ServerCommandEvent;
 
-/**
- * Intercepts {@code /ban logs [player]} without claiming the entire /ban command.
- * Behavior matches {@code /ac logs [player]}.
- */
 public final class BanLogsInterceptListener implements Listener {
 
     private final BanLogsCommand banLogsCommand;

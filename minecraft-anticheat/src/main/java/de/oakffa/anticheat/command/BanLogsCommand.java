@@ -15,9 +15,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-/**
- * Handles {@code /ban logs [player]} — identical to {@code /ac logs [player]}.
- */
 public final class BanLogsCommand implements CommandExecutor, TabCompleter {
 
     private final LogPresenter logPresenter;

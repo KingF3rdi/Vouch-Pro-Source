@@ -13,10 +13,6 @@ import org.bukkit.util.Vector;
 
 import java.util.Deque;
 
-/**
- * Detects fast place (robotic place-packet cadence) and silent place
- * (block placed while look vector does not face the placement).
- */
 public final class IllegalPlaceCheck extends Check {
 
     public IllegalPlaceCheck(CheckManager manager) {
@@ -52,7 +48,7 @@ public final class IllegalPlaceCheck extends Check {
             return;
         }
 
-        // Ignore liquid / replaceable noise that floods place events on some servers
+
         Material type = placed.getType();
         if (type == Material.AIR || type.name().contains("WATER") || type.name().contains("LAVA")) {
             return;
@@ -62,7 +58,7 @@ public final class IllegalPlaceCheck extends Check {
         checkSilentPlace(player, data, against, face, placed);
     }
 
-    /** Place packets faster / more regular than human right-click cadence. */
+
     private void checkFastPlace(Player player, PlayerData data) {
         long now = System.currentTimeMillis();
         long last = data.getLastBlockPlaceMs();
@@ -79,7 +75,7 @@ public final class IllegalPlaceCheck extends Check {
                 data.setFastPlaceStreak(Math.max(0, data.getFastPlaceStreak() - 1));
             }
 
-            // Low-variance robotic placer (scaffold / multi-place macros)
+
             if (gap >= 20L && gap <= 280L) {
                 data.pushPlaceInterval(gap, manager.getConfig().getIllegalPlaceSamples());
             }
@@ -113,16 +109,13 @@ public final class IllegalPlaceCheck extends Check {
         data.setLastBlockPlaceMs(now);
     }
 
-    /**
-     * Silent placement: client places against a face it is not looking at
-     * (look ray misses the clicked face / block center).
-     */
+
     private void checkSilentPlace(Player player, PlayerData data,
                                   Block against, BlockFace face, Block placed) {
         Location eye = player.getEyeLocation();
         Vector look = eye.getDirection().normalize();
 
-        // Aim point: center of the face being placed against, else placed block center
+
         Location aim;
         if (against != null && face != null && face != BlockFace.SELF) {
             aim = against.getLocation().add(0.5, 0.5, 0.5)
@@ -139,7 +132,7 @@ public final class IllegalPlaceCheck extends Check {
         double dot = look.dot(to.normalize());
         double minDot = manager.getConfig().getIllegalPlaceSilentMinDot();
 
-        // Also: placed block is far off the look ray (perpendicular miss)
+
         Vector closest = eye.toVector().add(look.clone().multiply(Math.max(0.1, look.dot(to))));
         double rayMiss = closest.distance(aim.toVector());
         double maxMiss = manager.getConfig().getIllegalPlaceSilentMaxRayMiss();

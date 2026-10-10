@@ -6,7 +6,6 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerVelocityEvent;
 
-/** Marks knockback/explosion ticks so prediction forgives them (Grim-style). */
 public final class VelocityListener implements Listener {
 
     private final PlayerDataManager playerDataManager;

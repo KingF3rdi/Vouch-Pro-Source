@@ -18,7 +18,7 @@ public final class Messages {
     }
 
     public void reload() {
-        // Config holds live values; nothing cached here beyond prefix lookups.
+
     }
 
     public Component component(String legacy) {

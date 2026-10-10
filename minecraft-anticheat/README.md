@@ -1,11 +1,11 @@
 # OakFFA Anti Cheat
 
-Prediction-first Paper anti-cheat for **OakFFA**, with LuckPerms permissions, setbacks, and staff tools.
+Paper anti-cheat for OakFFA with LuckPerms, setbacks, and staff tools.
 
 ## Requirements
 
 - Java 17+
-- Paper (or compatible) **1.20.4+** (`api-version: 1.20`)
+- Paper 1.20.4+ (`api-version: 1.20`)
 - Optional: [LuckPerms](https://luckperms.net/)
 
 ## Build
@@ -17,17 +17,9 @@ cd minecraft-anticheat
 
 Jar: `build/libs/OakFFA-AntiCheat-1.0.0.jar`
 
-## Architecture
+## Checks
 
-1. **Simulation** — predicts plausible client ticks and measures **offset**
-2. **Uncertainty** — ping, knockback, teleport, vehicle, 0.03 movement forgiven
-3. **Setbacks** — illegal moves resync to last valid position
-4. **TickAbuse** — timer / wrong-tick action bursts
-5. **InvalidInput / InvalidAction** — forged key combos, dig spoof, reach, off-angle hits
-6. **PrestigeCombat** — KillAura / silent aim / multi-aura / autoclicker packet patterns
-7. **CombatUtility** — shield/drain/web-break only on identical-ms timing or invalid input
-8. **IllegalPlace** — fast place + silent place (off-angle / off-ray placements)
-9. **Heuristics** — bad packets, robotic aim, ghost-client brands/channels, Meteor sign probe
+Simulation, TickAbuse, InvalidInput, InvalidAction, PrestigeCombat, CombatUtility, IllegalPlace, BadPackets, RoboticRotation, GhostClient, MeteorSign
 
 ## Commands
 

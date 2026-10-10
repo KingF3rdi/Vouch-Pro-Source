@@ -7,9 +7,6 @@ import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerMoveEvent;
 
-/**
- * Detects mathematically invalid movement/look "packets" (NaN, Inf, out-of-range pitch).
- */
 public final class InvalidPacketCheck extends Check {
 
     public InvalidPacketCheck(CheckManager manager) {

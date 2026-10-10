@@ -3,9 +3,6 @@ package de.oakffa.anticheat.prediction;
 import de.oakffa.anticheat.data.PlayerData;
 import org.bukkit.entity.Player;
 
-/**
- * Grim-inspired uncertainty: tolerate lag, teleports, knockback, and 0.03 movement.
- */
 public final class UncertaintyHandler {
 
     private UncertaintyHandler() {
@@ -13,10 +10,10 @@ public final class UncertaintyHandler {
 
     public static double horizontalTolerance(Player player, PlayerData data, double base) {
         double tol = base;
-        // Vanilla clients may omit moves under 0.03
+
         tol += 0.03;
         int ping = Math.max(0, player.getPing());
-        tol += Math.min(0.35, ping / 1000.0); // ~0.1 at 100ms, capped
+        tol += Math.min(0.35, ping / 1000.0);
         if (data.getUncertaintyTicks() > 0) {
             tol += 0.45;
         }

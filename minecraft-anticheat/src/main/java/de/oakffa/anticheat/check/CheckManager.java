@@ -45,7 +45,7 @@ public final class CheckManager {
         this.setbackManager = setbackManager;
         this.messages = messages;
 
-        // Prediction-first (Grim-style), then packet / combat heuristics
+
         checks.add(new SimulationCheck(this));
         checks.add(new InvalidPacketCheck(this));
         checks.add(new InvalidInputCheck(this));
@@ -112,7 +112,7 @@ public final class CheckManager {
             }
             return;
         }
-        // Grace period after join to avoid false teleports
+
         if (System.currentTimeMillis() - data.getJoinTimeMs() < 2500L) {
             data.setLastLocation(event.getTo());
             if (event.getTo() != null) {

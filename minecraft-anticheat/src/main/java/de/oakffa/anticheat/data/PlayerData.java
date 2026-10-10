@@ -30,7 +30,7 @@ public final class PlayerData {
     private final Deque<String> recentFlagChecks = new ArrayDeque<>();
     private final Deque<Float> yawDeltas = new ArrayDeque<>();
 
-    // Tick / timer tracking
+
     private long lastMovePacketMs;
     private long tickBalanceMs;
     private int timerStreak;
@@ -40,7 +40,7 @@ public final class PlayerData {
     private final Deque<Long> recentMoveTimestamps = new ArrayDeque<>();
     private final Deque<Long> recentActionTimestamps = new ArrayDeque<>();
 
-    // Prediction / setback state (Grim-style)
+
     private Vector lastVelocity = new Vector();
     private boolean wasOnGround = true;
     private Location lastValidLocation;
@@ -48,7 +48,7 @@ public final class PlayerData {
     private int velocityTicks;
     private int simulationStreak;
 
-    // Invalid input / action packet state
+
     private boolean digging;
     private Location digBlock;
     private long digStartMs;
@@ -58,7 +58,7 @@ public final class PlayerData {
     private int dropStreak;
     private long lastDropMs;
 
-    // Prestige / ghost-client combat packet state
+
     private long lastArmSwingMs;
     private long lastAttackMs;
     private UUID lastAttackTarget;
@@ -71,7 +71,7 @@ public final class PlayerData {
     private int combatClickerStreak;
     private final Deque<Long> attackIntervals = new ArrayDeque<>();
 
-    // Combat utility modules (shield break / cobweb / water drain)
+
     private long lastHotbarSwitchMs;
     private int lastHotbarSlot = -1;
     private long lastAxeSwitchMs;
@@ -93,7 +93,7 @@ public final class PlayerData {
     private long lastCobwebPlaceDelayMs = -1;
     private int cobwebPlaceIdenticalStreak;
 
-    // Fast / silent place
+
     private long lastBlockPlaceMs;
     private int fastPlaceStreak;
     private int silentPlaceStreak;

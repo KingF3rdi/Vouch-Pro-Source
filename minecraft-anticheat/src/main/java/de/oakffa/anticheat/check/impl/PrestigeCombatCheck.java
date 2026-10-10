@@ -11,13 +11,6 @@ import org.bukkit.util.Vector;
 import java.util.Deque;
 import java.util.UUID;
 
-/**
- * Packet-facing heuristics for Prestige / Vape-style combat modules
- * (KillAura, AimAssist, TriggerBot, AutoClicker, silent aim).
- *
- * Uses Paper's attack / animation events as the server view of USE_ENTITY + arm-swing packets.
- * Patterns are streak-gated to limit false bans on legit high-CPS PvP.
- */
 public final class PrestigeCombatCheck extends Check {
 
     public PrestigeCombatCheck(CheckManager manager) {
@@ -79,7 +72,7 @@ public final class PrestigeCombatCheck extends Check {
         data.setLastAttackPitch(eye.getPitch());
     }
 
-    /** USE_ENTITY without a recent ARM_SWING — common ghost-client combat path. */
+
     private void checkNoSwing(Player player, PlayerData data, long now) {
         long sinceSwing = now - data.getLastArmSwingMs();
         int maxMs = manager.getConfig().getPrestigeCombatSwingGraceMs();
@@ -94,7 +87,7 @@ public final class PrestigeCombatCheck extends Check {
         }
     }
 
-    /** Silent / imperfect aim: consistent hits while look vector misses the target. */
+
     private void checkSilentAim(Player player, PlayerData data, double lookDot, double distance) {
         double minDot = manager.getConfig().getPrestigeCombatSilentAimDot();
         double minDist = manager.getConfig().getPrestigeCombatSilentAimMinDistance();
@@ -109,7 +102,7 @@ public final class PrestigeCombatCheck extends Check {
         }
     }
 
-    /** KillAura snap: large yaw delta immediately before a well-aligned hit. */
+
     private void checkSnapHit(Player player, PlayerData data, double lookDot, double distance) {
         float absYaw = Math.abs(data.getLastDeltaYaw());
         float absPitch = Math.abs(data.getLastDeltaPitch());
@@ -128,7 +121,7 @@ public final class PrestigeCombatCheck extends Check {
         }
     }
 
-    /** Multi-target KillAura: switch targets with a wide angle in a tiny packet window. */
+
     private void checkMultiAura(Player player, PlayerData data, Entity target,
                                 Location eye, Location aim, long now) {
         UUID previous = data.getLastAttackTarget();
@@ -142,7 +135,7 @@ public final class PrestigeCombatCheck extends Check {
             data.setCombatMultiTargetStreak(0);
             return;
         }
-        // Reconstruct approximate previous aim from last attack yaw/pitch
+
         Location prevAimDir = eye.clone();
         prevAimDir.setYaw(data.getLastAttackYaw());
         prevAimDir.setPitch(data.getLastAttackPitch());
@@ -163,12 +156,12 @@ public final class PrestigeCombatCheck extends Check {
         }
     }
 
-    /** AutoClicker / TriggerBot: near-identical attack packet intervals. */
+
     private void checkAutoclicker(Player player, PlayerData data, long now) {
         long last = data.getLastAttackMs();
         if (last > 0L) {
             long interval = now - last;
-            // Ignore combat cooldown / slow legit swings and insane floods
+
             if (interval >= 45L && interval <= 220L) {
                 data.pushAttackInterval(interval, manager.getConfig().getPrestigeCombatClickSamples());
             }

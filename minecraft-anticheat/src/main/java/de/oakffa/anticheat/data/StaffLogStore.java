@@ -51,7 +51,7 @@ public final class StaffLogStore {
                         String.valueOf(map.get("command"))
                 ));
             } catch (Exception ignored) {
-                // skip
+
             }
         }
         trim();

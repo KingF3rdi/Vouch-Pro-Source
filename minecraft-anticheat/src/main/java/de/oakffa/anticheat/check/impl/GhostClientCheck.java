@@ -8,14 +8,6 @@ import org.bukkit.entity.Player;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 
-/**
- * Heuristic ghost-client detection for clients commonly used for cheating
- * (e.g. Vape / Prestige-style brands and plugin channels).
- *
- * This is intentionally signature-light: commercial clients change payloads often.
- * We flag known-suspicious brands/channels and payload keywords without claiming
- * a perfect private fingerprint.
- */
 public final class GhostClientCheck extends Check {
 
     public GhostClientCheck(CheckManager manager) {
@@ -45,7 +37,7 @@ public final class GhostClientCheck extends Check {
         String normalized = brand.toLowerCase(Locale.ROOT);
         for (String needle : manager.getConfig().getSuspiciousBrands()) {
             if (normalized.contains(needle)) {
-                // Skip vanilla / paper brands even if listed by mistake
+
                 if (normalized.contains("vanilla") || normalized.contains("paper")
                         || normalized.contains("purpur") || normalized.contains("fabric")) {
                     continue;
@@ -54,7 +46,7 @@ public final class GhostClientCheck extends Check {
                 return;
             }
         }
-        // Explicit high-signal names
+
         if (normalized.contains("vape") || normalized.contains("prestige")) {
             flag(player, data, "ghost-client brand indicator: " + brand);
         }
@@ -66,7 +58,7 @@ public final class GhostClientCheck extends Check {
             return;
         }
         String ch = channel.toLowerCase(Locale.ROOT);
-        // Ignore standard brand / register traffic handled elsewhere
+
         if (ch.equals("minecraft:brand") || ch.equals("mc|brand")
                 || ch.equals("minecraft:register") || ch.equals("register")
                 || ch.startsWith("bungeecord:") || ch.startsWith("legacy:")) {
@@ -87,7 +79,7 @@ public final class GhostClientCheck extends Check {
                 flag(player, data, "suspicious payload on " + channel);
                 return;
             }
-            // Prestige / Vape combat module names leaking into custom channels
+
             for (String needle : manager.getConfig().getPrestigeCombatPayloadKeywords()) {
                 if (needle != null && !needle.isBlank() && asText.contains(needle)) {
                     flag(player, data, "combat-module payload (" + needle + ") on " + channel);

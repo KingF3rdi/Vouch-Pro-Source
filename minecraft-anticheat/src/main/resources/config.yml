@@ -1,70 +1,49 @@
-# OakFFA Anti Cheat configuration
-
 prefix: "&8[&aOakFFA AC&8]&r "
 
-# Grim-style setbacks: resync to last valid position before bans pile up
 setbacks:
   enabled: true
 
-# Auto-ban when a player accumulates enough flags
 punishment:
   enabled: true
-  # Flags within the decay window required to auto-ban
   flag-threshold: 25
-  # Seconds before older flags stop counting toward the threshold
   flag-decay-seconds: 600
-  # Ban duration in days
   ban-duration-days: 7
   ban-reason: "Cheating (OakFFA Anti Cheat: %checks%)"
-  # Kick message shown on ban
   ban-kick-message: "&cYou have been banned for 7 days.\n&7Reason: &fCheating\n&8Flags: %checks%"
 
-# How many recent events to keep for /ac logs and /ban logs
 storage:
   max-flag-logs: 200
   max-ban-logs: 100
   max-staff-logs: 300
 
 checks:
-  # Prediction engine (Grim-style) — primary movement detection
   simulation:
     enabled: true
     weight: 2
     max-vl: 16
-    # Blocks of unexplained offset after uncertainty reduction
     offset-threshold: 0.55
-    # Consecutive bad predictions required before flag+setback
     streak: 4
   invalid-packet:
     enabled: true
-    # Weight added per flag (higher = reaches ban faster)
     weight: 3
     max-vl: 8
-  # Invalid client input packets (keys / hotbar / abilities)
   invalid-input:
     enabled: true
     weight: 2
     max-vl: 10
-    # Sprint+sneak samples before flag
     combo-streak: 5
-    # Min ms between swap-hand packets
     min-swap-ms: 40
-  # Invalid action packets (dig/place/attack/interact/drop)
   invalid-action:
     enabled: true
     weight: 3
     max-vl: 10
-    # Extra reach tolerance (blocks) on top of ping compensation
     reach-buffer: 0.35
-    # Attack look-dot below this (and far enough) is off-angle
     min-attack-dot: -0.15
     min-drop-ms: 35
   invalid-movement:
-    # Secondary hard-limit safety net (simulation is primary)
     enabled: true
     weight: 1
     max-vl: 12
-    # Blocks per tick roughly above sprint+jump that is suspicious
     max-horizontal-speed: 1.55
     max-vertical-speed: 1.25
     max-teleport-distance: 80.0
@@ -72,12 +51,9 @@ checks:
     enabled: true
     weight: 2
     max-vl: 12
-    # Identical yaw/pitch deltas in a row look robotic
     identical-delta-streak: 8
-    # Suspiciously perfect snap angles (degrees)
     snap-min-yaw: 35.0
     snap-max-pitch-change: 0.01
-    # GCD / consistent micro-step detection
     micro-step-samples: 14
     micro-step-tolerance: 0.0008
   bad-packets:
@@ -88,7 +64,6 @@ checks:
     enabled: true
     weight: 5
     max-vl: 4
-    # Plugin message channels often abused / registered by ghost clients
     suspicious-channels:
       - "vape"
       - "vapeclient"
@@ -100,7 +75,6 @@ checks:
       - "aristois"
       - "meteor-client"
       - "impact"
-    # Client brands that are never vanilla (heuristic — not a guaranteed ID)
     suspicious-brands:
       - "vape"
       - "vapeclient"
@@ -108,71 +82,52 @@ checks:
       - "prestigeclient"
       - "ghost"
       - "meteor"
-  # Sign-translation probe (blocks Meteor Client on join)
   meteor-sign:
     enabled: true
-    # Ticks after join before opening the probe sign
     delay-ticks: 40
-    # Ticks before the temporary sign is cleaned up
     timeout-ticks: 200
-    # If true, also ban for ban-duration-days; otherwise kick only
     ban-on-detect: false
-  # Fast place + silent place (scaffold / ghost-client place packets)
   illegal-place:
     enabled: true
     weight: 2
     max-vl: 12
     max-ping-exempt: 400
-    # Minimum ms between place packets before streaking
     min-gap-ms: 45
     fast-streak: 5
-    # Robotic regular placer (low mean + low stddev)
     samples: 10
     max-mean-ms: 95.0
     max-stddev: 4.0
     regular-streak: 2
-    # Look vector not facing the place face / large ray miss
     silent-min-dot: 0.35
     silent-max-ray-miss: 1.35
     silent-streak: 4
-  # Shield break / cobweb / drain — only identical-ms repeats or invalid input
   combat-utility:
     enabled: true
     weight: 3
     max-vl: 10
-    # Exact same millisecond delay must repeat this many times before a flag
     identical-streak: 5
     web-enemy-range: 4.5
     combat-window-ms: 2500
-    # Context window: water emptied near a recent cobweb counts as cobweb-break
     web-water-ms: 900
-  # Prestige / Vape combat modules via attack + arm-swing packet patterns
   prestige-combat:
     enabled: true
     weight: 3
     max-vl: 12
-    # Skip combat heuristics above this ping
     max-ping-exempt: 400
-    # USE_ENTITY without ARM_SWING within this window looks like silent combat packets
     swing-grace-ms: 400
     no-swing-streak: 5
-    # Hits while look vector misses the target (silent aim / imperfect aim)
     silent-aim-dot: 0.55
     silent-aim-min-distance: 1.8
     silent-aim-streak: 4
-    # KillAura snap then hit
     snap-yaw: 40.0
     snap-max-pitch: 2.5
     snap-streak: 3
-    # Multi-target aura switches
     multi-target-ms: 140
     multi-target-max-dot: 0.55
     multi-target-streak: 3
-    # Autoclicker / triggerbot interval regularity
     click-samples: 12
     click-max-stddev: 3.5
     clicker-streak: 2
-    # Plugin-message payload needles (also scanned by GhostClient)
     payload-keywords:
       - "killaura"
       - "kill aura"
@@ -200,27 +155,19 @@ checks:
       - "silentplace"
       - "silent place"
       - "scaffold"
-  # Timer / wrong-tick usage (lenient — low weight, high streaks)
   tick-abuse:
     enabled: true
     weight: 1
     max-vl: 20
-    # Balance buffer (ms). Expected 50ms/tick; faster clients accumulate balance.
     flag-balance-ms: 450
     max-balance-ms: 1200
     min-balance-ms: -800
-    # Consecutive over-threshold samples required before a timer flag
     timer-streak: 8
-    # Position-move packets per second before burst flag
     max-moves-per-second: 32
-    # Attack/interact/dig/place actions per second
     max-actions-per-second: 28
-    # Consecutive burst windows required
     burst-streak: 5
-    # Attacks in 500ms with almost no moves → wrong-tick actions
     attack-desync-count: 12
     min-moves-with-attacks: 1
-    # Skip tick checks entirely above this ping
     max-ping-exempt: 450
 
 messages:

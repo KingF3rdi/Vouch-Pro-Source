@@ -9,10 +9,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.util.Vector;
 
-/**
- * Grim-style setbacks: resync cheaters to the last valid position instead of
- * instantly banning on a single bad move.
- */
 public final class SetbackManager {
 
     private final OakFFAPlugin plugin;

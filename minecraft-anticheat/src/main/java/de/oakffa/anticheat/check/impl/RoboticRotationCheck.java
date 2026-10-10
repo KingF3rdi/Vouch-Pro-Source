@@ -7,10 +7,6 @@ import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerMoveEvent;
 
-/**
- * Detects robotic / aimbot-like head movement patterns:
- * identical yaw deltas, perfect snaps with frozen pitch, and constant micro-step GCDs.
- */
 public final class RoboticRotationCheck extends Check {
 
     public RoboticRotationCheck(CheckManager manager) {
@@ -47,12 +43,12 @@ public final class RoboticRotationCheck extends Check {
         float absYaw = Math.abs(deltaYaw);
         float absPitch = Math.abs(deltaPitch);
 
-        // No meaningful look change
+
         if (absYaw < 0.001f && absPitch < 0.001f) {
             return;
         }
 
-        // Identical delta streak (classic robotic aim)
+
         if (almostEqual(deltaYaw, data.getLastDeltaYaw(), 0.0001f)
                 && almostEqual(deltaPitch, data.getLastDeltaPitch(), 0.0001f)
                 && absYaw > 0.05f) {
@@ -65,13 +61,13 @@ public final class RoboticRotationCheck extends Check {
             data.setIdenticalDeltaStreak(0);
         }
 
-        // Large yaw snap with essentially frozen pitch (common ghost-client aim assist)
+
         if (absYaw >= manager.getConfig().getSnapMinYaw()
                 && absPitch <= manager.getConfig().getSnapMaxPitchChange()) {
             flag(player, data, String.format("yaw snap %.2f with frozen pitch", absYaw));
         }
 
-        // Constant micro-step / GCD-like pattern
+
         int samples = manager.getConfig().getMicroStepSamples();
         data.pushYawDelta(absYaw, samples);
         if (data.getYawDeltas().size() >= samples) {

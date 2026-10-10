@@ -52,7 +52,7 @@ public final class LogStore {
                 );
                 flagLogs.addLast(entry);
             } catch (Exception ignored) {
-                // skip corrupt row
+
             }
         }
         List<java.util.Map<?, ?>> banMaps = castMapList(yaml.getMapList("bans"));
@@ -69,7 +69,7 @@ public final class LogStore {
                 );
                 banLogs.addLast(entry);
             } catch (Exception ignored) {
-                // skip corrupt row
+
             }
         }
         trim();

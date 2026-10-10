@@ -9,10 +9,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.inventory.EquipmentSlot;
 
-/**
- * Detects invalid client input packets: impossible key combos, illegal hotbar,
- * using/digging while in invalid player state.
- */
 public final class InvalidInputCheck extends Check {
 
     public InvalidInputCheck(CheckManager manager) {
@@ -41,7 +37,7 @@ public final class InvalidInputCheck extends Check {
             return;
         }
 
-        // Impossible movement-input combination (sent as player abilities / status)
+
         if (player.isSprinting() && player.isSneaking() && !player.isInsideVehicle()
                 && player.getGameMode() != GameMode.SPECTATOR) {
             data.addInputStreak(1);
@@ -53,12 +49,12 @@ public final class InvalidInputCheck extends Check {
             data.setInputStreak(Math.max(0, data.getInputStreak() - 1));
         }
 
-        // Sprinting while using an item (blocking/eating) is often forged
+
         if (player.isSprinting() && player.isHandRaised() && !player.isInsideVehicle()) {
             flag(player, data, "sprint while using item");
         }
 
-        // Dead / sleeping clients should not send locomotion inputs
+
         if ((player.isDead() || player.isSleeping()) && event.hasExplicitlyChangedPosition()) {
             flag(player, data, "move input while dead/sleeping");
         }
@@ -80,7 +76,7 @@ public final class InvalidInputCheck extends Check {
         if (player.isDead() || player.isSleeping()) {
             flag(player, data, "swap hands while dead/sleeping");
         }
-        // Rapid swap spam (invalid / autoclicker-style input packet flood)
+
         long now = System.currentTimeMillis();
         if (now - data.getLastSwapHandsMs() < manager.getConfig().getInvalidInputMinSwapMs()) {
             data.addSwapStreak(1);
@@ -102,7 +98,7 @@ public final class InvalidInputCheck extends Check {
             flag(player, data, "sprint toggle while sneaking");
         }
         if (sprinting && player.getFoodLevel() <= 6 && player.getGameMode() == GameMode.SURVIVAL) {
-            // Vanilla blocks sprint below hunger 6 — forged ability packet
+
             flag(player, data, "sprint with hunger " + player.getFoodLevel());
         }
     }

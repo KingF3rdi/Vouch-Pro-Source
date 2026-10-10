@@ -17,7 +17,7 @@ public final class MovementListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onMove(PlayerMoveEvent event) {
-        // Skip pure head-rotation-less identical positions? Checks still want rotations.
+
         if (event.getTo() == null) {
             return;
         }

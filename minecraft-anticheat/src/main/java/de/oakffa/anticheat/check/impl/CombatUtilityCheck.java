@@ -10,16 +10,6 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
-/**
- * Combat utility detection — intentionally strict.
- * <p>
- * Shield breaker, cobweb-break-with-water, and auto drain only flag when:
- * <ul>
- *   <li>the action delay repeats with the <b>exact same millisecond</b> value several times, or</li>
- *   <li>the action is paired with invalid input packets (impossible key/state combos).</li>
- * </ul>
- * Cobweb placer still uses a lighter combat-swap heuristic.
- */
 public final class CombatUtilityCheck extends Check {
 
     private static final BlockFace[] ADJACENT = {
@@ -82,7 +72,7 @@ public final class CombatUtilityCheck extends Check {
             return;
         }
 
-        // Prefer swap→hit delay; fall back to hit→hit gap
+
         long delay = -1;
         String kind;
         if (data.getLastAxeSwitchMs() > 0 && now - data.getLastAxeSwitchMs() <= 1000L) {
@@ -103,7 +93,7 @@ public final class CombatUtilityCheck extends Check {
             return;
         }
 
-        // Only flag when the exact same millisecond delay repeats
+
         if (delay > 0 && delay == data.getLastShieldBreakDelayMs()) {
             data.addShieldIdenticalStreak(1);
             if (data.getShieldIdenticalStreak() >= manager.getConfig().getCombatUtilityIdenticalStreak()) {
@@ -142,7 +132,7 @@ public final class CombatUtilityCheck extends Check {
 
         boolean webBreakContext = nearWeb || (sinceWeb >= 0 && sinceWeb <= webWaterWindow);
         if (webBreakContext) {
-            // Delay signature: bucket-swap → water empty, else cobweb → water
+
             long delay;
             String kind;
             if (data.getLastBucketSwitchMs() > 0 && now - data.getLastBucketSwitchMs() <= 1000L) {
@@ -207,7 +197,7 @@ public final class CombatUtilityCheck extends Check {
             return;
         }
 
-        // Only flag when place→fill delay is the exact same millisecond repeatedly
+
         if (sincePlace > 0 && sincePlace == data.getLastDrainDelayMs()) {
             data.addDrainIdenticalStreak(1);
             if (data.getDrainIdenticalStreak() >= manager.getConfig().getCombatUtilityIdenticalStreak()) {
@@ -239,7 +229,7 @@ public final class CombatUtilityCheck extends Check {
             }
         }
 
-        // Cobweb placer: identical swap→place ms, or invalid input during combat place
+
         if (!(inFight || nearEnemy)) {
             data.setCobwebPlaceIdenticalStreak(0);
             return;
@@ -267,9 +257,7 @@ public final class CombatUtilityCheck extends Check {
         }
     }
 
-    /**
-     * Invalid input packet signals that legit clients should not send with these actions.
-     */
+
     private boolean hasInvalidInput(Player player, PlayerData data) {
         if (player.isDead() || player.isSleeping()) {
             return true;
@@ -286,7 +274,7 @@ public final class CombatUtilityCheck extends Check {
         if (data.getSwapStreak() >= 4) {
             return true;
         }
-        // Recent InvalidInput VL from the dedicated check
+
         if (data.getVl("InvalidInput") >= 2) {
             return true;
         }

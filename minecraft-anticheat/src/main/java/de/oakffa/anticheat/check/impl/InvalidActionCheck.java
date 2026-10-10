@@ -13,10 +13,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.util.Vector;
 
-/**
- * Detects invalid action packets: dig sequence spoof, impossible place/interact/attack reach,
- * abort without start, air place, etc.
- */
 public final class InvalidActionCheck extends Check {
 
     public InvalidActionCheck(CheckManager manager) {
@@ -72,7 +68,7 @@ public final class InvalidActionCheck extends Check {
         if (isTooFar(player, block.getLocation().add(0.5, 0.5, 0.5), true)) {
             flag(player, data, "dig break out of reach");
         }
-        // Instant break of hard blocks without dig start is suspicious in survival
+
         if (!data.isDigging()
                 && player.getGameMode() == GameMode.SURVIVAL
                 && block.getType().getHardness() > 0.5f
@@ -111,7 +107,7 @@ public final class InvalidActionCheck extends Check {
             }
         }
         if (entity != null && !(entity instanceof Player && entity.equals(player))) {
-            // interact-entity path; attack handled separately
+
             if (isTooFar(player, entity.getLocation().add(0, entity.getHeight() * 0.5, 0), false)) {
                 flag(player, data, "interact entity out of reach");
             }
@@ -134,7 +130,7 @@ public final class InvalidActionCheck extends Check {
             flag(player, data, String.format("attack out of reach (%.2f)",
                     player.getEyeLocation().distance(aimPoint)));
         }
-        // Attack through walls-ish: target far behind look direction
+
         Vector look = player.getEyeLocation().getDirection().normalize();
         Vector toTarget = aimPoint.toVector().subtract(player.getEyeLocation().toVector());
         if (toTarget.lengthSquared() > 0.01) {
@@ -171,7 +167,7 @@ public final class InvalidActionCheck extends Check {
         double max = blockAction
                 ? (player.getGameMode() == GameMode.CREATIVE ? 6.0 : 5.2)
                 : (player.getGameMode() == GameMode.CREATIVE ? 6.0 : 3.2);
-        // Ping compensation (generous — avoid false flags)
+
         max += Math.min(1.25, Math.max(0, player.getPing()) / 150.0);
         max += manager.getConfig().getInvalidActionReachBuffer();
         return dist > max;
@@ -182,7 +178,7 @@ public final class InvalidActionCheck extends Check {
         if (hand == null || hand.getType() == Material.AIR) {
             return false;
         }
-        // Efficiency enchanted tools / creative-like instant breaks — be lenient
+
         return hand.getType().name().contains("PICKAXE")
                 || hand.getType().name().contains("AXE")
                 || hand.getType().name().contains("SHOVEL")

@@ -191,7 +191,7 @@ public final class PluginConfig {
         meteorSignTimeoutTicks = c.getInt("checks.meteor-sign.timeout-ticks", 200);
         meteorSignBan = c.getBoolean("checks.meteor-sign.ban-on-detect", false);
 
-        // Conservative defaults — low weight, high streaks → hard to false-ban
+
         tickAbuseEnabled = c.getBoolean("checks.tick-abuse.enabled", true);
         tickAbuseWeight = c.getInt("checks.tick-abuse.weight", 1);
         tickAbuseMaxVl = c.getInt("checks.tick-abuse.max-vl", 20);
@@ -243,7 +243,7 @@ public final class PluginConfig {
         combatUtilityEnabled = c.getBoolean("checks.combat-utility.enabled", true);
         combatUtilityWeight = c.getInt("checks.combat-utility.weight", 3);
         combatUtilityMaxVl = c.getInt("checks.combat-utility.max-vl", 10);
-        // Same millisecond delay must repeat this many times before flag (plus the first sample)
+
         combatUtilityIdenticalStreak = c.getInt("checks.combat-utility.identical-streak", 5);
         combatUtilityWebEnemyRange = c.getDouble("checks.combat-utility.web-enemy-range", 4.5);
         combatUtilityCombatWindowMs = c.getInt("checks.combat-utility.combat-window-ms", 2500);

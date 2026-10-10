@@ -5,9 +5,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * Parses durations like {@code 7d}, {@code 12h}, {@code 30m}, {@code 1w}, {@code permanent}.
- */
 public final class DurationParser {
 
     private static final Pattern TOKEN = Pattern.compile("(\\d+)([smhdw])", Pattern.CASE_INSENSITIVE);
@@ -15,9 +12,7 @@ public final class DurationParser {
     private DurationParser() {
     }
 
-    /**
-     * @return duration in milliseconds, or {@code -1} for permanent; {@code null} if invalid
-     */
+
     public static Long parseToMillis(String input) {
         if (input == null || input.isBlank()) {
             return null;
@@ -48,7 +43,7 @@ public final class DurationParser {
             consumed = matcher.end();
         }
         if (consumed == 0 || consumed != raw.length() || total <= 0L) {
-            // bare number = days
+
             try {
                 long days = Long.parseLong(raw);
                 if (days <= 0) {

@@ -30,11 +30,6 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
-/**
- * Sign-translation probe (MC-265322 style): opens a sign with a Meteor-only
- * translation key. Meteor resolves it to readable text and sends that back;
- * vanilla leaves the key unresolved. Detected players are kicked immediately.
- */
 public final class MeteorSignProbe implements Listener {
 
     public static final String PROBE_KEY = "key.meteor-client.open-gui";
@@ -191,7 +186,7 @@ public final class MeteorSignProbe implements Listener {
         if (normalized.isEmpty()) {
             return false;
         }
-        // Vanilla / ExploitPreventer typically echo the translation key (or nothing)
+
         if (normalized.equalsIgnoreCase(PROBE_KEY) || raw.equalsIgnoreCase(PROBE_KEY)) {
             return false;
         }
@@ -215,7 +210,7 @@ public final class MeteorSignProbe implements Listener {
             try {
                 session.location.getBlock().setType(Material.AIR, false);
             } catch (Exception ignored) {
-                // ignore
+
             }
         }
     }

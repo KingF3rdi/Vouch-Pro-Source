@@ -31,10 +31,6 @@ import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.event.player.PlayerToggleSprintEvent;
 import org.bukkit.inventory.EquipmentSlot;
 
-/**
- * Feeds Bukkit action/input events into InvalidInput / InvalidAction checks
- * (Paper-side view of client action & input packets).
- */
 public final class InputActionListener implements Listener {
 
     private final CheckManager checkManager;
