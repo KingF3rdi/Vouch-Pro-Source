@@ -75,7 +75,7 @@ public final class HelixACPlugin extends JavaPlugin {
 
         getLogger().info("HelixAC enabled — Meteor sign probe + staff command logging active.");
         if (Bukkit.getPluginManager().getPlugin("LuckPerms") != null) {
-            getLogger().info("LuckPerms detected. Permissions: ac.ban, ac.logs, ac.admin, ac.bypass, ac.whitelist, ac.banlogs, ac.stafflogs, ac.notify");
+            getLogger().info("LuckPerms detected. Permissions: ac.flags, ac.logs, ac.ban, ac.clear, ac.wipe, ac.admin, …");
         }
     }
 

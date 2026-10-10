@@ -17,6 +17,8 @@ public final class Permissions {
     public static final String LOGS = "ac.logs";
     public static final String BAN_LOGS = "ac.banlogs";
     public static final String STAFF_LOGS = "ac.stafflogs";
+    /** See live flag alerts and flag entries in logs. */
+    public static final String FLAGS = "ac.flags";
     public static final String CLEAR = "ac.clear";
     public static final String WIPE = "ac.wipe";
     public static final String NOTIFY = "ac.notify";
@@ -45,7 +47,7 @@ public final class Permissions {
         return sender.hasPermission(WIPE) || sender.hasPermission(ADMIN);
     }
 
-    /** /ac logs and /ban logs */
+    /** /ac logs and /ban logs (ban history; flags need {@link #canViewFlags}) */
     public static boolean canViewLogs(CommandSender sender) {
         return sender.hasPermission(LOGS)
                 || sender.hasPermission(BAN_LOGS)
@@ -57,6 +59,11 @@ public final class Permissions {
         return sender.hasPermission(LOGS)
                 || sender.hasPermission(STAFF_LOGS)
                 || sender.hasPermission(ADMIN);
+    }
+
+    /** Live flag alerts + flag lines in log commands. */
+    public static boolean canViewFlags(CommandSender sender) {
+        return sender.hasPermission(FLAGS) || sender.hasPermission(ADMIN);
     }
 
     /** Any log command access. */
@@ -75,6 +82,7 @@ public final class Permissions {
                 || player.hasPermission(LOGS)
                 || player.hasPermission(BAN_LOGS)
                 || player.hasPermission(STAFF_LOGS)
+                || player.hasPermission(FLAGS)
                 || player.hasPermission(CLEAR)
                 || player.hasPermission(WIPE)
                 || player.hasPermission(NOTIFY)

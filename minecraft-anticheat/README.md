@@ -36,7 +36,7 @@ Drop the jar into your server `plugins/` folder and restart.
 
 | Command | Permission | Description |
 | --- | --- | --- |
-| `/ac logs [player]` | `ac.logs` | Latest flags and bans (optional player filter) |
+| `/ac logs [player]` | `ac.logs` | Latest bans (+ flags if `ac.flags`) |
 | `/ban logs [player]` | `ac.logs` | **Same as** `/ac logs` (does not steal normal `/ban`) |
 | `/ac staff logs` | `ac.logs` | Latest staff commands (player + command) |
 | `/ac ban <player> <duration> <reason>` | `ac.ban` | Easy name-ban |
@@ -52,22 +52,24 @@ Duration examples: `7d`, `12h`, `30m`, `1w`, `permanent` (bare numbers = days).
 ## LuckPerms permissions
 
 ```
+ac.flags      # See live flag alerts + flag lines in logs
 ac.ban        # /ac ban and /ac ip ban
 ac.clear      # /ac clear <player>
 ac.wipe       # /ac wipe <player> (inv + EC + stats)
-ac.logs       # ALL log access (/ac logs, /ban logs, /ac staff logs)
-ac.admin      # whitelist / reload / info (includes ban, clear, wipe, logs)
+ac.logs       # Log commands (/ac logs, /ban logs, /ac staff logs)
+ac.admin      # whitelist / reload / info (includes all staff perms above)
 ac.bypass     # Completely bypasses HelixAC (no flags, no bans)
 ac.whitelist  # Flags normally but never auto-banned
 ac.banlogs    # Only /ac logs and /ban logs (also granted by ac.logs)
 ac.stafflogs  # Only /ac staff logs (also granted by ac.logs)
 ac.staff      # Marks player as staff for command logging
-ac.notify     # Live flag notifications
+ac.notify     # Ban/punishment broadcasts
 ```
 
 Examples:
 
 ```
+/lp group mod permission set ac.flags true
 /lp group mod permission set ac.ban true
 /lp group mod permission set ac.clear true
 /lp group mod permission set ac.wipe true
@@ -75,7 +77,6 @@ Examples:
 /lp group admin permission set ac.admin true
 /lp user Steve permission set ac.bypass true
 /lp user Alex permission set ac.whitelist true
-/lp group mod permission set ac.notify true
 ```
 
 ## Config highlights

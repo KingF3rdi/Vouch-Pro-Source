@@ -77,7 +77,7 @@ public final class PunishmentManager {
                 "detail", detail == null ? "" : detail
         ));
         Bukkit.getOnlinePlayers().stream()
-                .filter(p -> p.hasPermission(Permissions.NOTIFY))
+                .filter(Permissions::canViewFlags)
                 .forEach(p -> p.sendMessage(messages.component(rendered)));
         plugin.getLogger().info(player.getName() + " flagged " + check + " vl=" + vl + " detail=" + detail
                 + (whitelisted ? " [WHITELISTED]" : ""));

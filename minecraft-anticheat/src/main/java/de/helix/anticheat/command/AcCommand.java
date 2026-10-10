@@ -264,7 +264,7 @@ public final class AcCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(messages.component("&e/" + label + " wipe <player> &8- &7inventory + EC + stats"));
         sender.sendMessage(messages.component("&e/" + label + " whitelist <add|remove|list> [player]"));
         sender.sendMessage(messages.component("&e/" + label + " reload &8| &e/" + label + " info"));
-        sender.sendMessage(messages.component("&7LuckPerms: &fac.ban&7, &fac.clear&7, &fac.wipe&7, &fac.logs&7, &fac.admin"));
+        sender.sendMessage(messages.component("&7LuckPerms: &fac.flags&7 (flags), &fac.logs&7, &fac.ban&7, &fac.clear&7, &fac.wipe&7, &fac.admin"));
     }
 
     private void showInfo(CommandSender sender) {

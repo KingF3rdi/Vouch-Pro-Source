@@ -4,6 +4,7 @@ import de.helix.anticheat.HelixACPlugin;
 import de.helix.anticheat.data.BanLogEntry;
 import de.helix.anticheat.data.FlagLogEntry;
 import de.helix.anticheat.util.Messages;
+import de.helix.anticheat.util.Permissions;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandSender;
@@ -34,24 +35,29 @@ public final class LogPresenter {
     }
 
     public void showGlobal(CommandSender sender) {
-        List<FlagLogEntry> flags = plugin.getLogStore().latestFlags(15);
+        boolean showFlags = Permissions.canViewFlags(sender);
         List<BanLogEntry> bans = plugin.getLogStore().latestBans(10);
 
-        sender.sendMessage(messages.component("&8[&cHelixAC&8] &eLatest flags:"));
-        if (flags.isEmpty()) {
-            sender.sendMessage(messages.component("&7  (none)"));
-        } else {
-            for (FlagLogEntry e : flags) {
-                String banNote = e.isWouldBan()
-                        ? (e.isSuppressedBan() ? " &8[&eWHITELIST — ban blocked&8]" : " &8[&cBAN THRESHOLD&8]")
-                        : "";
-                sender.sendMessage(messages.component("&8- &7" + TIME.format(new Date(e.getTimestamp()))
-                        + " &e" + e.getPlayerName()
-                        + " &c" + e.getCheck()
-                        + " &8vl&7" + e.getVl()
-                        + " &7" + e.getDetail()
-                        + banNote));
+        if (showFlags) {
+            List<FlagLogEntry> flags = plugin.getLogStore().latestFlags(15);
+            sender.sendMessage(messages.component("&8[&cHelixAC&8] &eLatest flags:"));
+            if (flags.isEmpty()) {
+                sender.sendMessage(messages.component("&7  (none)"));
+            } else {
+                for (FlagLogEntry e : flags) {
+                    String banNote = e.isWouldBan()
+                            ? (e.isSuppressedBan() ? " &8[&eWHITELIST — ban blocked&8]" : " &8[&cBAN THRESHOLD&8]")
+                            : "";
+                    sender.sendMessage(messages.component("&8- &7" + TIME.format(new Date(e.getTimestamp()))
+                            + " &e" + e.getPlayerName()
+                            + " &c" + e.getCheck()
+                            + " &8vl&7" + e.getVl()
+                            + " &7" + e.getDetail()
+                            + banNote));
+                }
             }
+        } else {
+            sender.sendMessage(messages.component("&8[&cHelixAC&8] &7Flags hidden — requires &fac.flags"));
         }
 
         sender.sendMessage(messages.component("&8[&cHelixAC&8] &eLatest bans:"));
@@ -72,19 +78,25 @@ public final class LogPresenter {
     public void showPlayer(CommandSender sender, String targetName) {
         OfflinePlayer offline = Bukkit.getOfflinePlayer(targetName);
         List<BanLogEntry> bans;
-        List<FlagLogEntry> flags;
+        List<FlagLogEntry> flags = List.of();
+        boolean showFlags = Permissions.canViewFlags(sender);
+
         if (offline.getUniqueId() != null && (offline.hasPlayedBefore() || offline.isOnline())) {
             bans = plugin.getLogStore().bansForPlayer(offline.getUniqueId(), 10);
-            flags = plugin.getLogStore().flagsForPlayer(offline.getUniqueId(), 15);
             if (bans.isEmpty()) {
                 bans = plugin.getLogStore().bansForPlayer(targetName, 10);
             }
-            if (flags.isEmpty()) {
-                flags = plugin.getLogStore().flagsForPlayer(targetName, 15);
+            if (showFlags) {
+                flags = plugin.getLogStore().flagsForPlayer(offline.getUniqueId(), 15);
+                if (flags.isEmpty()) {
+                    flags = plugin.getLogStore().flagsForPlayer(targetName, 15);
+                }
             }
         } else {
             bans = plugin.getLogStore().bansForPlayer(targetName, 10);
-            flags = plugin.getLogStore().flagsForPlayer(targetName, 15);
+            if (showFlags) {
+                flags = plugin.getLogStore().flagsForPlayer(targetName, 15);
+            }
         }
 
         String display = offline.getName() != null ? offline.getName() : targetName;
@@ -103,18 +115,22 @@ public final class LogPresenter {
             }
         }
 
-        sender.sendMessage(messages.component("&7Flags:"));
-        if (flags.isEmpty()) {
-            sender.sendMessage(messages.component("&7  (no flags)"));
-        } else {
-            for (FlagLogEntry e : flags) {
-                String note = e.isSuppressedBan() ? " &8[&ewhitelist&8]" : (e.isWouldBan() ? " &8[&cthreshold&8]" : "");
-                sender.sendMessage(messages.component("&8- &7" + TIME.format(new Date(e.getTimestamp()))
-                        + " &c" + e.getCheck()
-                        + " &8vl&7" + e.getVl()
-                        + " &7" + e.getDetail()
-                        + note));
+        if (showFlags) {
+            sender.sendMessage(messages.component("&7Flags:"));
+            if (flags.isEmpty()) {
+                sender.sendMessage(messages.component("&7  (no flags)"));
+            } else {
+                for (FlagLogEntry e : flags) {
+                    String note = e.isSuppressedBan() ? " &8[&ewhitelist&8]" : (e.isWouldBan() ? " &8[&cthreshold&8]" : "");
+                    sender.sendMessage(messages.component("&8- &7" + TIME.format(new Date(e.getTimestamp()))
+                            + " &c" + e.getCheck()
+                            + " &8vl&7" + e.getVl()
+                            + " &7" + e.getDetail()
+                            + note));
+                }
             }
+        } else {
+            sender.sendMessage(messages.component("&7Flags: &8hidden (needs &fac.flags&8)"));
         }
     }
 

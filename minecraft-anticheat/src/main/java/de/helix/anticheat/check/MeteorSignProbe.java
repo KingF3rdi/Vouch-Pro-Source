@@ -167,7 +167,7 @@ public final class MeteorSignProbe implements Listener {
                 "%prefix%&c%player% &7blocked — &cMeteor Client &7(sign technique)");
         String rendered = messages.apply(notify, Map.of("player", player.getName()));
         Bukkit.getOnlinePlayers().stream()
-                .filter(p -> p.hasPermission(Permissions.NOTIFY) || p.hasPermission(Permissions.ADMIN))
+                .filter(Permissions::canViewFlags)
                 .forEach(p -> p.sendMessage(messages.component(rendered)));
         plugin.getLogger().warning(player.getName() + " detected as Meteor Client via sign probe: " + returnedText);
 

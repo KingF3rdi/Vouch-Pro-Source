@@ -26,14 +26,17 @@ permissions:
   ac.wipe:
     description: Allows /ac wipe (inventory, ender chest, stats)
     default: op
+  ac.flags:
+    description: See live flag alerts and flag entries in /ac logs
+    default: op
   ac.logs:
-    description: Access to all HelixAC logs (/ac logs, /ban logs, /ac staff logs)
+    description: Access to HelixAC log commands (/ac logs, /ban logs, /ac staff logs)
     default: op
     children:
       ac.banlogs: true
       ac.stafflogs: true
   ac.banlogs:
-    description: Access to /ac logs and /ban logs
+    description: Access to /ac logs and /ban logs (ban history; flags need ac.flags)
     default: op
   ac.stafflogs:
     description: Access to /ac staff logs
@@ -42,15 +45,16 @@ permissions:
     description: Marks the player as staff for command logging
     default: op
   ac.notify:
-    description: Receive live flag notifications in chat
+    description: Receive ban/punishment broadcasts in chat
     default: op
   ac.admin:
-    description: Full HelixAC admin (includes ban, clear, wipe, all logs)
+    description: Full HelixAC admin (includes all staff permissions)
     default: op
     children:
       ac.ban: true
       ac.clear: true
       ac.wipe: true
+      ac.flags: true
       ac.logs: true
       ac.banlogs: true
       ac.stafflogs: true
