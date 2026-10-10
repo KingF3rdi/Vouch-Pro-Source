@@ -58,6 +58,19 @@ public final class PlayerData {
     private int dropStreak;
     private long lastDropMs;
 
+    // Prestige / ghost-client combat packet state
+    private long lastArmSwingMs;
+    private long lastAttackMs;
+    private UUID lastAttackTarget;
+    private float lastAttackYaw;
+    private float lastAttackPitch;
+    private int combatNoSwingStreak;
+    private int combatSilentAimStreak;
+    private int combatSnapStreak;
+    private int combatMultiTargetStreak;
+    private int combatClickerStreak;
+    private final Deque<Long> attackIntervals = new ArrayDeque<>();
+
     public PlayerData(UUID uuid, String name) {
         this.uuid = uuid;
         this.name = name;
@@ -421,5 +434,116 @@ public final class PlayerData {
 
     public void setLastDropMs(long lastDropMs) {
         this.lastDropMs = lastDropMs;
+    }
+
+    public long getLastArmSwingMs() {
+        return lastArmSwingMs;
+    }
+
+    public void setLastArmSwingMs(long lastArmSwingMs) {
+        this.lastArmSwingMs = lastArmSwingMs;
+    }
+
+    public long getLastAttackMs() {
+        return lastAttackMs;
+    }
+
+    public void setLastAttackMs(long lastAttackMs) {
+        this.lastAttackMs = lastAttackMs;
+    }
+
+    public UUID getLastAttackTarget() {
+        return lastAttackTarget;
+    }
+
+    public void setLastAttackTarget(UUID lastAttackTarget) {
+        this.lastAttackTarget = lastAttackTarget;
+    }
+
+    public float getLastAttackYaw() {
+        return lastAttackYaw;
+    }
+
+    public void setLastAttackYaw(float lastAttackYaw) {
+        this.lastAttackYaw = lastAttackYaw;
+    }
+
+    public float getLastAttackPitch() {
+        return lastAttackPitch;
+    }
+
+    public void setLastAttackPitch(float lastAttackPitch) {
+        this.lastAttackPitch = lastAttackPitch;
+    }
+
+    public int getCombatNoSwingStreak() {
+        return combatNoSwingStreak;
+    }
+
+    public void setCombatNoSwingStreak(int combatNoSwingStreak) {
+        this.combatNoSwingStreak = Math.max(0, combatNoSwingStreak);
+    }
+
+    public void addCombatNoSwingStreak(int amount) {
+        this.combatNoSwingStreak = Math.max(0, this.combatNoSwingStreak + amount);
+    }
+
+    public int getCombatSilentAimStreak() {
+        return combatSilentAimStreak;
+    }
+
+    public void setCombatSilentAimStreak(int combatSilentAimStreak) {
+        this.combatSilentAimStreak = Math.max(0, combatSilentAimStreak);
+    }
+
+    public void addCombatSilentAimStreak(int amount) {
+        this.combatSilentAimStreak = Math.max(0, this.combatSilentAimStreak + amount);
+    }
+
+    public int getCombatSnapStreak() {
+        return combatSnapStreak;
+    }
+
+    public void setCombatSnapStreak(int combatSnapStreak) {
+        this.combatSnapStreak = Math.max(0, combatSnapStreak);
+    }
+
+    public void addCombatSnapStreak(int amount) {
+        this.combatSnapStreak = Math.max(0, this.combatSnapStreak + amount);
+    }
+
+    public int getCombatMultiTargetStreak() {
+        return combatMultiTargetStreak;
+    }
+
+    public void setCombatMultiTargetStreak(int combatMultiTargetStreak) {
+        this.combatMultiTargetStreak = Math.max(0, combatMultiTargetStreak);
+    }
+
+    public void addCombatMultiTargetStreak(int amount) {
+        this.combatMultiTargetStreak = Math.max(0, this.combatMultiTargetStreak + amount);
+    }
+
+    public int getCombatClickerStreak() {
+        return combatClickerStreak;
+    }
+
+    public void setCombatClickerStreak(int combatClickerStreak) {
+        this.combatClickerStreak = Math.max(0, combatClickerStreak);
+    }
+
+    public void addCombatClickerStreak(int amount) {
+        this.combatClickerStreak = Math.max(0, this.combatClickerStreak + amount);
+    }
+
+    public Deque<Long> getAttackIntervals() {
+        return attackIntervals;
+    }
+
+    public void pushAttackInterval(long intervalMs, int maxSamples) {
+        attackIntervals.addLast(intervalMs);
+        while (attackIntervals.size() > maxSamples) {
+            attackIntervals.removeFirst();
+        }
     }
 }

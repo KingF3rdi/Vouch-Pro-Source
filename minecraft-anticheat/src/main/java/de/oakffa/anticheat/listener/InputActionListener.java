@@ -3,6 +3,7 @@ package de.oakffa.anticheat.listener;
 import de.oakffa.anticheat.check.CheckManager;
 import de.oakffa.anticheat.check.impl.InvalidActionCheck;
 import de.oakffa.anticheat.check.impl.InvalidInputCheck;
+import de.oakffa.anticheat.check.impl.PrestigeCombatCheck;
 import de.oakffa.anticheat.data.PlayerData;
 import de.oakffa.anticheat.data.PlayerDataManager;
 import de.oakffa.anticheat.util.Permissions;
@@ -16,6 +17,8 @@ import org.bukkit.event.block.BlockDamageAbortEvent;
 import org.bukkit.event.block.BlockDamageEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.player.PlayerAnimationEvent;
+import org.bukkit.event.player.PlayerAnimationType;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -172,7 +175,23 @@ public final class InputActionListener implements Listener {
         }
     }
 
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onArmSwing(PlayerAnimationEvent event) {
+        if (event.getAnimationType() != PlayerAnimationType.ARM_SWING) {
+            return;
+        }
+        Player player = event.getPlayer();
+        if (bypass(player)) {
+            return;
+        }
+        for (var check : checkManager.getChecks()) {
+            if (check instanceof PrestigeCombatCheck combat && combat.isEnabled()) {
+                combat.onSwing(player, data(player));
+            }
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = false)
     public void onAttack(EntityDamageByEntityEvent event) {
         if (!(event.getDamager() instanceof Player player)) {
             return;
@@ -181,9 +200,13 @@ public final class InputActionListener implements Listener {
             return;
         }
         Entity target = event.getEntity();
+        PlayerData pd = data(player);
         for (var check : checkManager.getChecks()) {
             if (check instanceof InvalidActionCheck action && action.isEnabled()) {
-                action.onAttack(player, data(player), target);
+                action.onAttack(player, pd, target);
+            }
+            if (check instanceof PrestigeCombatCheck combat && combat.isEnabled()) {
+                combat.onAttack(player, pd, target);
             }
         }
     }

@@ -85,6 +85,14 @@ public final class GhostClientCheck extends Check {
             if (asText.contains("vape") || asText.contains("prestige")
                     || asText.contains("ghostclient") || asText.contains("selfdestruct")) {
                 flag(player, data, "suspicious payload on " + channel);
+                return;
+            }
+            // Prestige / Vape combat module names leaking into custom channels
+            for (String needle : manager.getConfig().getPrestigeCombatPayloadKeywords()) {
+                if (needle != null && !needle.isBlank() && asText.contains(needle)) {
+                    flag(player, data, "combat-module payload (" + needle + ") on " + channel);
+                    return;
+                }
             }
         }
     }

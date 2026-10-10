@@ -91,6 +91,26 @@ public final class PluginConfig {
     private double invalidActionMinAttackDot;
     private int invalidActionMinDropMs;
 
+    private boolean prestigeCombatEnabled;
+    private int prestigeCombatWeight;
+    private int prestigeCombatMaxVl;
+    private int prestigeCombatMaxPingExempt;
+    private int prestigeCombatSwingGraceMs;
+    private int prestigeCombatNoSwingStreak;
+    private double prestigeCombatSilentAimDot;
+    private double prestigeCombatSilentAimMinDistance;
+    private int prestigeCombatSilentAimStreak;
+    private double prestigeCombatSnapYaw;
+    private double prestigeCombatSnapMaxPitch;
+    private int prestigeCombatSnapStreak;
+    private int prestigeCombatMultiTargetMs;
+    private double prestigeCombatMultiTargetMaxDot;
+    private int prestigeCombatMultiTargetStreak;
+    private int prestigeCombatClickSamples;
+    private double prestigeCombatClickMaxStdDev;
+    private int prestigeCombatClickerStreak;
+    private List<String> prestigeCombatPayloadKeywords;
+
     private int maxStaffLogs;
 
     public PluginConfig(OakFFAPlugin plugin) {
@@ -183,6 +203,32 @@ public final class PluginConfig {
         invalidActionReachBuffer = c.getDouble("checks.invalid-action.reach-buffer", 0.35);
         invalidActionMinAttackDot = c.getDouble("checks.invalid-action.min-attack-dot", -0.15);
         invalidActionMinDropMs = c.getInt("checks.invalid-action.min-drop-ms", 35);
+
+        prestigeCombatEnabled = c.getBoolean("checks.prestige-combat.enabled", true);
+        prestigeCombatWeight = c.getInt("checks.prestige-combat.weight", 3);
+        prestigeCombatMaxVl = c.getInt("checks.prestige-combat.max-vl", 12);
+        prestigeCombatMaxPingExempt = c.getInt("checks.prestige-combat.max-ping-exempt", 400);
+        prestigeCombatSwingGraceMs = c.getInt("checks.prestige-combat.swing-grace-ms", 400);
+        prestigeCombatNoSwingStreak = c.getInt("checks.prestige-combat.no-swing-streak", 5);
+        prestigeCombatSilentAimDot = c.getDouble("checks.prestige-combat.silent-aim-dot", 0.55);
+        prestigeCombatSilentAimMinDistance = c.getDouble("checks.prestige-combat.silent-aim-min-distance", 1.8);
+        prestigeCombatSilentAimStreak = c.getInt("checks.prestige-combat.silent-aim-streak", 4);
+        prestigeCombatSnapYaw = c.getDouble("checks.prestige-combat.snap-yaw", 40.0);
+        prestigeCombatSnapMaxPitch = c.getDouble("checks.prestige-combat.snap-max-pitch", 2.5);
+        prestigeCombatSnapStreak = c.getInt("checks.prestige-combat.snap-streak", 3);
+        prestigeCombatMultiTargetMs = c.getInt("checks.prestige-combat.multi-target-ms", 140);
+        prestigeCombatMultiTargetMaxDot = c.getDouble("checks.prestige-combat.multi-target-max-dot", 0.55);
+        prestigeCombatMultiTargetStreak = c.getInt("checks.prestige-combat.multi-target-streak", 3);
+        prestigeCombatClickSamples = c.getInt("checks.prestige-combat.click-samples", 12);
+        prestigeCombatClickMaxStdDev = c.getDouble("checks.prestige-combat.click-max-stddev", 3.5);
+        prestigeCombatClickerStreak = c.getInt("checks.prestige-combat.clicker-streak", 2);
+        prestigeCombatPayloadKeywords = normalizeList(c.getStringList("checks.prestige-combat.payload-keywords"));
+        if (prestigeCombatPayloadKeywords.isEmpty()) {
+            prestigeCombatPayloadKeywords = List.of(
+                    "killaura", "kill aura", "aimassist", "aim assist", "triggerbot",
+                    "autoblock", "keep sprint", "keepsprint", "criticals", "reach",
+                    "hitbox", "velocity", "prestige", "vape");
+        }
     }
 
     private static List<String> normalizeList(List<String> input) {
@@ -465,6 +511,82 @@ public final class PluginConfig {
 
     public int getInvalidActionMinDropMs() {
         return invalidActionMinDropMs;
+    }
+
+    public boolean isPrestigeCombatEnabled() {
+        return prestigeCombatEnabled;
+    }
+
+    public int getPrestigeCombatWeight() {
+        return prestigeCombatWeight;
+    }
+
+    public int getPrestigeCombatMaxVl() {
+        return prestigeCombatMaxVl;
+    }
+
+    public int getPrestigeCombatMaxPingExempt() {
+        return prestigeCombatMaxPingExempt;
+    }
+
+    public int getPrestigeCombatSwingGraceMs() {
+        return prestigeCombatSwingGraceMs;
+    }
+
+    public int getPrestigeCombatNoSwingStreak() {
+        return prestigeCombatNoSwingStreak;
+    }
+
+    public double getPrestigeCombatSilentAimDot() {
+        return prestigeCombatSilentAimDot;
+    }
+
+    public double getPrestigeCombatSilentAimMinDistance() {
+        return prestigeCombatSilentAimMinDistance;
+    }
+
+    public int getPrestigeCombatSilentAimStreak() {
+        return prestigeCombatSilentAimStreak;
+    }
+
+    public double getPrestigeCombatSnapYaw() {
+        return prestigeCombatSnapYaw;
+    }
+
+    public double getPrestigeCombatSnapMaxPitch() {
+        return prestigeCombatSnapMaxPitch;
+    }
+
+    public int getPrestigeCombatSnapStreak() {
+        return prestigeCombatSnapStreak;
+    }
+
+    public int getPrestigeCombatMultiTargetMs() {
+        return prestigeCombatMultiTargetMs;
+    }
+
+    public double getPrestigeCombatMultiTargetMaxDot() {
+        return prestigeCombatMultiTargetMaxDot;
+    }
+
+    public int getPrestigeCombatMultiTargetStreak() {
+        return prestigeCombatMultiTargetStreak;
+    }
+
+    public int getPrestigeCombatClickSamples() {
+        return prestigeCombatClickSamples;
+    }
+
+    public double getPrestigeCombatClickMaxStdDev() {
+        return prestigeCombatClickMaxStdDev;
+    }
+
+    public int getPrestigeCombatClickerStreak() {
+        return prestigeCombatClickerStreak;
+    }
+
+    public List<String> getPrestigeCombatPayloadKeywords() {
+        return prestigeCombatPayloadKeywords;
     }
 
     public int getMaxStaffLogs() {

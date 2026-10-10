@@ -117,6 +117,48 @@ checks:
     timeout-ticks: 200
     # If true, also ban for ban-duration-days; otherwise kick only
     ban-on-detect: false
+  # Prestige / Vape combat modules via attack + arm-swing packet patterns
+  prestige-combat:
+    enabled: true
+    weight: 3
+    max-vl: 12
+    # Skip combat heuristics above this ping
+    max-ping-exempt: 400
+    # USE_ENTITY without ARM_SWING within this window looks like silent combat packets
+    swing-grace-ms: 400
+    no-swing-streak: 5
+    # Hits while look vector misses the target (silent aim / imperfect aim)
+    silent-aim-dot: 0.55
+    silent-aim-min-distance: 1.8
+    silent-aim-streak: 4
+    # KillAura snap then hit
+    snap-yaw: 40.0
+    snap-max-pitch: 2.5
+    snap-streak: 3
+    # Multi-target aura switches
+    multi-target-ms: 140
+    multi-target-max-dot: 0.55
+    multi-target-streak: 3
+    # Autoclicker / triggerbot interval regularity
+    click-samples: 12
+    click-max-stddev: 3.5
+    clicker-streak: 2
+    # Plugin-message payload needles (also scanned by GhostClient)
+    payload-keywords:
+      - "killaura"
+      - "kill aura"
+      - "aimassist"
+      - "aim assist"
+      - "triggerbot"
+      - "autoblock"
+      - "keepsprint"
+      - "keep sprint"
+      - "criticals"
+      - "reach"
+      - "hitbox"
+      - "velocity"
+      - "prestige"
+      - "vape"
   # Timer / wrong-tick usage (lenient — low weight, high streaks)
   tick-abuse:
     enabled: true

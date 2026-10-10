@@ -24,7 +24,8 @@ Jar: `build/libs/OakFFA-AntiCheat-1.0.0.jar`
 3. **Setbacks** — illegal moves resync to last valid position
 4. **TickAbuse** — timer / wrong-tick action bursts
 5. **InvalidInput / InvalidAction** — forged key combos, dig spoof, reach, off-angle hits
-6. **Heuristics** — bad packets, robotic aim, ghost-client brands/channels, Meteor sign probe
+6. **PrestigeCombat** — KillAura / silent aim / multi-aura / autoclicker packet patterns
+7. **Heuristics** — bad packets, robotic aim, ghost-client brands/channels, Meteor sign probe
 
 ## Commands
 
