@@ -52,7 +52,6 @@ public final class LogStore {
                 );
                 flagLogs.addLast(entry);
             } catch (Exception ignored) {
-
             }
         }
         List<java.util.Map<?, ?>> banMaps = castMapList(yaml.getMapList("bans"));
@@ -69,7 +68,6 @@ public final class LogStore {
                 );
                 banLogs.addLast(entry);
             } catch (Exception ignored) {
-
             }
         }
         trim();

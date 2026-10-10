@@ -191,7 +191,6 @@ public final class PluginConfig {
         meteorSignTimeoutTicks = c.getInt("checks.meteor-sign.timeout-ticks", 200);
         meteorSignBan = c.getBoolean("checks.meteor-sign.ban-on-detect", false);
 
-
         tickAbuseEnabled = c.getBoolean("checks.tick-abuse.enabled", true);
         tickAbuseWeight = c.getInt("checks.tick-abuse.weight", 1);
         tickAbuseMaxVl = c.getInt("checks.tick-abuse.max-vl", 20);

@@ -43,13 +43,11 @@ public final class Permissions {
         return sender.hasPermission(WIPE) || sender.hasPermission(ADMIN);
     }
 
-
     public static boolean canViewLogs(CommandSender sender) {
         return sender.hasPermission(LOGS)
                 || sender.hasPermission(BAN_LOGS)
                 || sender.hasPermission(ADMIN);
     }
-
 
     public static boolean canViewStaffLogs(CommandSender sender) {
         return sender.hasPermission(LOGS)
@@ -57,16 +55,13 @@ public final class Permissions {
                 || sender.hasPermission(ADMIN);
     }
 
-
     public static boolean canViewFlags(CommandSender sender) {
         return sender.hasPermission(FLAGS) || sender.hasPermission(ADMIN);
     }
 
-
     public static boolean canViewAnyLogs(CommandSender sender) {
         return canViewLogs(sender) || canViewStaffLogs(sender);
     }
-
 
     public static boolean isStaff(Player player) {
         if (player == null) {

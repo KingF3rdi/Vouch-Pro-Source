@@ -37,7 +37,6 @@ public final class InvalidInputCheck extends Check {
             return;
         }
 
-
         if (player.isSprinting() && player.isSneaking() && !player.isInsideVehicle()
                 && player.getGameMode() != GameMode.SPECTATOR) {
             data.addInputStreak(1);
@@ -49,11 +48,9 @@ public final class InvalidInputCheck extends Check {
             data.setInputStreak(Math.max(0, data.getInputStreak() - 1));
         }
 
-
         if (player.isSprinting() && player.isHandRaised() && !player.isInsideVehicle()) {
             flag(player, data, "sprint while using item");
         }
-
 
         if ((player.isDead() || player.isSleeping()) && event.hasExplicitlyChangedPosition()) {
             flag(player, data, "move input while dead/sleeping");

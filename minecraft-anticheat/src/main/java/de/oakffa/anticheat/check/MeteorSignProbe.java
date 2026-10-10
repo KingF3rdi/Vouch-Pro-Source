@@ -210,7 +210,6 @@ public final class MeteorSignProbe implements Listener {
             try {
                 session.location.getBlock().setType(Material.AIR, false);
             } catch (Exception ignored) {
-
             }
         }
     }

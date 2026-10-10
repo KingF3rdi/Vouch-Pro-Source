@@ -48,7 +48,6 @@ public final class IllegalPlaceCheck extends Check {
             return;
         }
 
-
         Material type = placed.getType();
         if (type == Material.AIR || type.name().contains("WATER") || type.name().contains("LAVA")) {
             return;
@@ -57,7 +56,6 @@ public final class IllegalPlaceCheck extends Check {
         checkFastPlace(player, data);
         checkSilentPlace(player, data, against, face, placed);
     }
-
 
     private void checkFastPlace(Player player, PlayerData data) {
         long now = System.currentTimeMillis();
@@ -74,7 +72,6 @@ public final class IllegalPlaceCheck extends Check {
             } else {
                 data.setFastPlaceStreak(Math.max(0, data.getFastPlaceStreak() - 1));
             }
-
 
             if (gap >= 20L && gap <= 280L) {
                 data.pushPlaceInterval(gap, manager.getConfig().getIllegalPlaceSamples());
@@ -109,12 +106,10 @@ public final class IllegalPlaceCheck extends Check {
         data.setLastBlockPlaceMs(now);
     }
 
-
     private void checkSilentPlace(Player player, PlayerData data,
                                   Block against, BlockFace face, Block placed) {
         Location eye = player.getEyeLocation();
         Vector look = eye.getDirection().normalize();
-
 
         Location aim;
         if (against != null && face != null && face != BlockFace.SELF) {
@@ -131,7 +126,6 @@ public final class IllegalPlaceCheck extends Check {
         }
         double dot = look.dot(to.normalize());
         double minDot = manager.getConfig().getIllegalPlaceSilentMinDot();
-
 
         Vector closest = eye.toVector().add(look.clone().multiply(Math.max(0.1, look.dot(to))));
         double rayMiss = closest.distance(aim.toVector());

@@ -12,7 +12,6 @@ public final class DurationParser {
     private DurationParser() {
     }
 
-
     public static Long parseToMillis(String input) {
         if (input == null || input.isBlank()) {
             return null;

@@ -45,7 +45,6 @@ public final class CheckManager {
         this.setbackManager = setbackManager;
         this.messages = messages;
 
-
         checks.add(new SimulationCheck(this));
         checks.add(new InvalidPacketCheck(this));
         checks.add(new InvalidInputCheck(this));

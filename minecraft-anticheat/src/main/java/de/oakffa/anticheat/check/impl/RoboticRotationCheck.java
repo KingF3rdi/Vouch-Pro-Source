@@ -43,11 +43,9 @@ public final class RoboticRotationCheck extends Check {
         float absYaw = Math.abs(deltaYaw);
         float absPitch = Math.abs(deltaPitch);
 
-
         if (absYaw < 0.001f && absPitch < 0.001f) {
             return;
         }
-
 
         if (almostEqual(deltaYaw, data.getLastDeltaYaw(), 0.0001f)
                 && almostEqual(deltaPitch, data.getLastDeltaPitch(), 0.0001f)
@@ -61,12 +59,10 @@ public final class RoboticRotationCheck extends Check {
             data.setIdenticalDeltaStreak(0);
         }
 
-
         if (absYaw >= manager.getConfig().getSnapMinYaw()
                 && absPitch <= manager.getConfig().getSnapMaxPitchChange()) {
             flag(player, data, String.format("yaw snap %.2f with frozen pitch", absYaw));
         }
-
 
         int samples = manager.getConfig().getMicroStepSamples();
         data.pushYawDelta(absYaw, samples);

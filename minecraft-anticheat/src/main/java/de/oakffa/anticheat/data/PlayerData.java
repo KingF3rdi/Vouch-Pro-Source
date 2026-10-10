@@ -30,7 +30,6 @@ public final class PlayerData {
     private final Deque<String> recentFlagChecks = new ArrayDeque<>();
     private final Deque<Float> yawDeltas = new ArrayDeque<>();
 
-
     private long lastMovePacketMs;
     private long tickBalanceMs;
     private int timerStreak;
@@ -40,14 +39,12 @@ public final class PlayerData {
     private final Deque<Long> recentMoveTimestamps = new ArrayDeque<>();
     private final Deque<Long> recentActionTimestamps = new ArrayDeque<>();
 
-
     private Vector lastVelocity = new Vector();
     private boolean wasOnGround = true;
     private Location lastValidLocation;
     private int uncertaintyTicks;
     private int velocityTicks;
     private int simulationStreak;
-
 
     private boolean digging;
     private Location digBlock;
@@ -57,7 +54,6 @@ public final class PlayerData {
     private long lastSwapHandsMs;
     private int dropStreak;
     private long lastDropMs;
-
 
     private long lastArmSwingMs;
     private long lastAttackMs;
@@ -70,7 +66,6 @@ public final class PlayerData {
     private int combatMultiTargetStreak;
     private int combatClickerStreak;
     private final Deque<Long> attackIntervals = new ArrayDeque<>();
-
 
     private long lastHotbarSwitchMs;
     private int lastHotbarSlot = -1;
@@ -92,7 +87,6 @@ public final class PlayerData {
     private int drainIdenticalStreak;
     private long lastCobwebPlaceDelayMs = -1;
     private int cobwebPlaceIdenticalStreak;
-
 
     private long lastBlockPlaceMs;
     private int fastPlaceStreak;

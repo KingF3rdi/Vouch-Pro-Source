@@ -46,7 +46,6 @@ public final class IpStore {
                     nameIndex.put(name.toLowerCase(Locale.ROOT), uuid);
                 }
             } catch (IllegalArgumentException ignored) {
-
             }
         }
     }

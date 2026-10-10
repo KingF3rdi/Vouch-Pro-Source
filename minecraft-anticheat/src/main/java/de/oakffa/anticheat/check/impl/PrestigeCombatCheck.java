@@ -72,7 +72,6 @@ public final class PrestigeCombatCheck extends Check {
         data.setLastAttackPitch(eye.getPitch());
     }
 
-
     private void checkNoSwing(Player player, PlayerData data, long now) {
         long sinceSwing = now - data.getLastArmSwingMs();
         int maxMs = manager.getConfig().getPrestigeCombatSwingGraceMs();
@@ -87,7 +86,6 @@ public final class PrestigeCombatCheck extends Check {
         }
     }
 
-
     private void checkSilentAim(Player player, PlayerData data, double lookDot, double distance) {
         double minDot = manager.getConfig().getPrestigeCombatSilentAimDot();
         double minDist = manager.getConfig().getPrestigeCombatSilentAimMinDistance();
@@ -101,7 +99,6 @@ public final class PrestigeCombatCheck extends Check {
             data.setCombatSilentAimStreak(Math.max(0, data.getCombatSilentAimStreak() - 1));
         }
     }
-
 
     private void checkSnapHit(Player player, PlayerData data, double lookDot, double distance) {
         float absYaw = Math.abs(data.getLastDeltaYaw());
@@ -120,7 +117,6 @@ public final class PrestigeCombatCheck extends Check {
             data.setCombatSnapStreak(Math.max(0, data.getCombatSnapStreak() - 1));
         }
     }
-
 
     private void checkMultiAura(Player player, PlayerData data, Entity target,
                                 Location eye, Location aim, long now) {
@@ -155,7 +151,6 @@ public final class PrestigeCombatCheck extends Check {
             }
         }
     }
-
 
     private void checkAutoclicker(Player player, PlayerData data, long now) {
         long last = data.getLastAttackMs();

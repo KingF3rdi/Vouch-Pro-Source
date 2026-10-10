@@ -25,19 +25,15 @@ public abstract class Check {
     public abstract int getMaxVl();
 
     public void onMove(Player player, PlayerData data, PlayerMoveEvent event) {
-
     }
 
     public void onBrand(Player player, PlayerData data, String brand) {
-
     }
 
     public void onPluginMessage(Player player, PlayerData data, String channel, byte[] payload) {
-
     }
 
     public void onJoin(Player player, PlayerData data) {
-
     }
 
     protected void flag(Player player, PlayerData data, String detail) {

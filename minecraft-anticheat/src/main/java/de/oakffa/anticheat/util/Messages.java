@@ -18,7 +18,6 @@ public final class Messages {
     }
 
     public void reload() {
-
     }
 
     public Component component(String legacy) {

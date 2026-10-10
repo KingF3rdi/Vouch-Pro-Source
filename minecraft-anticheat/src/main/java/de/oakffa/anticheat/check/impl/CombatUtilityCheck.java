@@ -72,7 +72,6 @@ public final class CombatUtilityCheck extends Check {
             return;
         }
 
-
         long delay = -1;
         String kind;
         if (data.getLastAxeSwitchMs() > 0 && now - data.getLastAxeSwitchMs() <= 1000L) {
@@ -92,7 +91,6 @@ public final class CombatUtilityCheck extends Check {
             data.setShieldIdenticalStreak(0);
             return;
         }
-
 
         if (delay > 0 && delay == data.getLastShieldBreakDelayMs()) {
             data.addShieldIdenticalStreak(1);
@@ -197,7 +195,6 @@ public final class CombatUtilityCheck extends Check {
             return;
         }
 
-
         if (sincePlace > 0 && sincePlace == data.getLastDrainDelayMs()) {
             data.addDrainIdenticalStreak(1);
             if (data.getDrainIdenticalStreak() >= manager.getConfig().getCombatUtilityIdenticalStreak()) {
@@ -229,7 +226,6 @@ public final class CombatUtilityCheck extends Check {
             }
         }
 
-
         if (!(inFight || nearEnemy)) {
             data.setCobwebPlaceIdenticalStreak(0);
             return;
@@ -256,7 +252,6 @@ public final class CombatUtilityCheck extends Check {
             data.setLastCobwebPlaceDelayMs(sinceSwitch);
         }
     }
-
 
     private boolean hasInvalidInput(Player player, PlayerData data) {
         if (player.isDead() || player.isSleeping()) {

@@ -105,7 +105,6 @@ public final class PunishmentManager {
         broadcastBan(player.getName(), reason, DurationParser.format(durationMs), false);
     }
 
-
     public String manualBan(CommandSender staff, OfflinePlayer target, long durationMs, String reason) {
         String name = target.getName() != null ? target.getName() : "unknown";
         String source = staff.getName();
@@ -119,7 +118,6 @@ public final class PunishmentManager {
         broadcastBan(name, reason, DurationParser.format(durationMs), false);
         return null;
     }
-
 
     public String manualIpBan(CommandSender staff, OfflinePlayer target, long durationMs, String reason) {
         String name = target.getName() != null ? target.getName() : "unknown";

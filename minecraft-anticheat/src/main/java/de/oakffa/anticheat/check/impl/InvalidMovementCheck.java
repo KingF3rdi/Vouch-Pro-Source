@@ -61,7 +61,6 @@ public final class InvalidMovementCheck extends Check {
             return;
         }
 
-
         if (horizontal < 0.001 && Math.abs(dy) < 0.001) {
             return;
         }

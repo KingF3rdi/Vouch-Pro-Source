@@ -14,7 +14,6 @@ public final class PlayerSanitizer {
     private PlayerSanitizer() {
     }
 
-
     public static void clearInventory(Player player) {
         player.getInventory().clear();
         player.getInventory().setArmorContents(null);
@@ -23,7 +22,6 @@ public final class PlayerSanitizer {
         player.setItemOnCursor(null);
         player.updateInventory();
     }
-
 
     public static void wipePlayer(Player player) {
         clearInventory(player);
@@ -65,7 +63,6 @@ public final class PlayerSanitizer {
                             try {
                                 player.setStatistic(statistic, type, 0);
                             } catch (IllegalArgumentException ignored) {
-
                             }
                         }
                     }
@@ -77,16 +74,13 @@ public final class PlayerSanitizer {
                             try {
                                 player.setStatistic(statistic, material, 0);
                             } catch (IllegalArgumentException ignored) {
-
                             }
                         }
                     }
                     default -> {
-
                     }
                 }
             } catch (IllegalArgumentException ignored) {
-
             }
         }
     }

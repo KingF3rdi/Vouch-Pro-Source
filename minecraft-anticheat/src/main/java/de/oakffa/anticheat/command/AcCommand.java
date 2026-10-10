@@ -101,7 +101,6 @@ public final class AcCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
-
     private static String[] shiftIpBanArgs(String[] args) {
 
         if (args.length < 3) {

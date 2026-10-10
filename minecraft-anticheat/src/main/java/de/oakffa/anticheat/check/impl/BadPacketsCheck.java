@@ -38,7 +38,6 @@ public final class BadPacketsCheck extends Check {
 
         double dy = to.getY() - from.getY();
 
-
         if (player.isOnGround() && dy < -0.6) {
             flag(player, data, String.format("onGround while falling dy=%.3f", dy));
         }
@@ -46,7 +45,6 @@ public final class BadPacketsCheck extends Check {
         if (player.isSprinting() && player.isSneaking() && !player.isInsideVehicle()) {
             flag(player, data, "sprint + sneak packet combination");
         }
-
 
         float yawDelta = Math.abs(wrap(to.getYaw() - from.getYaw()));
         if (yawDelta > 350.0f) {

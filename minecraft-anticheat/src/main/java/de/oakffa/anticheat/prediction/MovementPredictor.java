@@ -57,7 +57,6 @@ public final class MovementPredictor {
         List<Vector> candidates = new ArrayList<>(36);
         double[] inputs = {-1.0, 0.0, 1.0};
 
-
         candidates.add(step(lastVel.clone(), 0, 0, speed, wasOnGround, false, yaw));
 
         for (double forward : inputs) {
@@ -68,7 +67,6 @@ public final class MovementPredictor {
                 }
             }
         }
-
 
         Vector serverVel = player.getVelocity().clone();
         if (serverVel.lengthSquared() > 0.0001) {
@@ -105,7 +103,6 @@ public final class MovementPredictor {
         double vOffset = bestPred == null ? 0
                 : Math.max(0, Math.abs(actual.getY() - bestPred.getY()) - vTol);
 
-
         double offset = Math.max(fullOffset, Math.hypot(hOffset, vOffset));
 
         return new PredictionResult(false, offset, hOffset, vOffset, bestPred == null ? actual : bestPred, actual);
@@ -137,7 +134,6 @@ public final class MovementPredictor {
             vel.setY(JUMP);
         }
 
-
         if (!onGround || jump) {
             vel.setY((vel.getY() - GRAVITY) * DRAG);
         } else if (Math.abs(vel.getY()) < 0.005) {
@@ -145,7 +141,6 @@ public final class MovementPredictor {
         } else {
             vel.setY(vel.getY() * DRAG - GRAVITY);
         }
-
 
         double friction = onGround && !jump ? GROUND_FRICTION * AIR_FRICTION : AIR_FRICTION;
         vel.setX(vel.getX() * friction);

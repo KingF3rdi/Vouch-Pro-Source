@@ -51,7 +51,6 @@ public final class TickAbuseCheck extends Check {
             return;
         }
 
-
         boolean moved = from.getX() != to.getX() || from.getY() != to.getY() || from.getZ() != to.getZ();
         if (!moved) {
             return;
@@ -68,12 +67,8 @@ public final class TickAbuseCheck extends Check {
         long delta = Math.max(1L, now - last);
         data.setLastMovePacketMs(now);
 
-
-
-
         long expected = 50L;
         long balance = data.getTickBalanceMs() + expected - delta;
-
 
         int maxBalance = manager.getConfig().getTickAbuseMaxBalanceMs();
         int minBalance = manager.getConfig().getTickAbuseMinBalanceMs();
@@ -102,7 +97,6 @@ public final class TickAbuseCheck extends Check {
             data.setTickBalanceMs(Math.max(0, balance / 2));
             flag(player, data, String.format("timer balance=%dms ping=%d streak=%d", balance, ping, needed));
         }
-
 
         data.pushMoveTimestamp(now, 40);
         int moves = data.countRecentMoves(1000L);
@@ -142,7 +136,6 @@ public final class TickAbuseCheck extends Check {
         } else {
             data.setActionBurstStreak(Math.max(0, data.getActionBurstStreak() - 1));
         }
-
 
         if (type == ActionType.ATTACK) {
             int moves = data.countRecentMoves(500L);
