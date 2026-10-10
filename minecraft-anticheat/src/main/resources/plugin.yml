@@ -7,8 +7,8 @@ author: Helix
 softdepend: [LuckPerms]
 commands:
   ac:
-    description: HelixAC admin commands (logs, ban, ip ban, staff logs, whitelist)
-    usage: /ac <logs|staff|ban|ip|whitelist|reload|info> ...
+    description: HelixAC admin commands (logs, ban, clear, wipe, staff logs, whitelist)
+    usage: /ac <logs|staff|ban|ip|clear|wipe|whitelist|reload|info> ...
     aliases: [helixac, anticheat]
 permissions:
   ac.bypass:
@@ -19,6 +19,12 @@ permissions:
     default: false
   ac.ban:
     description: Allows /ac ban and /ac ip ban
+    default: op
+  ac.clear:
+    description: Allows /ac clear (clear player inventory)
+    default: op
+  ac.wipe:
+    description: Allows /ac wipe (inventory, ender chest, stats)
     default: op
   ac.logs:
     description: Access to all HelixAC logs (/ac logs, /ban logs, /ac staff logs)
@@ -39,10 +45,12 @@ permissions:
     description: Receive live flag notifications in chat
     default: op
   ac.admin:
-    description: Full HelixAC admin (whitelist, reload, info + ban + all logs)
+    description: Full HelixAC admin (includes ban, clear, wipe, all logs)
     default: op
     children:
       ac.ban: true
+      ac.clear: true
+      ac.wipe: true
       ac.logs: true
       ac.banlogs: true
       ac.stafflogs: true

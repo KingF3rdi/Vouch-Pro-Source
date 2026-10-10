@@ -41,6 +41,8 @@ Drop the jar into your server `plugins/` folder and restart.
 | `/ac staff logs` | `ac.logs` | Latest staff commands (player + command) |
 | `/ac ban <player> <duration> <reason>` | `ac.ban` | Easy name-ban |
 | `/ac ip ban <player> <duration> <reason>` | `ac.ban` | IP-ban (+ name-ban); needs a seen IP |
+| `/ac clear <player>` | `ac.clear` | Clear player inventory (armor/offhand too) |
+| `/ac wipe <player>` | `ac.wipe` | Wipe inventory, ender chest, XP, effects, stats |
 | `/ac whitelist add\|remove\|list [player]` | `ac.admin` | Manage AC whitelist |
 | `/ac reload` | `ac.admin` | Reload config |
 | `/ac info` | `ac.admin` | Status / LuckPerms / checks |
@@ -51,8 +53,10 @@ Duration examples: `7d`, `12h`, `30m`, `1w`, `permanent` (bare numbers = days).
 
 ```
 ac.ban        # /ac ban and /ac ip ban
+ac.clear      # /ac clear <player>
+ac.wipe       # /ac wipe <player> (inv + EC + stats)
 ac.logs       # ALL log access (/ac logs, /ban logs, /ac staff logs)
-ac.admin      # whitelist / reload / info (includes ac.ban + ac.logs)
+ac.admin      # whitelist / reload / info (includes ban, clear, wipe, logs)
 ac.bypass     # Completely bypasses HelixAC (no flags, no bans)
 ac.whitelist  # Flags normally but never auto-banned
 ac.banlogs    # Only /ac logs and /ban logs (also granted by ac.logs)
@@ -65,6 +69,8 @@ Examples:
 
 ```
 /lp group mod permission set ac.ban true
+/lp group mod permission set ac.clear true
+/lp group mod permission set ac.wipe true
 /lp group mod permission set ac.logs true
 /lp group admin permission set ac.admin true
 /lp user Steve permission set ac.bypass true

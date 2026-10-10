@@ -100,3 +100,7 @@ messages:
   reload: "%prefix%&aConfiguration reloaded."
   meteor-detected: "%prefix%&c%player% &7blocked — &cMeteor Client &7(sign technique)"
   meteor-kick: "&cConnection blocked.\n&7Meteor Client is not allowed on this server."
+  clear-success: "%prefix%&aCleared inventory of &f%player%&a."
+  clear-notify: "%prefix%&cYour inventory was cleared by staff."
+  wipe-success: "%prefix%&aWiped &f%player% &a(inventory, EC, XP, stats)."
+  wipe-notify: "%prefix%&cYour inventory, ender chest, and stats were wiped by staff."

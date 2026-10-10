@@ -17,6 +17,8 @@ public final class Permissions {
     public static final String LOGS = "ac.logs";
     public static final String BAN_LOGS = "ac.banlogs";
     public static final String STAFF_LOGS = "ac.stafflogs";
+    public static final String CLEAR = "ac.clear";
+    public static final String WIPE = "ac.wipe";
     public static final String NOTIFY = "ac.notify";
     public static final String STAFF = "ac.staff";
 
@@ -33,6 +35,14 @@ public final class Permissions {
 
     public static boolean canBan(CommandSender sender) {
         return sender.hasPermission(BAN) || sender.hasPermission(ADMIN);
+    }
+
+    public static boolean canClear(CommandSender sender) {
+        return sender.hasPermission(CLEAR) || sender.hasPermission(ADMIN);
+    }
+
+    public static boolean canWipe(CommandSender sender) {
+        return sender.hasPermission(WIPE) || sender.hasPermission(ADMIN);
     }
 
     /** /ac logs and /ban logs */
@@ -65,6 +75,8 @@ public final class Permissions {
                 || player.hasPermission(LOGS)
                 || player.hasPermission(BAN_LOGS)
                 || player.hasPermission(STAFF_LOGS)
+                || player.hasPermission(CLEAR)
+                || player.hasPermission(WIPE)
                 || player.hasPermission(NOTIFY)
                 || player.isOp();
     }

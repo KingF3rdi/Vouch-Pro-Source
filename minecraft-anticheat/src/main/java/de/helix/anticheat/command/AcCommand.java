@@ -5,6 +5,7 @@ import de.helix.anticheat.data.StaffLogEntry;
 import de.helix.anticheat.util.DurationParser;
 import de.helix.anticheat.util.Messages;
 import de.helix.anticheat.util.Permissions;
+import de.helix.anticheat.util.PlayerSanitizer;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
@@ -41,7 +42,8 @@ public final class AcCommand implements CommandExecutor, TabCompleter {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 0) {
             if (!sender.hasPermission(Permissions.ADMIN) && !Permissions.canBan(sender)
-                    && !Permissions.canViewAnyLogs(sender)) {
+                    && !Permissions.canViewAnyLogs(sender)
+                    && !Permissions.canClear(sender) && !Permissions.canWipe(sender)) {
                 messages.send(sender, messages.get("no-permission", "%prefix%&cYou do not have permission."), Map.of());
                 return true;
             }
@@ -70,6 +72,8 @@ public final class AcCommand implements CommandExecutor, TabCompleter {
                 }
             }
             case "ipban" -> handleBan(sender, args, true);
+            case "clear" -> handleClear(sender, args);
+            case "wipe" -> handleWipe(sender, args);
             case "whitelist", "wl" -> {
                 if (!sender.hasPermission(Permissions.ADMIN)) {
                     messages.send(sender, messages.get("no-permission", "%prefix%&cYou do not have permission."), Map.of());
@@ -198,6 +202,57 @@ public final class AcCommand implements CommandExecutor, TabCompleter {
         }
     }
 
+    private void handleClear(CommandSender sender, String[] args) {
+        if (!Permissions.canClear(sender)) {
+            messages.send(sender, messages.get("no-permission", "%prefix%&cYou do not have permission."), Map.of());
+            return;
+        }
+        if (args.length < 2) {
+            sender.sendMessage(messages.component("&e/ac clear <player>"));
+            return;
+        }
+        Player target = Bukkit.getPlayerExact(args[1]);
+        if (target == null || !target.isOnline()) {
+            messages.send(sender, messages.get("player-not-found", "%prefix%&cPlayer not found: &f%player%"),
+                    Map.of("player", args[1]));
+            return;
+        }
+        PlayerSanitizer.clearInventory(target);
+        messages.send(sender, messages.get("clear-success",
+                        "%prefix%&aCleared inventory of &f%player%&a."),
+                Map.of("player", target.getName()));
+        target.sendMessage(messages.component(messages.apply(
+                messages.get("clear-notify", "%prefix%&cYour inventory was cleared by staff."),
+                Map.of())));
+    }
+
+    private void handleWipe(CommandSender sender, String[] args) {
+        if (!Permissions.canWipe(sender)) {
+            messages.send(sender, messages.get("no-permission", "%prefix%&cYou do not have permission."), Map.of());
+            return;
+        }
+        if (args.length < 2) {
+            sender.sendMessage(messages.component("&e/ac wipe <player>"));
+            sender.sendMessage(messages.component("&7Wipes inventory, ender chest, XP, effects, and stats."));
+            return;
+        }
+        Player target = Bukkit.getPlayerExact(args[1]);
+        if (target == null || !target.isOnline()) {
+            messages.send(sender, messages.get("player-not-found", "%prefix%&cPlayer not found: &f%player%"),
+                    Map.of("player", args[1]));
+            return;
+        }
+        PlayerSanitizer.wipePlayer(target);
+        messages.send(sender, messages.get("wipe-success",
+                        "%prefix%&aWiped &f%player% &a(inventory, EC, XP, stats)."),
+                Map.of("player", target.getName()));
+        target.sendMessage(messages.component(messages.apply(
+                messages.get("wipe-notify", "%prefix%&cYour inventory, ender chest, and stats were wiped by staff."),
+                Map.of())));
+        plugin.getLogger().info(sender.getName() + " wiped " + target.getName()
+                + " (inventory + enderchest + stats)");
+    }
+
     private void sendHelp(CommandSender sender, String label) {
         sender.sendMessage(messages.component("&8[&cHelixAC&8] &7Commands:"));
         sender.sendMessage(messages.component("&e/" + label + " logs [player] &8- &7latest flags and bans"));
@@ -205,9 +260,11 @@ public final class AcCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(messages.component("&e/" + label + " staff logs &8- &7staff commands (name + command)"));
         sender.sendMessage(messages.component("&e/" + label + " ban <player> <duration> <reason>"));
         sender.sendMessage(messages.component("&e/" + label + " ip ban <player> <duration> <reason>"));
+        sender.sendMessage(messages.component("&e/" + label + " clear <player> &8- &7clear inventory"));
+        sender.sendMessage(messages.component("&e/" + label + " wipe <player> &8- &7inventory + EC + stats"));
         sender.sendMessage(messages.component("&e/" + label + " whitelist <add|remove|list> [player]"));
         sender.sendMessage(messages.component("&e/" + label + " reload &8| &e/" + label + " info"));
-        sender.sendMessage(messages.component("&7LuckPerms: &fac.ban&7, &fac.logs&7 (all logs), &fac.admin&7, &fac.bypass&7, &fac.whitelist&7, &fac.notify"));
+        sender.sendMessage(messages.component("&7LuckPerms: &fac.ban&7, &fac.clear&7, &fac.wipe&7, &fac.logs&7, &fac.admin"));
     }
 
     private void showInfo(CommandSender sender) {
@@ -311,6 +368,12 @@ public final class AcCommand implements CommandExecutor, TabCompleter {
                 opts.add("ip");
                 opts.add("ipban");
             }
+            if (Permissions.canClear(sender)) {
+                opts.add("clear");
+            }
+            if (Permissions.canWipe(sender)) {
+                opts.add("wipe");
+            }
             if (sender.hasPermission(Permissions.ADMIN)) {
                 opts.add("whitelist");
                 opts.add("reload");
@@ -322,6 +385,12 @@ public final class AcCommand implements CommandExecutor, TabCompleter {
             return filter(List.of("logs"), args[1]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("logs") && Permissions.canViewLogs(sender)) {
+            return onlineNames(args[1]);
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("clear") && Permissions.canClear(sender)) {
+            return onlineNames(args[1]);
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("wipe") && Permissions.canWipe(sender)) {
             return onlineNames(args[1]);
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("ban") || args[0].equalsIgnoreCase("ipban"))
