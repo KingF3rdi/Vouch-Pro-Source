@@ -13,6 +13,8 @@ public final class Permissions {
     public static final String WHITELIST = "ac.whitelist";
     public static final String ADMIN = "ac.admin";
     public static final String BAN = "ac.ban";
+    /** Access to every HelixAC log view (/ac logs, /ban logs, /ac staff logs). */
+    public static final String LOGS = "ac.logs";
     public static final String BAN_LOGS = "ac.banlogs";
     public static final String STAFF_LOGS = "ac.stafflogs";
     public static final String NOTIFY = "ac.notify";
@@ -33,12 +35,23 @@ public final class Permissions {
         return sender.hasPermission(BAN) || sender.hasPermission(ADMIN);
     }
 
+    /** /ac logs and /ban logs */
     public static boolean canViewLogs(CommandSender sender) {
-        return sender.hasPermission(BAN_LOGS) || sender.hasPermission(ADMIN);
+        return sender.hasPermission(LOGS)
+                || sender.hasPermission(BAN_LOGS)
+                || sender.hasPermission(ADMIN);
     }
 
+    /** /ac staff logs */
     public static boolean canViewStaffLogs(CommandSender sender) {
-        return sender.hasPermission(STAFF_LOGS) || sender.hasPermission(ADMIN);
+        return sender.hasPermission(LOGS)
+                || sender.hasPermission(STAFF_LOGS)
+                || sender.hasPermission(ADMIN);
+    }
+
+    /** Any log command access. */
+    public static boolean canViewAnyLogs(CommandSender sender) {
+        return canViewLogs(sender) || canViewStaffLogs(sender);
     }
 
     /** Players whose commands are recorded in /ac staff logs. */
@@ -49,6 +62,7 @@ public final class Permissions {
         return player.hasPermission(STAFF)
                 || player.hasPermission(ADMIN)
                 || player.hasPermission(BAN)
+                || player.hasPermission(LOGS)
                 || player.hasPermission(BAN_LOGS)
                 || player.hasPermission(STAFF_LOGS)
                 || player.hasPermission(NOTIFY)

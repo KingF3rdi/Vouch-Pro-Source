@@ -18,17 +18,14 @@ permissions:
     description: Player flags but is never auto-banned (permission whitelist)
     default: false
   ac.ban:
-    description: /ac ban and /ac ip ban
+    description: Allows /ac ban and /ac ip ban
     default: op
-  ac.admin:
-    description: Access to /ac whitelist, reload, info
+  ac.logs:
+    description: Access to all HelixAC logs (/ac logs, /ban logs, /ac staff logs)
     default: op
     children:
-      ac.ban: true
       ac.banlogs: true
       ac.stafflogs: true
-      ac.notify: true
-      ac.staff: true
   ac.banlogs:
     description: Access to /ac logs and /ban logs
     default: op
@@ -41,3 +38,13 @@ permissions:
   ac.notify:
     description: Receive live flag notifications in chat
     default: op
+  ac.admin:
+    description: Full HelixAC admin (whitelist, reload, info + ban + all logs)
+    default: op
+    children:
+      ac.ban: true
+      ac.logs: true
+      ac.banlogs: true
+      ac.stafflogs: true
+      ac.notify: true
+      ac.staff: true

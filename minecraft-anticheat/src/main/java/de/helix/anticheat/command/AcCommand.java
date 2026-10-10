@@ -41,7 +41,7 @@ public final class AcCommand implements CommandExecutor, TabCompleter {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 0) {
             if (!sender.hasPermission(Permissions.ADMIN) && !Permissions.canBan(sender)
-                    && !Permissions.canViewLogs(sender) && !Permissions.canViewStaffLogs(sender)) {
+                    && !Permissions.canViewAnyLogs(sender)) {
                 messages.send(sender, messages.get("no-permission", "%prefix%&cYou do not have permission."), Map.of());
                 return true;
             }
@@ -207,7 +207,7 @@ public final class AcCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(messages.component("&e/" + label + " ip ban <player> <duration> <reason>"));
         sender.sendMessage(messages.component("&e/" + label + " whitelist <add|remove|list> [player]"));
         sender.sendMessage(messages.component("&e/" + label + " reload &8| &e/" + label + " info"));
-        sender.sendMessage(messages.component("&7LuckPerms: &fac.bypass&7, &fac.whitelist&7, &fac.ban&7, &fac.admin&7, &fac.banlogs&7, &fac.stafflogs&7, &fac.notify"));
+        sender.sendMessage(messages.component("&7LuckPerms: &fac.ban&7, &fac.logs&7 (all logs), &fac.admin&7, &fac.bypass&7, &fac.whitelist&7, &fac.notify"));
     }
 
     private void showInfo(CommandSender sender) {
