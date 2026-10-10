@@ -47,6 +47,9 @@ permissions:
   ac.notify:
     description: Receive ban/punishment broadcasts in chat
     default: op
+  ac.seeindicators:
+    description: Receive real health/armor packets (disables anti-indicator spoof for this player)
+    default: false
   ac.admin:
     description: Full OakFFA Anti Cheat access — includes every ac.* permission
     default: op
@@ -62,3 +65,4 @@ permissions:
       ac.stafflogs: true
       ac.notify: true
       ac.staff: true
+      ac.seeindicators: true

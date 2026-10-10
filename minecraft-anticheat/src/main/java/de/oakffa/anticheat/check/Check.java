@@ -40,7 +40,6 @@ public abstract class Check {
         int vl = data.addVl(name, 1);
         manager.getPunishmentManager().flag(player, data, name, vl, detail, getWeight());
         if (vl >= getMaxVl()) {
-
             data.decayVl(name, Math.max(1, getMaxVl() / 2));
         }
     }
