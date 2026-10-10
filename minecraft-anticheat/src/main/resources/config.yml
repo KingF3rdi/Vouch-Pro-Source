@@ -1,0 +1,85 @@
+# HelixAC configuration
+
+prefix: "&8[&cHelixAC&8]&r "
+
+# Auto-ban when a player accumulates enough flags
+punishment:
+  enabled: true
+  # Flags within the decay window required to auto-ban
+  flag-threshold: 25
+  # Seconds before older flags stop counting toward the threshold
+  flag-decay-seconds: 600
+  # Ban duration in days
+  ban-duration-days: 7
+  ban-reason: "Cheating (HelixAC: %checks%)"
+  # Kick message shown on ban
+  ban-kick-message: "&cYou have been banned for 7 days.\n&7Reason: &fCheating\n&8Flags: %checks%"
+
+# How many recent events to keep for /ac logs and /ban logs
+storage:
+  max-flag-logs: 200
+  max-ban-logs: 100
+
+checks:
+  invalid-packet:
+    enabled: true
+    # Weight added per flag (higher = reaches ban faster)
+    weight: 3
+    max-vl: 8
+  invalid-movement:
+    enabled: true
+    weight: 2
+    max-vl: 10
+    # Blocks per tick roughly above sprint+jump that is suspicious
+    max-horizontal-speed: 1.35
+    max-vertical-speed: 1.10
+    max-teleport-distance: 80.0
+  robotic-rotation:
+    enabled: true
+    weight: 2
+    max-vl: 12
+    # Identical yaw/pitch deltas in a row look robotic
+    identical-delta-streak: 8
+    # Suspiciously perfect snap angles (degrees)
+    snap-min-yaw: 35.0
+    snap-max-pitch-change: 0.01
+    # GCD / consistent micro-step detection
+    micro-step-samples: 14
+    micro-step-tolerance: 0.0008
+  bad-packets:
+    enabled: true
+    weight: 3
+    max-vl: 6
+  ghost-client:
+    enabled: true
+    weight: 5
+    max-vl: 4
+    # Plugin message channels often abused / registered by ghost clients
+    suspicious-channels:
+      - "vape"
+      - "vapeclient"
+      - "prestige"
+      - "prestigeclient"
+      - "ghost"
+      - "liquidbounce"
+      - "wurst"
+      - "aristois"
+      - "meteor-client"
+      - "impact"
+    # Client brands that are never vanilla (heuristic — not a guaranteed ID)
+    suspicious-brands:
+      - "vape"
+      - "vapeclient"
+      - "prestige"
+      - "prestigeclient"
+      - "ghost"
+
+messages:
+  flag-notify: "%prefix%&e%player% &7flagged &c%check% &8(&7vl %vl%&8) &7— &f%detail%"
+  banned-broadcast: "%prefix%&c%player% &7was banned for &c7 days &7— &f%reason%"
+  whitelist-added: "%prefix%&aAdded &f%player% &ato the AC whitelist (flags only, no ban)."
+  whitelist-removed: "%prefix%&cRemoved &f%player% &cfrom the AC whitelist."
+  whitelist-list-header: "%prefix%&7Whitelisted players:"
+  no-permission: "%prefix%&cYou do not have permission."
+  player-not-found: "%prefix%&cPlayer not found: &f%player%"
+  reload: "%prefix%&aConfiguration reloaded."

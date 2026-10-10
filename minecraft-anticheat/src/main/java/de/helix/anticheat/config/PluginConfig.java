@@ -1,0 +1,255 @@
+package de.helix.anticheat.config;
+
+import de.helix.anticheat.HelixACPlugin;
+import org.bukkit.configuration.file.FileConfiguration;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Locale;
+import java.util.stream.Collectors;
+
+public final class PluginConfig {
+
+    private final HelixACPlugin plugin;
+
+    private String prefix;
+    private boolean punishmentEnabled;
+    private int flagThreshold;
+    private int flagDecaySeconds;
+    private int banDurationDays;
+    private String banReason;
+    private String banKickMessage;
+    private int maxFlagLogs;
+    private int maxBanLogs;
+
+    private boolean invalidPacketEnabled;
+    private int invalidPacketWeight;
+    private int invalidPacketMaxVl;
+
+    private boolean invalidMovementEnabled;
+    private int invalidMovementWeight;
+    private int invalidMovementMaxVl;
+    private double maxHorizontalSpeed;
+    private double maxVerticalSpeed;
+    private double maxTeleportDistance;
+
+    private boolean roboticRotationEnabled;
+    private int roboticRotationWeight;
+    private int roboticRotationMaxVl;
+    private int identicalDeltaStreak;
+    private double snapMinYaw;
+    private double snapMaxPitchChange;
+    private int microStepSamples;
+    private double microStepTolerance;
+
+    private boolean badPacketsEnabled;
+    private int badPacketsWeight;
+    private int badPacketsMaxVl;
+
+    private boolean ghostClientEnabled;
+    private int ghostClientWeight;
+    private int ghostClientMaxVl;
+    private List<String> suspiciousChannels;
+    private List<String> suspiciousBrands;
+
+    public PluginConfig(HelixACPlugin plugin) {
+        this.plugin = plugin;
+        reload();
+    }
+
+    public void reload() {
+        FileConfiguration c = plugin.getConfig();
+        prefix = c.getString("prefix", "&8[&cHelixAC&8]&r ");
+
+        punishmentEnabled = c.getBoolean("punishment.enabled", true);
+        flagThreshold = c.getInt("punishment.flag-threshold", 25);
+        flagDecaySeconds = c.getInt("punishment.flag-decay-seconds", 600);
+        banDurationDays = c.getInt("punishment.ban-duration-days", 7);
+        banReason = c.getString("punishment.ban-reason", "Cheating (HelixAC: %checks%)");
+        banKickMessage = c.getString("punishment.ban-kick-message",
+                "&cYou have been banned for 7 days.\n&7Reason: &fCheating\n&8Flags: %checks%");
+
+        maxFlagLogs = c.getInt("storage.max-flag-logs", 200);
+        maxBanLogs = c.getInt("storage.max-ban-logs", 100);
+
+        invalidPacketEnabled = c.getBoolean("checks.invalid-packet.enabled", true);
+        invalidPacketWeight = c.getInt("checks.invalid-packet.weight", 3);
+        invalidPacketMaxVl = c.getInt("checks.invalid-packet.max-vl", 8);
+
+        invalidMovementEnabled = c.getBoolean("checks.invalid-movement.enabled", true);
+        invalidMovementWeight = c.getInt("checks.invalid-movement.weight", 2);
+        invalidMovementMaxVl = c.getInt("checks.invalid-movement.max-vl", 10);
+        maxHorizontalSpeed = c.getDouble("checks.invalid-movement.max-horizontal-speed", 1.35);
+        maxVerticalSpeed = c.getDouble("checks.invalid-movement.max-vertical-speed", 1.10);
+        maxTeleportDistance = c.getDouble("checks.invalid-movement.max-teleport-distance", 80.0);
+
+        roboticRotationEnabled = c.getBoolean("checks.robotic-rotation.enabled", true);
+        roboticRotationWeight = c.getInt("checks.robotic-rotation.weight", 2);
+        roboticRotationMaxVl = c.getInt("checks.robotic-rotation.max-vl", 12);
+        identicalDeltaStreak = c.getInt("checks.robotic-rotation.identical-delta-streak", 8);
+        snapMinYaw = c.getDouble("checks.robotic-rotation.snap-min-yaw", 35.0);
+        snapMaxPitchChange = c.getDouble("checks.robotic-rotation.snap-max-pitch-change", 0.01);
+        microStepSamples = c.getInt("checks.robotic-rotation.micro-step-samples", 14);
+        microStepTolerance = c.getDouble("checks.robotic-rotation.micro-step-tolerance", 0.0008);
+
+        badPacketsEnabled = c.getBoolean("checks.bad-packets.enabled", true);
+        badPacketsWeight = c.getInt("checks.bad-packets.weight", 3);
+        badPacketsMaxVl = c.getInt("checks.bad-packets.max-vl", 6);
+
+        ghostClientEnabled = c.getBoolean("checks.ghost-client.enabled", true);
+        ghostClientWeight = c.getInt("checks.ghost-client.weight", 5);
+        ghostClientMaxVl = c.getInt("checks.ghost-client.max-vl", 4);
+        suspiciousChannels = normalizeList(c.getStringList("checks.ghost-client.suspicious-channels"));
+        suspiciousBrands = normalizeList(c.getStringList("checks.ghost-client.suspicious-brands"));
+    }
+
+    private static List<String> normalizeList(List<String> input) {
+        if (input == null || input.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return input.stream()
+                .filter(s -> s != null && !s.isBlank())
+                .map(s -> s.toLowerCase(Locale.ROOT).trim())
+                .collect(Collectors.toList());
+    }
+
+    public String getPrefix() {
+        return prefix;
+    }
+
+    public boolean isPunishmentEnabled() {
+        return punishmentEnabled;
+    }
+
+    public int getFlagThreshold() {
+        return flagThreshold;
+    }
+
+    public int getFlagDecaySeconds() {
+        return flagDecaySeconds;
+    }
+
+    public int getBanDurationDays() {
+        return banDurationDays;
+    }
+
+    public String getBanReason() {
+        return banReason;
+    }
+
+    public String getBanKickMessage() {
+        return banKickMessage;
+    }
+
+    public int getMaxFlagLogs() {
+        return maxFlagLogs;
+    }
+
+    public int getMaxBanLogs() {
+        return maxBanLogs;
+    }
+
+    public boolean isInvalidPacketEnabled() {
+        return invalidPacketEnabled;
+    }
+
+    public int getInvalidPacketWeight() {
+        return invalidPacketWeight;
+    }
+
+    public int getInvalidPacketMaxVl() {
+        return invalidPacketMaxVl;
+    }
+
+    public boolean isInvalidMovementEnabled() {
+        return invalidMovementEnabled;
+    }
+
+    public int getInvalidMovementWeight() {
+        return invalidMovementWeight;
+    }
+
+    public int getInvalidMovementMaxVl() {
+        return invalidMovementMaxVl;
+    }
+
+    public double getMaxHorizontalSpeed() {
+        return maxHorizontalSpeed;
+    }
+
+    public double getMaxVerticalSpeed() {
+        return maxVerticalSpeed;
+    }
+
+    public double getMaxTeleportDistance() {
+        return maxTeleportDistance;
+    }
+
+    public boolean isRoboticRotationEnabled() {
+        return roboticRotationEnabled;
+    }
+
+    public int getRoboticRotationWeight() {
+        return roboticRotationWeight;
+    }
+
+    public int getRoboticRotationMaxVl() {
+        return roboticRotationMaxVl;
+    }
+
+    public int getIdenticalDeltaStreak() {
+        return identicalDeltaStreak;
+    }
+
+    public double getSnapMinYaw() {
+        return snapMinYaw;
+    }
+
+    public double getSnapMaxPitchChange() {
+        return snapMaxPitchChange;
+    }
+
+    public int getMicroStepSamples() {
+        return microStepSamples;
+    }
+
+    public double getMicroStepTolerance() {
+        return microStepTolerance;
+    }
+
+    public boolean isBadPacketsEnabled() {
+        return badPacketsEnabled;
+    }
+
+    public int getBadPacketsWeight() {
+        return badPacketsWeight;
+    }
+
+    public int getBadPacketsMaxVl() {
+        return badPacketsMaxVl;
+    }
+
+    public boolean isGhostClientEnabled() {
+        return ghostClientEnabled;
+    }
+
+    public int getGhostClientWeight() {
+        return ghostClientWeight;
+    }
+
+    public int getGhostClientMaxVl() {
+        return ghostClientMaxVl;
+    }
+
+    public List<String> getSuspiciousChannels() {
+        return suspiciousChannels;
+    }
+
+    public List<String> getSuspiciousBrands() {
+        return suspiciousBrands;
+    }
+
+    public String message(String path, String def) {
+        return plugin.getConfig().getString("messages." + path, def);
+    }
+}

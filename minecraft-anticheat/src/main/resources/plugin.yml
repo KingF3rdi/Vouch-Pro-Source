@@ -1,0 +1,29 @@
+name: HelixAC
+version: ${version}
+main: de.helix.anticheat.HelixACPlugin
+api-version: '1.20'
+description: Professional packet and movement anti-cheat with LuckPerms support
+author: Helix
+softdepend: [LuckPerms]
+commands:
+  ac:
+    description: HelixAC admin commands (logs, whitelist, banlogs)
+    usage: /ac <logs|whitelist|banlogs|reload|info> ...
+    permission: ac.admin
+    aliases: [helixac, anticheat]
+permissions:
+  ac.bypass:
+    description: Completely bypasses all HelixAC checks (no flags, no bans)
+    default: false
+  ac.whitelist:
+    description: Player flags but is never auto-banned (permission whitelist)
+    default: false
+  ac.admin:
+    description: Access to /ac commands (logs, whitelist, reload)
+    default: op
+  ac.banlogs:
+    description: Access to /ban logs <player>
+    default: op
+  ac.notify:
+    description: Receive live flag notifications in chat
+    default: op

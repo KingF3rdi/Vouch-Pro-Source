@@ -1,0 +1,134 @@
+package de.helix.anticheat.check;
+
+import de.helix.anticheat.HelixACPlugin;
+import de.helix.anticheat.check.impl.BadPacketsCheck;
+import de.helix.anticheat.check.impl.GhostClientCheck;
+import de.helix.anticheat.check.impl.InvalidMovementCheck;
+import de.helix.anticheat.check.impl.InvalidPacketCheck;
+import de.helix.anticheat.check.impl.RoboticRotationCheck;
+import de.helix.anticheat.config.PluginConfig;
+import de.helix.anticheat.data.PlayerData;
+import de.helix.anticheat.data.PlayerDataManager;
+import de.helix.anticheat.punishment.PunishmentManager;
+import de.helix.anticheat.util.Messages;
+import de.helix.anticheat.util.Permissions;
+import org.bukkit.entity.Player;
+import org.bukkit.event.player.PlayerMoveEvent;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public final class CheckManager {
+
+    private final HelixACPlugin plugin;
+    private final PluginConfig config;
+    private final PlayerDataManager playerDataManager;
+    private final PunishmentManager punishmentManager;
+    private final Messages messages;
+    private final List<Check> checks = new ArrayList<>();
+
+    public CheckManager(HelixACPlugin plugin, PluginConfig config, PlayerDataManager playerDataManager,
+                        PunishmentManager punishmentManager, Messages messages) {
+        this.plugin = plugin;
+        this.config = config;
+        this.playerDataManager = playerDataManager;
+        this.punishmentManager = punishmentManager;
+        this.messages = messages;
+
+        checks.add(new InvalidPacketCheck(this));
+        checks.add(new InvalidMovementCheck(this));
+        checks.add(new RoboticRotationCheck(this));
+        checks.add(new BadPacketsCheck(this));
+        checks.add(new GhostClientCheck(this));
+    }
+
+    public HelixACPlugin getPlugin() {
+        return plugin;
+    }
+
+    public PluginConfig getConfig() {
+        return config;
+    }
+
+    public PunishmentManager getPunishmentManager() {
+        return punishmentManager;
+    }
+
+    public Messages getMessages() {
+        return messages;
+    }
+
+    public List<Check> getChecks() {
+        return checks;
+    }
+
+    public void handleJoin(Player player) {
+        if (Permissions.hasBypass(player)) {
+            return;
+        }
+        PlayerData data = playerDataManager.get(player);
+        data.setExemptNextMove(true);
+        for (Check check : checks) {
+            if (check.isEnabled()) {
+                check.onJoin(player, data);
+            }
+        }
+    }
+
+    public void handleMove(Player player, PlayerMoveEvent event) {
+        if (Permissions.hasBypass(player)) {
+            return;
+        }
+        PlayerData data = playerDataManager.get(player);
+        if (data.isExemptNextMove()) {
+            data.setExemptNextMove(false);
+            data.setLastLocation(event.getTo());
+            if (event.getTo() != null) {
+                data.setLastRotation(event.getTo().getYaw(), event.getTo().getPitch());
+            }
+            return;
+        }
+        // Grace period after join to avoid false teleports
+        if (System.currentTimeMillis() - data.getJoinTimeMs() < 2500L) {
+            data.setLastLocation(event.getTo());
+            if (event.getTo() != null) {
+                data.setLastRotation(event.getTo().getYaw(), event.getTo().getPitch());
+            }
+            return;
+        }
+        for (Check check : checks) {
+            if (check.isEnabled()) {
+                check.onMove(player, data, event);
+            }
+        }
+        if (event.getTo() != null) {
+            data.setLastLocation(event.getTo());
+            data.setLastRotation(event.getTo().getYaw(), event.getTo().getPitch());
+        }
+    }
+
+    public void handleBrand(Player player, String brand) {
+        if (Permissions.hasBypass(player)) {
+            return;
+        }
+        PlayerData data = playerDataManager.get(player);
+        data.setClientBrand(brand);
+        for (Check check : checks) {
+            if (check.isEnabled()) {
+                check.onBrand(player, data, brand);
+            }
+        }
+    }
+
+    public void handlePluginMessage(Player player, String channel, byte[] payload) {
+        if (Permissions.hasBypass(player)) {
+            return;
+        }
+        PlayerData data = playerDataManager.get(player);
+        for (Check check : checks) {
+            if (check.isEnabled()) {
+                check.onPluginMessage(player, data, channel, payload);
+            }
+        }
+    }
+}
