@@ -27,6 +27,7 @@ Drop the jar into your server `plugins/` folder and restart.
 - **Bad packets** — onGround while falling, sprint+sneak, impossible yaw wraps
 - **Ghost client heuristics** — suspicious client brands and plugin channels (Vape / Prestige style indicators)
 - **Meteor sign technique** — on join, opens a probe sign with a Meteor-only translation key; resolved text → kick
+- **Tick abuse** — timer / wrong-tick move rates and impossible action bursts (lenient balance + streaks to limit false bans)
 - **Staff command log** — every staff command recorded for `/ac staff logs`
 - **Auto-ban** — after enough flags in a window → **7-day** ban with reason listing checks
 - **Whitelist** — still flags, never auto-bans

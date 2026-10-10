@@ -46,6 +46,6 @@ public final class ConnectionListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onTeleport(PlayerTeleportEvent event) {
-        playerDataManager.get(event.getPlayer()).setExemptNextMove(true);
+        checkManager.resetTickTracking(event.getPlayer());
     }
 }

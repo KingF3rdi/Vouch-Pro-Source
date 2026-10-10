@@ -84,6 +84,28 @@ checks:
     timeout-ticks: 200
     # If true, also ban for ban-duration-days; otherwise kick only
     ban-on-detect: false
+  # Timer / wrong-tick usage (lenient — low weight, high streaks)
+  tick-abuse:
+    enabled: true
+    weight: 1
+    max-vl: 20
+    # Balance buffer (ms). Expected 50ms/tick; faster clients accumulate balance.
+    flag-balance-ms: 450
+    max-balance-ms: 1200
+    min-balance-ms: -800
+    # Consecutive over-threshold samples required before a timer flag
+    timer-streak: 8
+    # Position-move packets per second before burst flag
+    max-moves-per-second: 32
+    # Attack/interact/dig/place actions per second
+    max-actions-per-second: 28
+    # Consecutive burst windows required
+    burst-streak: 5
+    # Attacks in 500ms with almost no moves → wrong-tick actions
+    attack-desync-count: 12
+    min-moves-with-attacks: 1
+    # Skip tick checks entirely above this ping
+    max-ping-exempt: 450
 
 messages:
   flag-notify: "%prefix%&e%player% &7flagged &c%check% &8(&7vl %vl%&8) &7— &f%detail%"

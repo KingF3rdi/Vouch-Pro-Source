@@ -16,6 +16,7 @@ import de.helix.anticheat.listener.ConnectionListener;
 import de.helix.anticheat.listener.MovementListener;
 import de.helix.anticheat.listener.PacketChannelListener;
 import de.helix.anticheat.listener.StaffCommandListener;
+import de.helix.anticheat.listener.TickActionListener;
 import de.helix.anticheat.punishment.PunishmentManager;
 import de.helix.anticheat.util.Messages;
 import org.bukkit.Bukkit;
@@ -61,6 +62,7 @@ public final class HelixACPlugin extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(
                 new ConnectionListener(playerDataManager, checkManager, ipStore, meteorSignProbe), this);
         Bukkit.getPluginManager().registerEvents(new MovementListener(checkManager, playerDataManager), this);
+        Bukkit.getPluginManager().registerEvents(new TickActionListener(checkManager, playerDataManager), this);
         Bukkit.getPluginManager().registerEvents(packetChannelListener, this);
         Bukkit.getPluginManager().registerEvents(meteorSignProbe, this);
         Bukkit.getPluginManager().registerEvents(new StaffCommandListener(staffLogStore), this);

@@ -29,6 +29,16 @@ public final class PlayerData {
     private final Deque<String> recentFlagChecks = new ArrayDeque<>();
     private final Deque<Float> yawDeltas = new ArrayDeque<>();
 
+    // Tick / timer tracking
+    private long lastMovePacketMs;
+    private long tickBalanceMs;
+    private int timerStreak;
+    private int moveBurstStreak;
+    private int actionBurstStreak;
+    private int actionDesyncStreak;
+    private final Deque<Long> recentMoveTimestamps = new ArrayDeque<>();
+    private final Deque<Long> recentActionTimestamps = new ArrayDeque<>();
+
     public PlayerData(UUID uuid, String name) {
         this.uuid = uuid;
         this.name = name;
@@ -179,5 +189,94 @@ public final class PlayerData {
         while (yawDeltas.size() > maxSamples) {
             yawDeltas.removeFirst();
         }
+    }
+
+    public long getLastMovePacketMs() {
+        return lastMovePacketMs;
+    }
+
+    public void setLastMovePacketMs(long lastMovePacketMs) {
+        this.lastMovePacketMs = lastMovePacketMs;
+    }
+
+    public long getTickBalanceMs() {
+        return tickBalanceMs;
+    }
+
+    public void setTickBalanceMs(long tickBalanceMs) {
+        this.tickBalanceMs = tickBalanceMs;
+    }
+
+    public int getTimerStreak() {
+        return timerStreak;
+    }
+
+    public void setTimerStreak(int timerStreak) {
+        this.timerStreak = timerStreak;
+    }
+
+    public int getMoveBurstStreak() {
+        return moveBurstStreak;
+    }
+
+    public void setMoveBurstStreak(int moveBurstStreak) {
+        this.moveBurstStreak = moveBurstStreak;
+    }
+
+    public int getActionBurstStreak() {
+        return actionBurstStreak;
+    }
+
+    public void setActionBurstStreak(int actionBurstStreak) {
+        this.actionBurstStreak = actionBurstStreak;
+    }
+
+    public int getActionDesyncStreak() {
+        return actionDesyncStreak;
+    }
+
+    public void setActionDesyncStreak(int actionDesyncStreak) {
+        this.actionDesyncStreak = actionDesyncStreak;
+    }
+
+    public void pushMoveTimestamp(long nowMs, int maxTracked) {
+        recentMoveTimestamps.addLast(nowMs);
+        while (recentMoveTimestamps.size() > maxTracked) {
+            recentMoveTimestamps.removeFirst();
+        }
+    }
+
+    public int countRecentMoves(long windowMs) {
+        long cutoff = System.currentTimeMillis() - windowMs;
+        while (!recentMoveTimestamps.isEmpty() && recentMoveTimestamps.peekFirst() < cutoff) {
+            recentMoveTimestamps.removeFirst();
+        }
+        return recentMoveTimestamps.size();
+    }
+
+    public void pushActionTimestamp(long nowMs, int maxTracked) {
+        recentActionTimestamps.addLast(nowMs);
+        while (recentActionTimestamps.size() > maxTracked) {
+            recentActionTimestamps.removeFirst();
+        }
+    }
+
+    public int countRecentActions(long windowMs) {
+        long cutoff = System.currentTimeMillis() - windowMs;
+        while (!recentActionTimestamps.isEmpty() && recentActionTimestamps.peekFirst() < cutoff) {
+            recentActionTimestamps.removeFirst();
+        }
+        return recentActionTimestamps.size();
+    }
+
+    public void resetTickTracking() {
+        lastMovePacketMs = 0L;
+        tickBalanceMs = 0L;
+        timerStreak = 0;
+        moveBurstStreak = 0;
+        actionBurstStreak = 0;
+        actionDesyncStreak = 0;
+        recentMoveTimestamps.clear();
+        recentActionTimestamps.clear();
     }
 }

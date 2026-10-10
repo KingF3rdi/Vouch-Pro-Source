@@ -6,6 +6,7 @@ import de.helix.anticheat.check.impl.GhostClientCheck;
 import de.helix.anticheat.check.impl.InvalidMovementCheck;
 import de.helix.anticheat.check.impl.InvalidPacketCheck;
 import de.helix.anticheat.check.impl.RoboticRotationCheck;
+import de.helix.anticheat.check.impl.TickAbuseCheck;
 import de.helix.anticheat.config.PluginConfig;
 import de.helix.anticheat.data.PlayerData;
 import de.helix.anticheat.data.PlayerDataManager;
@@ -40,6 +41,7 @@ public final class CheckManager {
         checks.add(new RoboticRotationCheck(this));
         checks.add(new BadPacketsCheck(this));
         checks.add(new GhostClientCheck(this));
+        checks.add(new TickAbuseCheck(this));
     }
 
     public HelixACPlugin getPlugin() {
@@ -130,5 +132,22 @@ public final class CheckManager {
                 check.onPluginMessage(player, data, channel, payload);
             }
         }
+    }
+
+    public void handleTickAction(Player player, PlayerData data, TickAbuseCheck.ActionType type) {
+        if (Permissions.hasBypass(player)) {
+            return;
+        }
+        for (Check check : checks) {
+            if (check instanceof TickAbuseCheck tickAbuse && tickAbuse.isEnabled()) {
+                tickAbuse.onAction(player, data, type);
+            }
+        }
+    }
+
+    public void resetTickTracking(Player player) {
+        PlayerData data = playerDataManager.get(player);
+        data.resetTickTracking();
+        data.setExemptNextMove(true);
     }
 }

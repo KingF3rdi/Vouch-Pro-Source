@@ -57,6 +57,20 @@ public final class PluginConfig {
     private int meteorSignTimeoutTicks;
     private boolean meteorSignBan;
 
+    private boolean tickAbuseEnabled;
+    private int tickAbuseWeight;
+    private int tickAbuseMaxVl;
+    private int tickAbuseFlagBalanceMs;
+    private int tickAbuseMaxBalanceMs;
+    private int tickAbuseMinBalanceMs;
+    private int tickAbuseTimerStreak;
+    private int tickAbuseMaxMovesPerSecond;
+    private int tickAbuseMaxActionsPerSecond;
+    private int tickAbuseBurstStreak;
+    private int tickAbuseAttackDesyncCount;
+    private int tickAbuseMinMovesWithAttacks;
+    private int tickAbuseMaxPingExempt;
+
     private int maxStaffLogs;
 
     public PluginConfig(HelixACPlugin plugin) {
@@ -114,6 +128,21 @@ public final class PluginConfig {
         meteorSignDelayTicks = c.getInt("checks.meteor-sign.delay-ticks", 40);
         meteorSignTimeoutTicks = c.getInt("checks.meteor-sign.timeout-ticks", 200);
         meteorSignBan = c.getBoolean("checks.meteor-sign.ban-on-detect", false);
+
+        // Conservative defaults — low weight, high streaks → hard to false-ban
+        tickAbuseEnabled = c.getBoolean("checks.tick-abuse.enabled", true);
+        tickAbuseWeight = c.getInt("checks.tick-abuse.weight", 1);
+        tickAbuseMaxVl = c.getInt("checks.tick-abuse.max-vl", 20);
+        tickAbuseFlagBalanceMs = c.getInt("checks.tick-abuse.flag-balance-ms", 450);
+        tickAbuseMaxBalanceMs = c.getInt("checks.tick-abuse.max-balance-ms", 1200);
+        tickAbuseMinBalanceMs = c.getInt("checks.tick-abuse.min-balance-ms", -800);
+        tickAbuseTimerStreak = c.getInt("checks.tick-abuse.timer-streak", 8);
+        tickAbuseMaxMovesPerSecond = c.getInt("checks.tick-abuse.max-moves-per-second", 32);
+        tickAbuseMaxActionsPerSecond = c.getInt("checks.tick-abuse.max-actions-per-second", 28);
+        tickAbuseBurstStreak = c.getInt("checks.tick-abuse.burst-streak", 5);
+        tickAbuseAttackDesyncCount = c.getInt("checks.tick-abuse.attack-desync-count", 12);
+        tickAbuseMinMovesWithAttacks = c.getInt("checks.tick-abuse.min-moves-with-attacks", 1);
+        tickAbuseMaxPingExempt = c.getInt("checks.tick-abuse.max-ping-exempt", 450);
     }
 
     private static List<String> normalizeList(List<String> input) {
@@ -276,6 +305,58 @@ public final class PluginConfig {
 
     public boolean isMeteorSignBan() {
         return meteorSignBan;
+    }
+
+    public boolean isTickAbuseEnabled() {
+        return tickAbuseEnabled;
+    }
+
+    public int getTickAbuseWeight() {
+        return tickAbuseWeight;
+    }
+
+    public int getTickAbuseMaxVl() {
+        return tickAbuseMaxVl;
+    }
+
+    public int getTickAbuseFlagBalanceMs() {
+        return tickAbuseFlagBalanceMs;
+    }
+
+    public int getTickAbuseMaxBalanceMs() {
+        return tickAbuseMaxBalanceMs;
+    }
+
+    public int getTickAbuseMinBalanceMs() {
+        return tickAbuseMinBalanceMs;
+    }
+
+    public int getTickAbuseTimerStreak() {
+        return tickAbuseTimerStreak;
+    }
+
+    public int getTickAbuseMaxMovesPerSecond() {
+        return tickAbuseMaxMovesPerSecond;
+    }
+
+    public int getTickAbuseMaxActionsPerSecond() {
+        return tickAbuseMaxActionsPerSecond;
+    }
+
+    public int getTickAbuseBurstStreak() {
+        return tickAbuseBurstStreak;
+    }
+
+    public int getTickAbuseAttackDesyncCount() {
+        return tickAbuseAttackDesyncCount;
+    }
+
+    public int getTickAbuseMinMovesWithAttacks() {
+        return tickAbuseMinMovesWithAttacks;
+    }
+
+    public int getTickAbuseMaxPingExempt() {
+        return tickAbuseMaxPingExempt;
     }
 
     public int getMaxStaffLogs() {
