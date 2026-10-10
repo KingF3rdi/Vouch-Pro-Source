@@ -77,6 +77,10 @@ checks:
 messages:
   flag-notify: "%prefix%&e%player% &7flagged &c%check% &8(&7vl %vl%&8) &7— &f%detail%"
   banned-broadcast: "%prefix%&c%player% &7was banned for &c7 days &7— &f%reason%"
+  manual-banned-broadcast: "%prefix%&c%player% &7was banned for &f%duration% &7— &f%reason%"
+  ip-banned-broadcast: "%prefix%&c%player% &7was &cIP-banned &7for &f%duration% &7— &f%reason%"
+  ban-success: "%prefix%&aBanned &f%player% &afor &f%duration%&a. Reason: &f%reason%"
+  ban-success-ip: "%prefix%&aIP-banned &f%player% &afor &f%duration%&a. Reason: &f%reason%"
   whitelist-added: "%prefix%&aAdded &f%player% &ato the AC whitelist (flags only, no ban)."
   whitelist-removed: "%prefix%&cRemoved &f%player% &cfrom the AC whitelist."
   whitelist-list-header: "%prefix%&7Whitelisted players:"

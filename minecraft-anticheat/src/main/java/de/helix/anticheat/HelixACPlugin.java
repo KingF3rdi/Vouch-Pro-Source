@@ -2,7 +2,10 @@ package de.helix.anticheat;
 
 import de.helix.anticheat.check.CheckManager;
 import de.helix.anticheat.command.AcCommand;
+import de.helix.anticheat.command.BanLogsCommand;
+import de.helix.anticheat.command.LogPresenter;
 import de.helix.anticheat.config.PluginConfig;
+import de.helix.anticheat.data.IpStore;
 import de.helix.anticheat.data.LogStore;
 import de.helix.anticheat.data.PlayerDataManager;
 import de.helix.anticheat.data.WhitelistStore;
@@ -21,6 +24,7 @@ public final class HelixACPlugin extends JavaPlugin {
     private Messages messages;
     private PlayerDataManager playerDataManager;
     private WhitelistStore whitelistStore;
+    private IpStore ipStore;
     private LogStore logStore;
     private PunishmentManager punishmentManager;
     private CheckManager checkManager;
@@ -33,30 +37,33 @@ public final class HelixACPlugin extends JavaPlugin {
         this.messages = new Messages(pluginConfig);
         this.playerDataManager = new PlayerDataManager();
         this.whitelistStore = new WhitelistStore(this);
+        this.ipStore = new IpStore(this);
         this.logStore = new LogStore(this, pluginConfig);
-        this.punishmentManager = new PunishmentManager(this, pluginConfig, messages, logStore, whitelistStore);
+        this.punishmentManager = new PunishmentManager(this, pluginConfig, messages, logStore, whitelistStore, ipStore);
         this.checkManager = new CheckManager(this, pluginConfig, playerDataManager, punishmentManager, messages);
 
         whitelistStore.load();
+        ipStore.load();
         logStore.load();
 
         packetChannelListener = new PacketChannelListener(checkManager, playerDataManager);
         packetChannelListener.register(this);
 
-        Bukkit.getPluginManager().registerEvents(new ConnectionListener(playerDataManager, checkManager), this);
+        Bukkit.getPluginManager().registerEvents(new ConnectionListener(playerDataManager, checkManager, ipStore), this);
         Bukkit.getPluginManager().registerEvents(new MovementListener(checkManager, playerDataManager), this);
         Bukkit.getPluginManager().registerEvents(packetChannelListener, this);
 
-        BanLogsInterceptListener banLogsIntercept = new BanLogsInterceptListener(this);
-        Bukkit.getPluginManager().registerEvents(banLogsIntercept, this);
+        LogPresenter logPresenter = new LogPresenter(this);
+        BanLogsCommand banLogsCommand = new BanLogsCommand(logPresenter, messages);
+        Bukkit.getPluginManager().registerEvents(new BanLogsInterceptListener(banLogsCommand), this);
 
-        AcCommand acCommand = new AcCommand(this, banLogsIntercept.getBanLogsCommand());
+        AcCommand acCommand = new AcCommand(this, logPresenter);
         getCommand("ac").setExecutor(acCommand);
         getCommand("ac").setTabCompleter(acCommand);
 
         getLogger().info("HelixAC enabled — LuckPerms softdepend, packet/movement/ghost checks active.");
         if (Bukkit.getPluginManager().getPlugin("LuckPerms") != null) {
-            getLogger().info("LuckPerms detected. Permissions: ac.bypass, ac.whitelist, ac.admin, ac.banlogs, ac.notify");
+            getLogger().info("LuckPerms detected. Permissions: ac.bypass, ac.whitelist, ac.ban, ac.admin, ac.banlogs, ac.notify");
         } else {
             getLogger().info("LuckPerms not found — using Bukkit permissions (compatible when LuckPerms is installed later).");
         }
@@ -69,6 +76,9 @@ public final class HelixACPlugin extends JavaPlugin {
         }
         if (whitelistStore != null) {
             whitelistStore.save();
+        }
+        if (ipStore != null) {
+            ipStore.save();
         }
         if (logStore != null) {
             logStore.save();
@@ -83,6 +93,7 @@ public final class HelixACPlugin extends JavaPlugin {
         pluginConfig.reload();
         messages.reload();
         whitelistStore.load();
+        ipStore.load();
         logStore.reloadLimits();
     }
 
@@ -100,6 +111,10 @@ public final class HelixACPlugin extends JavaPlugin {
 
     public WhitelistStore getWhitelistStore() {
         return whitelistStore;
+    }
+
+    public IpStore getIpStore() {
+        return ipStore;
     }
 
     public LogStore getLogStore() {

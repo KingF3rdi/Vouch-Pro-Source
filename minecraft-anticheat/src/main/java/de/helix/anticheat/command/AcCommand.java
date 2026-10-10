@@ -1,8 +1,7 @@
 package de.helix.anticheat.command;
 
 import de.helix.anticheat.HelixACPlugin;
-import de.helix.anticheat.data.BanLogEntry;
-import de.helix.anticheat.data.FlagLogEntry;
+import de.helix.anticheat.util.DurationParser;
 import de.helix.anticheat.util.Messages;
 import de.helix.anticheat.util.Permissions;
 import org.bukkit.Bukkit;
@@ -13,9 +12,8 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -24,59 +22,158 @@ import java.util.stream.Collectors;
 
 public final class AcCommand implements CommandExecutor, TabCompleter {
 
-    private static final SimpleDateFormat TIME = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-
     private final HelixACPlugin plugin;
     private final Messages messages;
-    private final BanLogsCommand banLogsCommand;
+    private final LogPresenter logPresenter;
 
-    public AcCommand(HelixACPlugin plugin, BanLogsCommand banLogsCommand) {
+    public AcCommand(HelixACPlugin plugin, LogPresenter logPresenter) {
         this.plugin = plugin;
         this.messages = plugin.getMessages();
-        this.banLogsCommand = banLogsCommand;
+        this.logPresenter = logPresenter;
     }
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!sender.hasPermission(Permissions.ADMIN)) {
-            messages.send(sender, messages.get("no-permission", "%prefix%&cYou do not have permission."), Map.of());
-            return true;
-        }
         if (args.length == 0) {
+            if (!sender.hasPermission(Permissions.ADMIN) && !Permissions.canBan(sender)
+                    && !Permissions.canViewLogs(sender)) {
+                messages.send(sender, messages.get("no-permission", "%prefix%&cYou do not have permission."), Map.of());
+                return true;
+            }
             sendHelp(sender, label);
             return true;
         }
 
         String sub = args[0].toLowerCase(Locale.ROOT);
         switch (sub) {
-            case "logs" -> showLogs(sender);
-            case "whitelist", "wl" -> handleWhitelist(sender, args);
-            case "banlogs" -> {
-                if (args.length < 2) {
-                    sender.sendMessage(messages.component("&e/ac banlogs <player> &7(or /ban logs <player>)"));
+            case "logs" -> {
+                if (!Permissions.canViewLogs(sender)) {
+                    messages.send(sender, messages.get("no-permission", "%prefix%&cYou do not have permission."), Map.of());
                     return true;
                 }
-                banLogsCommand.onCommand(sender, null, "ban", new String[]{"logs", args[1]});
+                logPresenter.show(sender, args.length >= 2 ? args[1] : null);
+            }
+            case "ban" -> handleBan(sender, args, false);
+            case "ip" -> {
+                if (args.length >= 2 && args[1].equalsIgnoreCase("ban")) {
+                    // /ac ip ban <player> <duration> <reason...>
+                    handleBan(sender, shiftIpBanArgs(args), true);
+                } else {
+                    sender.sendMessage(messages.component("&e/ac ip ban <player> <duration> <reason>"));
+                }
+            }
+            case "ipban" -> handleBan(sender, args, true);
+            case "whitelist", "wl" -> {
+                if (!sender.hasPermission(Permissions.ADMIN)) {
+                    messages.send(sender, messages.get("no-permission", "%prefix%&cYou do not have permission."), Map.of());
+                    return true;
+                }
+                handleWhitelist(sender, args);
             }
             case "reload" -> {
+                if (!sender.hasPermission(Permissions.ADMIN)) {
+                    messages.send(sender, messages.get("no-permission", "%prefix%&cYou do not have permission."), Map.of());
+                    return true;
+                }
                 plugin.reloadPlugin();
                 messages.send(sender, messages.get("reload", "%prefix%&aConfiguration reloaded."), Map.of());
             }
-            case "info" -> showInfo(sender);
+            case "info" -> {
+                if (!sender.hasPermission(Permissions.ADMIN)) {
+                    messages.send(sender, messages.get("no-permission", "%prefix%&cYou do not have permission."), Map.of());
+                    return true;
+                }
+                showInfo(sender);
+            }
             default -> sendHelp(sender, label);
         }
         return true;
     }
 
+    /**
+     * Converts {@code /ac ip ban <player> <dur> <reason...>} args into the same shape as
+     * {@code /ac ban <player> <dur> <reason...>} (keeps a dummy index-0 token).
+     */
+    private static String[] shiftIpBanArgs(String[] args) {
+        // args: [ip, ban, player, duration, reason...]
+        if (args.length < 3) {
+            return new String[]{"ban"};
+        }
+        String[] out = new String[args.length - 1];
+        out[0] = "ban";
+        System.arraycopy(args, 2, out, 1, args.length - 2);
+        return out;
+    }
+
+    private void handleBan(CommandSender sender, String[] args, boolean ipBan) {
+        if (!Permissions.canBan(sender)) {
+            messages.send(sender, messages.get("no-permission", "%prefix%&cYou do not have permission."), Map.of());
+            return;
+        }
+        // args: [ban|ipban, player, duration, reason...]
+        if (args.length < 4) {
+            if (ipBan) {
+                sender.sendMessage(messages.component("&e/ac ip ban <player> <duration> <reason>"));
+                sender.sendMessage(messages.component("&7Duration examples: &f7d&7, &f12h&7, &f30m&7, &f1w&7, &fpermanent"));
+            } else {
+                sender.sendMessage(messages.component("&e/ac ban <player> <duration> <reason>"));
+                sender.sendMessage(messages.component("&7Duration examples: &f7d&7, &f12h&7, &f30m&7, &f1w&7, &fpermanent"));
+            }
+            return;
+        }
+
+        String playerName = args[1];
+        Long durationMs = DurationParser.parseToMillis(args[2]);
+        if (durationMs == null) {
+            sender.sendMessage(messages.component("&cInvalid duration: &f" + args[2]
+                    + " &7(use 7d, 12h, 30m, 1w, permanent)"));
+            return;
+        }
+
+        String reason = String.join(" ", Arrays.copyOfRange(args, 3, args.length));
+        if (reason.isBlank()) {
+            sender.sendMessage(messages.component("&cPlease provide a ban reason."));
+            return;
+        }
+
+        OfflinePlayer target = resolvePlayer(playerName);
+        if (target == null || target.getUniqueId() == null) {
+            messages.send(sender, messages.get("player-not-found", "%prefix%&cPlayer not found: &f%player%"),
+                    Map.of("player", playerName));
+            return;
+        }
+
+        String error = ipBan
+                ? plugin.getPunishmentManager().manualIpBan(sender, target, durationMs, reason)
+                : plugin.getPunishmentManager().manualBan(sender, target, durationMs, reason);
+
+        if (error != null) {
+            sender.sendMessage(messages.component("&c" + error));
+            return;
+        }
+
+        String name = target.getName() != null ? target.getName() : playerName;
+        String dur = DurationParser.format(durationMs);
+        if (ipBan) {
+            messages.send(sender, messages.get("ban-success-ip",
+                            "%prefix%&aIP-banned &f%player% &afor &f%duration%&a. Reason: &f%reason%"),
+                    Map.of("player", name, "duration", dur, "reason", reason));
+        } else {
+            messages.send(sender, messages.get("ban-success",
+                            "%prefix%&aBanned &f%player% &afor &f%duration%&a. Reason: &f%reason%"),
+                    Map.of("player", name, "duration", dur, "reason", reason));
+        }
+    }
+
     private void sendHelp(CommandSender sender, String label) {
         sender.sendMessage(messages.component("&8[&cHelixAC&8] &7Commands:"));
-        sender.sendMessage(messages.component("&e/" + label + " logs &8- &7latest flags and bans"));
+        sender.sendMessage(messages.component("&e/" + label + " logs [player] &8- &7latest flags and bans"));
+        sender.sendMessage(messages.component("&e/ban logs [player] &8- &7same as /ac logs"));
+        sender.sendMessage(messages.component("&e/" + label + " ban <player> <duration> <reason>"));
+        sender.sendMessage(messages.component("&e/" + label + " ip ban <player> <duration> <reason>"));
         sender.sendMessage(messages.component("&e/" + label + " whitelist <add|remove|list> [player]"));
-        sender.sendMessage(messages.component("&e/" + label + " banlogs <player> &8- &7same as /ban logs"));
-        sender.sendMessage(messages.component("&e/ban logs <player> &8- &7latest bans + flags for a player"));
-        sender.sendMessage(messages.component("&e/" + label + " reload"));
-        sender.sendMessage(messages.component("&e/" + label + " info"));
-        sender.sendMessage(messages.component("&7LuckPerms: &fac.bypass&7, &fac.whitelist&7, &fac.admin&7, &fac.banlogs&7, &fac.notify"));
+        sender.sendMessage(messages.component("&e/" + label + " reload &8| &e/" + label + " info"));
+        sender.sendMessage(messages.component("&7LuckPerms: &fac.bypass&7, &fac.whitelist&7, &fac.ban&7, &fac.admin&7, &fac.banlogs&7, &fac.notify"));
     }
 
     private void showInfo(CommandSender sender) {
@@ -90,41 +187,6 @@ public final class AcCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(messages.component("&7Ban threshold: &f" + plugin.getPluginConfig().getFlagThreshold()
                 + " &7flags / &f" + plugin.getPluginConfig().getFlagDecaySeconds() + "s"
                 + " &7→ &f" + plugin.getPluginConfig().getBanDurationDays() + "d"));
-    }
-
-    private void showLogs(CommandSender sender) {
-        List<FlagLogEntry> flags = plugin.getLogStore().latestFlags(15);
-        List<BanLogEntry> bans = plugin.getLogStore().latestBans(10);
-
-        sender.sendMessage(messages.component("&8[&cHelixAC&8] &eLatest flags:"));
-        if (flags.isEmpty()) {
-            sender.sendMessage(messages.component("&7  (none)"));
-        } else {
-            for (FlagLogEntry e : flags) {
-                String banNote = e.isWouldBan()
-                        ? (e.isSuppressedBan() ? " &8[&eWHITELIST — ban blocked&8]" : " &8[&cBAN THRESHOLD&8]")
-                        : "";
-                sender.sendMessage(messages.component("&8- &7" + TIME.format(new Date(e.getTimestamp()))
-                        + " &e" + e.getPlayerName()
-                        + " &c" + e.getCheck()
-                        + " &8vl&7" + e.getVl()
-                        + " &7" + e.getDetail()
-                        + banNote));
-            }
-        }
-
-        sender.sendMessage(messages.component("&8[&cHelixAC&8] &eLatest bans:"));
-        if (bans.isEmpty()) {
-            sender.sendMessage(messages.component("&7  (none)"));
-        } else {
-            for (BanLogEntry e : bans) {
-                sender.sendMessage(messages.component("&8- &7" + TIME.format(new Date(e.getTimestamp()))
-                        + " &c" + e.getPlayerName()
-                        + " &7reason: &f" + e.getReason()
-                        + " &8(&7flags: &f" + e.getChecks()
-                        + " &8x" + e.getFlagCount() + "&8)"));
-            }
-        }
     }
 
     private void handleWhitelist(CommandSender sender, String[] args) {
@@ -150,7 +212,7 @@ public final class AcCommand implements CommandExecutor, TabCompleter {
                     return;
                 }
                 OfflinePlayer target = resolvePlayer(args[2]);
-                if (target == null || (target.getName() == null && !target.hasPlayedBefore() && !target.isOnline())) {
+                if (target == null || target.getUniqueId() == null) {
                     messages.send(sender, messages.get("player-not-found", "%prefix%&cPlayer not found: &f%player%"),
                             Map.of("player", args[2]));
                     return;
@@ -196,33 +258,63 @@ public final class AcCommand implements CommandExecutor, TabCompleter {
         if (online != null) {
             return online;
         }
-        OfflinePlayer offline = Bukkit.getOfflinePlayer(name);
-        if (offline.hasPlayedBefore() || offline.isOnline()) {
-            return offline;
-        }
-        // Still allow UUID-based adds for never-seen names (Paper resolves offline UUID in offline mode)
-        return offline;
+        return Bukkit.getOfflinePlayer(name);
     }
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        if (!sender.hasPermission(Permissions.ADMIN)) {
-            return List.of();
-        }
         if (args.length == 1) {
-            return filter(List.of("logs", "whitelist", "banlogs", "reload", "info"), args[0]);
+            List<String> opts = new ArrayList<>();
+            if (Permissions.canViewLogs(sender)) {
+                opts.add("logs");
+            }
+            if (Permissions.canBan(sender)) {
+                opts.add("ban");
+                opts.add("ip");
+                opts.add("ipban");
+            }
+            if (sender.hasPermission(Permissions.ADMIN)) {
+                opts.add("whitelist");
+                opts.add("reload");
+                opts.add("info");
+            }
+            return filter(opts, args[0]);
         }
-        if (args.length == 2 && args[0].equalsIgnoreCase("whitelist")) {
+        if (args.length == 2 && args[0].equalsIgnoreCase("logs") && Permissions.canViewLogs(sender)) {
+            return onlineNames(args[1]);
+        }
+        if (args.length == 2 && (args[0].equalsIgnoreCase("ban") || args[0].equalsIgnoreCase("ipban"))
+                && Permissions.canBan(sender)) {
+            return onlineNames(args[1]);
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("ip") && Permissions.canBan(sender)) {
+            return filter(List.of("ban"), args[1]);
+        }
+        if (args.length == 3 && args[0].equalsIgnoreCase("ip") && args[1].equalsIgnoreCase("ban")
+                && Permissions.canBan(sender)) {
+            return onlineNames(args[2]);
+        }
+        if (args.length == 3 && (args[0].equalsIgnoreCase("ban") || args[0].equalsIgnoreCase("ipban"))
+                && Permissions.canBan(sender)) {
+            return filter(List.of("7d", "1d", "12h", "30m", "1w", "permanent"), args[2]);
+        }
+        if (args.length == 4 && args[0].equalsIgnoreCase("ip") && args[1].equalsIgnoreCase("ban")
+                && Permissions.canBan(sender)) {
+            return filter(List.of("7d", "1d", "12h", "30m", "1w", "permanent"), args[3]);
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("whitelist") && sender.hasPermission(Permissions.ADMIN)) {
             return filter(List.of("add", "remove", "list"), args[1]);
         }
-        if (args.length == 2 && args[0].equalsIgnoreCase("banlogs")) {
-            return filter(Bukkit.getOnlinePlayers().stream().map(Player::getName).collect(Collectors.toList()), args[1]);
-        }
         if (args.length == 3 && args[0].equalsIgnoreCase("whitelist")
-                && (args[1].equalsIgnoreCase("add") || args[1].equalsIgnoreCase("remove"))) {
-            return filter(Bukkit.getOnlinePlayers().stream().map(Player::getName).collect(Collectors.toList()), args[2]);
+                && (args[1].equalsIgnoreCase("add") || args[1].equalsIgnoreCase("remove"))
+                && sender.hasPermission(Permissions.ADMIN)) {
+            return onlineNames(args[2]);
         }
         return List.of();
+    }
+
+    private static List<String> onlineNames(String token) {
+        return filter(Bukkit.getOnlinePlayers().stream().map(Player::getName).collect(Collectors.toList()), token);
     }
 
     private static List<String> filter(List<String> options, String token) {

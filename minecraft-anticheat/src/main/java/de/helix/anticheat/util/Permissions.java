@@ -1,5 +1,6 @@
 package de.helix.anticheat.util;
 
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 /**
@@ -11,6 +12,7 @@ public final class Permissions {
     public static final String BYPASS = "ac.bypass";
     public static final String WHITELIST = "ac.whitelist";
     public static final String ADMIN = "ac.admin";
+    public static final String BAN = "ac.ban";
     public static final String BAN_LOGS = "ac.banlogs";
     public static final String NOTIFY = "ac.notify";
 
@@ -23,5 +25,13 @@ public final class Permissions {
 
     public static boolean hasWhitelist(Player player) {
         return player != null && player.hasPermission(WHITELIST);
+    }
+
+    public static boolean canBan(CommandSender sender) {
+        return sender.hasPermission(BAN) || sender.hasPermission(ADMIN);
+    }
+
+    public static boolean canViewLogs(CommandSender sender) {
+        return sender.hasPermission(BAN_LOGS) || sender.hasPermission(ADMIN);
     }
 }

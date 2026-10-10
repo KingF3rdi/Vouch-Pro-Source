@@ -34,20 +34,24 @@ Drop the jar into your server `plugins/` folder and restart.
 
 | Command | Permission | Description |
 | --- | --- | --- |
-| `/ac logs` | `ac.admin` | Latest flags and bans (with ban reasons / flag checks) |
+| `/ac logs [player]` | `ac.banlogs` | Latest flags and bans (optional player filter) |
+| `/ban logs [player]` | `ac.banlogs` | **Same as** `/ac logs` (does not steal normal `/ban`) |
+| `/ac ban <player> <duration> <reason>` | `ac.ban` | Easy name-ban |
+| `/ac ip ban <player> <duration> <reason>` | `ac.ban` | IP-ban (+ name-ban); needs a seen IP |
 | `/ac whitelist add\|remove\|list [player]` | `ac.admin` | Manage AC whitelist |
-| `/ac banlogs <player>` | `ac.admin` | Player ban + flag history |
-| `/ban logs <player>` | `ac.banlogs` | Same history (intercepted; does not steal normal `/ban`) |
 | `/ac reload` | `ac.admin` | Reload config |
 | `/ac info` | `ac.admin` | Status / LuckPerms / checks |
+
+Duration examples: `7d`, `12h`, `30m`, `1w`, `permanent` (bare numbers = days).
 
 ## LuckPerms permissions
 
 ```
 ac.bypass      # Completely bypasses HelixAC (no flags, no bans)
 ac.whitelist  # Flags normally but never auto-banned
-ac.admin      # /ac commands
-ac.banlogs    # /ban logs <player>
+ac.ban        # /ac ban and /ac ip ban
+ac.admin      # whitelist / reload / info (includes ac.ban + ac.banlogs)
+ac.banlogs    # /ac logs and /ban logs
 ac.notify     # Live flag notifications
 ```
 
@@ -57,6 +61,7 @@ Examples:
 /lp user Steve permission set ac.bypass true
 /lp user Alex permission set ac.whitelist true
 /lp group admin permission set ac.admin true
+/lp group mod permission set ac.ban true
 /lp group mod permission set ac.banlogs true
 /lp group mod permission set ac.notify true
 ```

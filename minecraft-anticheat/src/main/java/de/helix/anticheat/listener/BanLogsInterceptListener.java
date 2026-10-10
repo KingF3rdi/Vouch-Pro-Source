@@ -1,6 +1,5 @@
 package de.helix.anticheat.listener;
 
-import de.helix.anticheat.HelixACPlugin;
 import de.helix.anticheat.command.BanLogsCommand;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -9,19 +8,15 @@ import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.server.ServerCommandEvent;
 
 /**
- * Intercepts {@code /ban logs <player>} without claiming the entire /ban command,
- * so Essentials/LiteBans/etc. keep working for normal bans.
+ * Intercepts {@code /ban logs [player]} without claiming the entire /ban command.
+ * Behavior matches {@code /ac logs [player]}.
  */
 public final class BanLogsInterceptListener implements Listener {
 
     private final BanLogsCommand banLogsCommand;
 
-    public BanLogsInterceptListener(HelixACPlugin plugin) {
-        this.banLogsCommand = new BanLogsCommand(plugin);
-    }
-
-    public BanLogsCommand getBanLogsCommand() {
-        return banLogsCommand;
+    public BanLogsInterceptListener(BanLogsCommand banLogsCommand) {
+        this.banLogsCommand = banLogsCommand;
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
@@ -53,7 +48,6 @@ public final class BanLogsInterceptListener implements Listener {
     }
 
     private static boolean isBan(String token) {
-        // token includes leading slash for player commands
         return token.equalsIgnoreCase("/ban") || token.equalsIgnoreCase("/minecraft:ban");
     }
 
@@ -62,7 +56,6 @@ public final class BanLogsInterceptListener implements Listener {
     }
 
     private static String[] shift(String[] parts) {
-        // drop command label → ["logs", player...]
         String[] args = new String[parts.length - 1];
         System.arraycopy(parts, 1, args, 0, args.length);
         return args;
