@@ -48,9 +48,11 @@ permissions:
     description: Receive ban/punishment broadcasts in chat
     default: op
   ac.admin:
-    description: Full HelixAC admin (includes all staff permissions)
+    description: Full HelixAC access — includes every ac.* permission
     default: op
     children:
+      ac.bypass: true
+      ac.whitelist: true
       ac.ban: true
       ac.clear: true
       ac.wipe: true

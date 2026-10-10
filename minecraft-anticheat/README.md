@@ -57,7 +57,7 @@ ac.ban        # /ac ban and /ac ip ban
 ac.clear      # /ac clear <player>
 ac.wipe       # /ac wipe <player> (inv + EC + stats)
 ac.logs       # Log commands (/ac logs, /ban logs, /ac staff logs)
-ac.admin      # whitelist / reload / info (includes all staff perms above)
+ac.admin      # includes EVERY ac.* permission (ban, clear, wipe, flags, logs, bypass, …)
 ac.bypass     # Completely bypasses HelixAC (no flags, no bans)
 ac.whitelist  # Flags normally but never auto-banned
 ac.banlogs    # Only /ac logs and /ban logs (also granted by ac.logs)
@@ -75,8 +75,8 @@ Examples:
 /lp group mod permission set ac.wipe true
 /lp group mod permission set ac.logs true
 /lp group admin permission set ac.admin true
-/lp user Steve permission set ac.bypass true
-/lp user Alex permission set ac.whitelist true
+# ac.admin already grants ac.ban, ac.clear, ac.wipe, ac.flags, ac.logs,
+# ac.bypass, ac.whitelist, ac.notify, ac.staff, …
 ```
 
 ## Config highlights
