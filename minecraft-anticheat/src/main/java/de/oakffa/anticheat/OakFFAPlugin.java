@@ -21,7 +21,6 @@ import de.oakffa.anticheat.listener.TickActionListener;
 import de.oakffa.anticheat.listener.VelocityListener;
 import de.oakffa.anticheat.prediction.SetbackManager;
 import de.oakffa.anticheat.punishment.PunishmentManager;
-import de.oakffa.anticheat.spoof.StatsSpoofManager;
 import de.oakffa.anticheat.util.Messages;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -40,7 +39,6 @@ public final class OakFFAPlugin extends JavaPlugin {
     private CheckManager checkManager;
     private MeteorSignProbe meteorSignProbe;
     private PacketChannelListener packetChannelListener;
-    private StatsSpoofManager statsSpoofManager;
 
     @Override
     public void onEnable() {
@@ -84,9 +82,6 @@ public final class OakFFAPlugin extends JavaPlugin {
         getCommand("ac").setExecutor(acCommand);
         getCommand("ac").setTabCompleter(acCommand);
 
-        this.statsSpoofManager = new StatsSpoofManager(this, pluginConfig);
-        statsSpoofManager.start();
-
         getLogger().info("OakFFA Anti Cheat enabled.");
         if (Bukkit.getPluginManager().getPlugin("LuckPerms") != null) {
             getLogger().info("LuckPerms detected.");
@@ -95,9 +90,6 @@ public final class OakFFAPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        if (statsSpoofManager != null) {
-            statsSpoofManager.shutdown();
-        }
         if (packetChannelListener != null) {
             getServer().getMessenger().unregisterIncomingPluginChannel(this);
         }

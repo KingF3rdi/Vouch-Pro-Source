@@ -21,12 +21,6 @@ Jar: `build/libs/OakFFA-AntiCheat-1.0.0.jar`
 
 Simulation, TickAbuse, InvalidInput, InvalidAction, PrestigeCombat, CombatUtility, IllegalPlace, BadPackets, RoboticRotation, GhostClient, MeteorSign
 
-## Anti-indicators
-
-Spoofs other players' health metadata and armor / max-health attributes in outbound packets so health-indicator and armor-stat mods cannot read real values. Also clears below-name health scoreboards.
-
-Bypass receiving spoofed packets: `ac.seeindicators` (also included in `ac.admin`).
-
 ## Commands
 
 | Command | Permission | Description |

@@ -13,11 +13,6 @@ public final class PluginConfig {
     private final OakFFAPlugin plugin;
 
     private String prefix;
-    private boolean antiIndicatorsEnabled;
-    private boolean antiIndicatorsSpoofHealth;
-    private boolean antiIndicatorsSpoofArmor;
-    private boolean antiIndicatorsUseMaxAsFake;
-    private double antiIndicatorsFakeHealth;
     private boolean punishmentEnabled;
     private int flagThreshold;
     private int flagDecaySeconds;
@@ -148,12 +143,6 @@ public final class PluginConfig {
     public void reload() {
         FileConfiguration c = plugin.getConfig();
         prefix = c.getString("prefix", "&8[&aOakFFA AC&8]&r ");
-
-        antiIndicatorsEnabled = c.getBoolean("anti-indicators.enabled", true);
-        antiIndicatorsSpoofHealth = c.getBoolean("anti-indicators.spoof-health", true);
-        antiIndicatorsSpoofArmor = c.getBoolean("anti-indicators.spoof-armor", true);
-        antiIndicatorsUseMaxAsFake = c.getBoolean("anti-indicators.use-max-as-fake", true);
-        antiIndicatorsFakeHealth = c.getDouble("anti-indicators.fake-health", 20.0);
 
         punishmentEnabled = c.getBoolean("punishment.enabled", true);
         flagThreshold = c.getInt("punishment.flag-threshold", 25);
@@ -302,26 +291,6 @@ public final class PluginConfig {
 
     public String getPrefix() {
         return prefix;
-    }
-
-    public boolean isAntiIndicatorsEnabled() {
-        return antiIndicatorsEnabled;
-    }
-
-    public boolean isAntiIndicatorsSpoofHealth() {
-        return antiIndicatorsSpoofHealth;
-    }
-
-    public boolean isAntiIndicatorsSpoofArmor() {
-        return antiIndicatorsSpoofArmor;
-    }
-
-    public boolean isAntiIndicatorsUseMaxAsFake() {
-        return antiIndicatorsUseMaxAsFake;
-    }
-
-    public double getAntiIndicatorsFakeHealth() {
-        return antiIndicatorsFakeHealth;
     }
 
     public boolean isPunishmentEnabled() {

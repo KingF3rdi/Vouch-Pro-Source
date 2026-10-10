@@ -1,12 +1,5 @@
 prefix: "&8[&aOakFFA AC&8]&r "
 
-anti-indicators:
-  enabled: true
-  spoof-health: true
-  spoof-armor: true
-  use-max-as-fake: true
-  fake-health: 20.0
-
 setbacks:
   enabled: true
 
