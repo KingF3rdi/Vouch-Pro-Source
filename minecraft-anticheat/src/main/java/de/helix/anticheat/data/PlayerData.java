@@ -48,6 +48,16 @@ public final class PlayerData {
     private int velocityTicks;
     private int simulationStreak;
 
+    // Invalid input / action packet state
+    private boolean digging;
+    private Location digBlock;
+    private long digStartMs;
+    private int inputStreak;
+    private int swapStreak;
+    private long lastSwapHandsMs;
+    private int dropStreak;
+    private long lastDropMs;
+
     public PlayerData(UUID uuid, String name) {
         this.uuid = uuid;
         this.name = name;
@@ -335,5 +345,81 @@ public final class PlayerData {
 
     public void setSimulationStreak(int simulationStreak) {
         this.simulationStreak = Math.max(0, simulationStreak);
+    }
+
+    public boolean isDigging() {
+        return digging;
+    }
+
+    public void setDigging(boolean digging) {
+        this.digging = digging;
+    }
+
+    public Location getDigBlock() {
+        return digBlock == null ? null : digBlock.clone();
+    }
+
+    public void setDigBlock(Location digBlock) {
+        this.digBlock = digBlock == null ? null : digBlock.clone();
+    }
+
+    public long getDigStartMs() {
+        return digStartMs;
+    }
+
+    public void setDigStartMs(long digStartMs) {
+        this.digStartMs = digStartMs;
+    }
+
+    public int getInputStreak() {
+        return inputStreak;
+    }
+
+    public void setInputStreak(int inputStreak) {
+        this.inputStreak = Math.max(0, inputStreak);
+    }
+
+    public void addInputStreak(int amount) {
+        this.inputStreak = Math.max(0, this.inputStreak + amount);
+    }
+
+    public int getSwapStreak() {
+        return swapStreak;
+    }
+
+    public void setSwapStreak(int swapStreak) {
+        this.swapStreak = Math.max(0, swapStreak);
+    }
+
+    public void addSwapStreak(int amount) {
+        this.swapStreak = Math.max(0, this.swapStreak + amount);
+    }
+
+    public long getLastSwapHandsMs() {
+        return lastSwapHandsMs;
+    }
+
+    public void setLastSwapHandsMs(long lastSwapHandsMs) {
+        this.lastSwapHandsMs = lastSwapHandsMs;
+    }
+
+    public int getDropStreak() {
+        return dropStreak;
+    }
+
+    public void setDropStreak(int dropStreak) {
+        this.dropStreak = Math.max(0, dropStreak);
+    }
+
+    public void addDropStreak(int amount) {
+        this.dropStreak = Math.max(0, this.dropStreak + amount);
+    }
+
+    public long getLastDropMs() {
+        return lastDropMs;
+    }
+
+    public void setLastDropMs(long lastDropMs) {
+        this.lastDropMs = lastDropMs;
     }
 }

@@ -40,6 +40,25 @@ checks:
     # Weight added per flag (higher = reaches ban faster)
     weight: 3
     max-vl: 8
+  # Invalid client input packets (keys / hotbar / abilities)
+  invalid-input:
+    enabled: true
+    weight: 2
+    max-vl: 10
+    # Sprint+sneak samples before flag
+    combo-streak: 5
+    # Min ms between swap-hand packets
+    min-swap-ms: 40
+  # Invalid action packets (dig/place/attack/interact/drop)
+  invalid-action:
+    enabled: true
+    weight: 3
+    max-vl: 10
+    # Extra reach tolerance (blocks) on top of ping compensation
+    reach-buffer: 0.35
+    # Attack look-dot below this (and far enough) is off-angle
+    min-attack-dot: -0.15
+    min-drop-ms: 35
   invalid-movement:
     # Secondary hard-limit safety net (simulation is primary)
     enabled: true

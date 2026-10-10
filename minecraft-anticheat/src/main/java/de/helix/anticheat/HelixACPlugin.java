@@ -13,6 +13,7 @@ import de.helix.anticheat.data.StaffLogStore;
 import de.helix.anticheat.data.WhitelistStore;
 import de.helix.anticheat.listener.BanLogsInterceptListener;
 import de.helix.anticheat.listener.ConnectionListener;
+import de.helix.anticheat.listener.InputActionListener;
 import de.helix.anticheat.listener.MovementListener;
 import de.helix.anticheat.listener.PacketChannelListener;
 import de.helix.anticheat.listener.StaffCommandListener;
@@ -67,6 +68,7 @@ public final class HelixACPlugin extends JavaPlugin {
                 new ConnectionListener(playerDataManager, checkManager, ipStore, meteorSignProbe), this);
         Bukkit.getPluginManager().registerEvents(new MovementListener(checkManager, playerDataManager), this);
         Bukkit.getPluginManager().registerEvents(new TickActionListener(checkManager, playerDataManager), this);
+        Bukkit.getPluginManager().registerEvents(new InputActionListener(checkManager, playerDataManager), this);
         Bukkit.getPluginManager().registerEvents(new VelocityListener(playerDataManager), this);
         Bukkit.getPluginManager().registerEvents(packetChannelListener, this);
         Bukkit.getPluginManager().registerEvents(meteorSignProbe, this);

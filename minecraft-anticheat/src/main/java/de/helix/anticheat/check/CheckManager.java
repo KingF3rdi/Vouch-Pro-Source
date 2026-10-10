@@ -3,6 +3,8 @@ package de.helix.anticheat.check;
 import de.helix.anticheat.HelixACPlugin;
 import de.helix.anticheat.check.impl.BadPacketsCheck;
 import de.helix.anticheat.check.impl.GhostClientCheck;
+import de.helix.anticheat.check.impl.InvalidActionCheck;
+import de.helix.anticheat.check.impl.InvalidInputCheck;
 import de.helix.anticheat.check.impl.InvalidMovementCheck;
 import de.helix.anticheat.check.impl.InvalidPacketCheck;
 import de.helix.anticheat.check.impl.RoboticRotationCheck;
@@ -43,6 +45,8 @@ public final class CheckManager {
         // Prediction-first (Grim-style), then packet / combat heuristics
         checks.add(new SimulationCheck(this));
         checks.add(new InvalidPacketCheck(this));
+        checks.add(new InvalidInputCheck(this));
+        checks.add(new InvalidActionCheck(this));
         checks.add(new InvalidMovementCheck(this));
         checks.add(new RoboticRotationCheck(this));
         checks.add(new BadPacketsCheck(this));

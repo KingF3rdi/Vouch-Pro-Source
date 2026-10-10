@@ -23,7 +23,8 @@ Jar: `build/libs/HelixAC-1.0.0.jar`
 2. **Uncertainty** — ping, knockback, teleport, vehicle, 0.03 movement forgiven
 3. **Setbacks** — illegal moves resync to last valid position (don’t ban on first hit)
 4. **TickAbuse** — timer / wrong-tick action bursts (streak + balance buffer)
-5. **Heuristics** — bad packets, robotic aim, ghost-client brands/channels, Meteor sign probe
+5. **InvalidInput / InvalidAction** — forged key combos, dig sequence spoof, reach, off-angle hits
+6. **Heuristics** — bad packets, robotic aim, ghost-client brands/channels, Meteor sign probe
 
 Bans still require sustained flags (`punishment.flag-threshold`), not a single prediction miss.
 

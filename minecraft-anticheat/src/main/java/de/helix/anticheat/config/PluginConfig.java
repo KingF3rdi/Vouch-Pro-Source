@@ -78,6 +78,19 @@ public final class PluginConfig {
     private int simulationStreak;
     private boolean setbacksEnabled;
 
+    private boolean invalidInputEnabled;
+    private int invalidInputWeight;
+    private int invalidInputMaxVl;
+    private int invalidInputComboStreak;
+    private int invalidInputMinSwapMs;
+
+    private boolean invalidActionEnabled;
+    private int invalidActionWeight;
+    private int invalidActionMaxVl;
+    private double invalidActionReachBuffer;
+    private double invalidActionMinAttackDot;
+    private int invalidActionMinDropMs;
+
     private int maxStaffLogs;
 
     public PluginConfig(HelixACPlugin plugin) {
@@ -157,6 +170,19 @@ public final class PluginConfig {
         simulationOffsetThreshold = c.getDouble("checks.simulation.offset-threshold", 0.55);
         simulationStreak = c.getInt("checks.simulation.streak", 4);
         setbacksEnabled = c.getBoolean("setbacks.enabled", true);
+
+        invalidInputEnabled = c.getBoolean("checks.invalid-input.enabled", true);
+        invalidInputWeight = c.getInt("checks.invalid-input.weight", 2);
+        invalidInputMaxVl = c.getInt("checks.invalid-input.max-vl", 10);
+        invalidInputComboStreak = c.getInt("checks.invalid-input.combo-streak", 5);
+        invalidInputMinSwapMs = c.getInt("checks.invalid-input.min-swap-ms", 40);
+
+        invalidActionEnabled = c.getBoolean("checks.invalid-action.enabled", true);
+        invalidActionWeight = c.getInt("checks.invalid-action.weight", 3);
+        invalidActionMaxVl = c.getInt("checks.invalid-action.max-vl", 10);
+        invalidActionReachBuffer = c.getDouble("checks.invalid-action.reach-buffer", 0.35);
+        invalidActionMinAttackDot = c.getDouble("checks.invalid-action.min-attack-dot", -0.15);
+        invalidActionMinDropMs = c.getInt("checks.invalid-action.min-drop-ms", 35);
     }
 
     private static List<String> normalizeList(List<String> input) {
@@ -395,6 +421,50 @@ public final class PluginConfig {
 
     public boolean isSetbacksEnabled() {
         return setbacksEnabled;
+    }
+
+    public boolean isInvalidInputEnabled() {
+        return invalidInputEnabled;
+    }
+
+    public int getInvalidInputWeight() {
+        return invalidInputWeight;
+    }
+
+    public int getInvalidInputMaxVl() {
+        return invalidInputMaxVl;
+    }
+
+    public int getInvalidInputComboStreak() {
+        return invalidInputComboStreak;
+    }
+
+    public int getInvalidInputMinSwapMs() {
+        return invalidInputMinSwapMs;
+    }
+
+    public boolean isInvalidActionEnabled() {
+        return invalidActionEnabled;
+    }
+
+    public int getInvalidActionWeight() {
+        return invalidActionWeight;
+    }
+
+    public int getInvalidActionMaxVl() {
+        return invalidActionMaxVl;
+    }
+
+    public double getInvalidActionReachBuffer() {
+        return invalidActionReachBuffer;
+    }
+
+    public double getInvalidActionMinAttackDot() {
+        return invalidActionMinAttackDot;
+    }
+
+    public int getInvalidActionMinDropMs() {
+        return invalidActionMinDropMs;
     }
 
     public int getMaxStaffLogs() {
