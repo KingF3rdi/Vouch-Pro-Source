@@ -11,13 +11,14 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
 /**
- * Detects Prestige/Vape-style combat utility modules:
+ * Combat utility detection — intentionally strict.
+ * <p>
+ * Shield breaker, cobweb-break-with-water, and auto drain only flag when:
  * <ul>
- *   <li>Auto shield breaker — axe/hotbar swap + attack while victim is blocking</li>
- *   <li>Auto cobweb placer — combat-timed cobweb place + instant slot swap</li>
- *   <li>Auto cobweb break with water — water bucket emptied onto/next to cobweb</li>
- *   <li>Auto drain — instant water pickup after place (or after web-water cycle)</li>
+ *   <li>the action delay repeats with the <b>exact same millisecond</b> value several times, or</li>
+ *   <li>the action is paired with invalid input packets (impossible key/state combos).</li>
  * </ul>
+ * Cobweb placer still uses a lighter combat-swap heuristic.
  */
 public final class CombatUtilityCheck extends Check {
 
@@ -77,33 +78,44 @@ public final class CombatUtilityCheck extends Check {
 
         ItemStack hand = player.getInventory().getItemInMainHand();
         Material weapon = hand == null ? Material.AIR : hand.getType();
-        boolean axe = isAxe(weapon);
-        long sinceAxeSwitch = now - data.getLastAxeSwitchMs();
-        int swapWindow = manager.getConfig().getCombatUtilityShieldSwapMs();
-
-        // Classic auto shield breaker: hotbar → axe then attack blocking player in one packet burst
-        if (axe && data.getLastAxeSwitchMs() > 0 && sinceAxeSwitch <= swapWindow) {
-            data.addShieldBreakStreak(1);
-            if (data.getShieldBreakStreak() >= manager.getConfig().getCombatUtilityShieldStreak()) {
-                flag(player, data, String.format(
-                        "auto shield-break swap+hit %dms (%s)", sinceAxeSwitch, weapon.name()));
-                data.setShieldBreakStreak(0);
-            }
+        if (!isAxe(weapon)) {
             return;
         }
 
-        // Repeated axe hits on a blocking target with robotic cadence
-        if (axe) {
-            long gap = data.getLastShieldHitMs() > 0 ? now - data.getLastShieldHitMs() : -1;
+        // Prefer swap→hit delay; fall back to hit→hit gap
+        long delay = -1;
+        String kind;
+        if (data.getLastAxeSwitchMs() > 0 && now - data.getLastAxeSwitchMs() <= 1000L) {
+            delay = now - data.getLastAxeSwitchMs();
+            kind = "swap→hit";
+        } else if (data.getLastShieldHitMs() > 0) {
+            delay = now - data.getLastShieldHitMs();
+            kind = "hit→hit";
+        } else {
             data.setLastShieldHitMs(now);
-            if (gap > 0 && gap <= manager.getConfig().getCombatUtilityShieldHitGapMs()) {
-                data.addShieldBreakStreak(1);
-                if (data.getShieldBreakStreak() >= manager.getConfig().getCombatUtilityShieldStreak() + 1) {
-                    flag(player, data, String.format("auto shield-break cadence %dms", gap));
-                    data.setShieldBreakStreak(0);
-                }
-            }
+            return;
         }
+        data.setLastShieldHitMs(now);
+
+        if (hasInvalidInput(player, data)) {
+            flag(player, data, "shield-break with invalid input (" + kind + " " + delay + "ms, " + weapon.name() + ")");
+            data.setShieldIdenticalStreak(0);
+            return;
+        }
+
+        // Only flag when the exact same millisecond delay repeats
+        if (delay > 0 && delay == data.getLastShieldBreakDelayMs()) {
+            data.addShieldIdenticalStreak(1);
+            if (data.getShieldIdenticalStreak() >= manager.getConfig().getCombatUtilityIdenticalStreak()) {
+                flag(player, data, String.format(
+                        "shield-break identical %s delay=%dms x%d",
+                        kind, delay, data.getShieldIdenticalStreak() + 1));
+                data.setShieldIdenticalStreak(0);
+            }
+        } else {
+            data.setShieldIdenticalStreak(0);
+        }
+        data.setLastShieldBreakDelayMs(delay);
     }
 
     public void onPlace(Player player, PlayerData data, Block placed) {
@@ -111,10 +123,8 @@ public final class CombatUtilityCheck extends Check {
             return;
         }
         long now = System.currentTimeMillis();
-        Material type = placed.getType();
-
-        if (type == Material.COBWEB) {
-            handleCobwebPlace(player, data, placed, now);
+        if (placed.getType() == Material.COBWEB) {
+            handleCobwebPlace(player, data, now);
         }
     }
 
@@ -127,32 +137,44 @@ public final class CombatUtilityCheck extends Check {
 
         Block waterBlock = resolveBucketTarget(clicked, face);
         boolean nearWeb = waterTouchesCobweb(waterBlock);
-        long sinceWeb = data.getLastCobwebPlaceMs() > 0 ? now - data.getLastCobwebPlaceMs() : Long.MAX_VALUE;
-        long sinceBucketSwitch = data.getLastBucketSwitchMs() > 0 ? now - data.getLastBucketSwitchMs() : Long.MAX_VALUE;
-        long sinceCombat = data.getLastCombatMs() > 0 ? now - data.getLastCombatMs() : Long.MAX_VALUE;
-        long sinceAttack = data.getLastAttackMs() > 0 ? now - data.getLastAttackMs() : Long.MAX_VALUE;
+        long sinceWeb = data.getLastCobwebPlaceMs() > 0 ? now - data.getLastCobwebPlaceMs() : -1;
         int webWaterWindow = manager.getConfig().getCombatUtilityWebWaterMs();
-        int swapWindow = manager.getConfig().getCombatUtilityBucketSwapMs();
-        int combatWindow = manager.getConfig().getCombatUtilityCombatWindowMs();
 
-        // Auto cobweb break with water: dump water on/next to cobweb (own or nearby) in a burst
-        if (nearWeb || sinceWeb <= webWaterWindow) {
-            boolean swapped = sinceBucketSwitch <= swapWindow;
-            boolean inFight = sinceCombat <= combatWindow || sinceAttack <= combatWindow || sinceWeb <= webWaterWindow;
-            if (swapped || inFight || nearWeb) {
-                data.addWebWaterStreak(1);
-                if (data.getWebWaterStreak() >= manager.getConfig().getCombatUtilityWebWaterStreak()) {
+        boolean webBreakContext = nearWeb || (sinceWeb >= 0 && sinceWeb <= webWaterWindow);
+        if (webBreakContext) {
+            // Delay signature: bucket-swap → water empty, else cobweb → water
+            long delay;
+            String kind;
+            if (data.getLastBucketSwitchMs() > 0 && now - data.getLastBucketSwitchMs() <= 1000L) {
+                delay = now - data.getLastBucketSwitchMs();
+                kind = "swap→water";
+            } else if (sinceWeb >= 0) {
+                delay = sinceWeb;
+                kind = "web→water";
+            } else {
+                delay = -1;
+                kind = "water";
+            }
+
+            if (hasInvalidInput(player, data)) {
+                flag(player, data, "cobweb-break water with invalid input (" + kind + " " + delay + "ms)");
+                data.setWebWaterIdenticalStreak(0);
+            } else if (delay > 0 && delay == data.getLastWebWaterDelayMs()) {
+                data.addWebWaterIdenticalStreak(1);
+                if (data.getWebWaterIdenticalStreak() >= manager.getConfig().getCombatUtilityIdenticalStreak()) {
                     flag(player, data, String.format(
-                            "auto cobweb-break water nearWeb=%s swap=%dms sinceWeb=%dms",
-                            nearWeb,
-                            sinceBucketSwitch == Long.MAX_VALUE ? -1 : sinceBucketSwitch,
-                            sinceWeb == Long.MAX_VALUE ? -1 : sinceWeb));
-                    data.setWebWaterStreak(0);
+                            "cobweb-break water identical %s delay=%dms x%d",
+                            kind, delay, data.getWebWaterIdenticalStreak() + 1));
+                    data.setWebWaterIdenticalStreak(0);
                 }
+            } else {
+                data.setWebWaterIdenticalStreak(0);
+            }
+            if (delay > 0) {
+                data.setLastWebWaterDelayMs(delay);
             }
         }
 
-        // Track for auto-drain follow-up
         if (waterBlock != null) {
             data.setLastWaterBlockX(waterBlock.getX());
             data.setLastWaterBlockY(waterBlock.getY());
@@ -164,48 +186,50 @@ public final class CombatUtilityCheck extends Check {
         if (!isEnabled() || block == null) {
             return;
         }
+        if (data.getLastWaterPlaceMs() <= 0) {
+            return;
+        }
         long now = System.currentTimeMillis();
         long sincePlace = now - data.getLastWaterPlaceMs();
-        long sinceBucketSwitch = now - data.getLastBucketSwitchMs();
-        int drainWindow = manager.getConfig().getCombatUtilityDrainMs();
-        int swapWindow = manager.getConfig().getCombatUtilityBucketSwapMs();
 
-        boolean sameSpot = data.getLastWaterPlaceMs() > 0
-                && Math.abs(block.getX() - data.getLastWaterBlockX()) <= 1
+        boolean sameSpot = Math.abs(block.getX() - data.getLastWaterBlockX()) <= 1
                 && Math.abs(block.getY() - data.getLastWaterBlockY()) <= 1
                 && Math.abs(block.getZ() - data.getLastWaterBlockZ()) <= 1;
-
-        boolean afterWebWater = data.getLastCobwebPlaceMs() > 0
-                && now - data.getLastCobwebPlaceMs() <= manager.getConfig().getCombatUtilityWebWaterMs() * 2L;
-
-        // Auto drain: pickup water almost immediately after placing (often after web-water)
-        if (data.getLastWaterPlaceMs() > 0 && sincePlace <= drainWindow && (sameSpot || afterWebWater)) {
-            boolean swapped = data.getLastBucketSwitchMs() > 0 && sinceBucketSwitch <= swapWindow;
-            data.addDrainStreak(1);
-            if (data.getDrainStreak() >= manager.getConfig().getCombatUtilityDrainStreak()
-                    || (afterWebWater && data.getDrainStreak() >= 1 && swapped)) {
-                flag(player, data, String.format(
-                        "auto drain pickup %dms sameSpot=%s afterWebWater=%s",
-                        sincePlace, sameSpot, afterWebWater));
-                data.setDrainStreak(0);
-            }
-        } else if (sincePlace > drainWindow * 2L) {
-            data.setDrainStreak(Math.max(0, data.getDrainStreak() - 1));
+        if (!sameSpot && sincePlace > 2000L) {
+            data.setDrainIdenticalStreak(0);
+            return;
         }
+
+        if (hasInvalidInput(player, data)) {
+            flag(player, data, "drain with invalid input (place→fill " + sincePlace + "ms)");
+            data.setDrainIdenticalStreak(0);
+            data.setLastDrainDelayMs(sincePlace);
+            return;
+        }
+
+        // Only flag when place→fill delay is the exact same millisecond repeatedly
+        if (sincePlace > 0 && sincePlace == data.getLastDrainDelayMs()) {
+            data.addDrainIdenticalStreak(1);
+            if (data.getDrainIdenticalStreak() >= manager.getConfig().getCombatUtilityIdenticalStreak()) {
+                flag(player, data, String.format(
+                        "drain identical place→fill delay=%dms x%d",
+                        sincePlace, data.getDrainIdenticalStreak() + 1));
+                data.setDrainIdenticalStreak(0);
+            }
+        } else {
+            data.setDrainIdenticalStreak(0);
+        }
+        data.setLastDrainDelayMs(sincePlace);
     }
 
-    private void handleCobwebPlace(Player player, PlayerData data, Block placed, long now) {
+    private void handleCobwebPlace(Player player, PlayerData data, long now) {
         data.setLastCobwebPlaceMs(now);
-        long sinceSwitch = now - data.getLastCobwebSwitchMs();
-        long sinceCombat = now - data.getLastCombatMs();
-        long sinceAttack = now - data.getLastAttackMs();
-        int swapWindow = manager.getConfig().getCombatUtilityWebSwapMs();
+        long sinceSwitch = data.getLastCobwebSwitchMs() > 0 ? now - data.getLastCobwebSwitchMs() : -1;
+        long sinceCombat = data.getLastCombatMs() > 0 ? now - data.getLastCombatMs() : Long.MAX_VALUE;
+        long sinceAttack = data.getLastAttackMs() > 0 ? now - data.getLastAttackMs() : Long.MAX_VALUE;
         int combatWindow = manager.getConfig().getCombatUtilityCombatWindowMs();
 
-        boolean swapped = data.getLastCobwebSwitchMs() > 0 && sinceSwitch <= swapWindow;
-        boolean inFight = (data.getLastCombatMs() > 0 && sinceCombat <= combatWindow)
-                || (data.getLastAttackMs() > 0 && sinceAttack <= combatWindow);
-
+        boolean inFight = sinceCombat <= combatWindow || sinceAttack <= combatWindow;
         boolean nearEnemy = false;
         double nearRange = manager.getConfig().getCombatUtilityWebEnemyRange();
         for (Entity entity : player.getNearbyEntities(nearRange, nearRange, nearRange)) {
@@ -215,17 +239,58 @@ public final class CombatUtilityCheck extends Check {
             }
         }
 
-        if ((swapped && (inFight || nearEnemy)) || (inFight && nearEnemy && sinceSwitch <= swapWindow * 2L)) {
-            data.addCobwebPlaceStreak(1);
-            if (data.getCobwebPlaceStreak() >= manager.getConfig().getCombatUtilityWebPlaceStreak()) {
-                flag(player, data, String.format(
-                        "auto cobweb place swap=%dms fight=%s nearEnemy=%s",
-                        sinceSwitch, inFight, nearEnemy));
-                data.setCobwebPlaceStreak(0);
-            }
-        } else if (!inFight) {
-            data.setCobwebPlaceStreak(0);
+        // Cobweb placer: identical swap→place ms, or invalid input during combat place
+        if (!(inFight || nearEnemy)) {
+            data.setCobwebPlaceIdenticalStreak(0);
+            return;
         }
+
+        if (hasInvalidInput(player, data)) {
+            flag(player, data, "cobweb place with invalid input");
+            data.setCobwebPlaceIdenticalStreak(0);
+            return;
+        }
+
+        if (sinceSwitch > 0 && sinceSwitch == data.getLastCobwebPlaceDelayMs()) {
+            data.addCobwebPlaceIdenticalStreak(1);
+            if (data.getCobwebPlaceIdenticalStreak() >= manager.getConfig().getCombatUtilityIdenticalStreak()) {
+                flag(player, data, String.format(
+                        "cobweb place identical swap→place delay=%dms x%d",
+                        sinceSwitch, data.getCobwebPlaceIdenticalStreak() + 1));
+                data.setCobwebPlaceIdenticalStreak(0);
+            }
+        } else {
+            data.setCobwebPlaceIdenticalStreak(0);
+        }
+        if (sinceSwitch > 0) {
+            data.setLastCobwebPlaceDelayMs(sinceSwitch);
+        }
+    }
+
+    /**
+     * Invalid input packet signals that legit clients should not send with these actions.
+     */
+    private boolean hasInvalidInput(Player player, PlayerData data) {
+        if (player.isDead() || player.isSleeping()) {
+            return true;
+        }
+        if (player.isSprinting() && player.isSneaking()) {
+            return true;
+        }
+        if (player.isSprinting() && player.isHandRaised()) {
+            return true;
+        }
+        if (data.getInputStreak() >= manager.getConfig().getInvalidInputComboStreak()) {
+            return true;
+        }
+        if (data.getSwapStreak() >= 4) {
+            return true;
+        }
+        // Recent InvalidInput VL from the dedicated check
+        if (data.getVl("InvalidInput") >= 2) {
+            return true;
+        }
+        return false;
     }
 
     private static Block resolveBucketTarget(Block clicked, BlockFace face) {
@@ -252,10 +317,6 @@ public final class CombatUtilityCheck extends Check {
     }
 
     private static boolean isAxe(Material type) {
-        if (type == null) {
-            return false;
-        }
-        String name = type.name();
-        return name.endsWith("_AXE");
+        return type != null && type.name().endsWith("_AXE");
     }
 }

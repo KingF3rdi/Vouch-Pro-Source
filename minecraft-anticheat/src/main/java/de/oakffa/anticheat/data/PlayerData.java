@@ -84,10 +84,14 @@ public final class PlayerData {
     private int lastWaterBlockX;
     private int lastWaterBlockY;
     private int lastWaterBlockZ;
-    private int shieldBreakStreak;
-    private int cobwebPlaceStreak;
-    private int webWaterStreak;
-    private int drainStreak;
+    private long lastShieldBreakDelayMs = -1;
+    private int shieldIdenticalStreak;
+    private long lastWebWaterDelayMs = -1;
+    private int webWaterIdenticalStreak;
+    private long lastDrainDelayMs = -1;
+    private int drainIdenticalStreak;
+    private long lastCobwebPlaceDelayMs = -1;
+    private int cobwebPlaceIdenticalStreak;
 
     // Fast / silent place
     private long lastBlockPlaceMs;
@@ -667,52 +671,84 @@ public final class PlayerData {
         this.lastWaterBlockZ = lastWaterBlockZ;
     }
 
-    public int getShieldBreakStreak() {
-        return shieldBreakStreak;
+    public long getLastShieldBreakDelayMs() {
+        return lastShieldBreakDelayMs;
     }
 
-    public void setShieldBreakStreak(int shieldBreakStreak) {
-        this.shieldBreakStreak = Math.max(0, shieldBreakStreak);
+    public void setLastShieldBreakDelayMs(long lastShieldBreakDelayMs) {
+        this.lastShieldBreakDelayMs = lastShieldBreakDelayMs;
     }
 
-    public void addShieldBreakStreak(int amount) {
-        this.shieldBreakStreak = Math.max(0, this.shieldBreakStreak + amount);
+    public int getShieldIdenticalStreak() {
+        return shieldIdenticalStreak;
     }
 
-    public int getCobwebPlaceStreak() {
-        return cobwebPlaceStreak;
+    public void setShieldIdenticalStreak(int shieldIdenticalStreak) {
+        this.shieldIdenticalStreak = Math.max(0, shieldIdenticalStreak);
     }
 
-    public void setCobwebPlaceStreak(int cobwebPlaceStreak) {
-        this.cobwebPlaceStreak = Math.max(0, cobwebPlaceStreak);
+    public void addShieldIdenticalStreak(int amount) {
+        this.shieldIdenticalStreak = Math.max(0, this.shieldIdenticalStreak + amount);
     }
 
-    public void addCobwebPlaceStreak(int amount) {
-        this.cobwebPlaceStreak = Math.max(0, this.cobwebPlaceStreak + amount);
+    public long getLastWebWaterDelayMs() {
+        return lastWebWaterDelayMs;
     }
 
-    public int getWebWaterStreak() {
-        return webWaterStreak;
+    public void setLastWebWaterDelayMs(long lastWebWaterDelayMs) {
+        this.lastWebWaterDelayMs = lastWebWaterDelayMs;
     }
 
-    public void setWebWaterStreak(int webWaterStreak) {
-        this.webWaterStreak = Math.max(0, webWaterStreak);
+    public int getWebWaterIdenticalStreak() {
+        return webWaterIdenticalStreak;
     }
 
-    public void addWebWaterStreak(int amount) {
-        this.webWaterStreak = Math.max(0, this.webWaterStreak + amount);
+    public void setWebWaterIdenticalStreak(int webWaterIdenticalStreak) {
+        this.webWaterIdenticalStreak = Math.max(0, webWaterIdenticalStreak);
     }
 
-    public int getDrainStreak() {
-        return drainStreak;
+    public void addWebWaterIdenticalStreak(int amount) {
+        this.webWaterIdenticalStreak = Math.max(0, this.webWaterIdenticalStreak + amount);
     }
 
-    public void setDrainStreak(int drainStreak) {
-        this.drainStreak = Math.max(0, drainStreak);
+    public long getLastDrainDelayMs() {
+        return lastDrainDelayMs;
     }
 
-    public void addDrainStreak(int amount) {
-        this.drainStreak = Math.max(0, this.drainStreak + amount);
+    public void setLastDrainDelayMs(long lastDrainDelayMs) {
+        this.lastDrainDelayMs = lastDrainDelayMs;
+    }
+
+    public int getDrainIdenticalStreak() {
+        return drainIdenticalStreak;
+    }
+
+    public void setDrainIdenticalStreak(int drainIdenticalStreak) {
+        this.drainIdenticalStreak = Math.max(0, drainIdenticalStreak);
+    }
+
+    public void addDrainIdenticalStreak(int amount) {
+        this.drainIdenticalStreak = Math.max(0, this.drainIdenticalStreak + amount);
+    }
+
+    public long getLastCobwebPlaceDelayMs() {
+        return lastCobwebPlaceDelayMs;
+    }
+
+    public void setLastCobwebPlaceDelayMs(long lastCobwebPlaceDelayMs) {
+        this.lastCobwebPlaceDelayMs = lastCobwebPlaceDelayMs;
+    }
+
+    public int getCobwebPlaceIdenticalStreak() {
+        return cobwebPlaceIdenticalStreak;
+    }
+
+    public void setCobwebPlaceIdenticalStreak(int cobwebPlaceIdenticalStreak) {
+        this.cobwebPlaceIdenticalStreak = Math.max(0, cobwebPlaceIdenticalStreak);
+    }
+
+    public void addCobwebPlaceIdenticalStreak(int amount) {
+        this.cobwebPlaceIdenticalStreak = Math.max(0, this.cobwebPlaceIdenticalStreak + amount);
     }
 
     public long getLastBlockPlaceMs() {

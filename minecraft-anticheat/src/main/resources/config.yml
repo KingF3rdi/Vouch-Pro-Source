@@ -135,27 +135,17 @@ checks:
     silent-min-dot: 0.35
     silent-max-ray-miss: 1.35
     silent-streak: 4
-  # Auto shield breaker / cobweb placer / water cobweb-break / auto drain
+  # Shield break / cobweb / drain — only identical-ms repeats or invalid input
   combat-utility:
     enabled: true
     weight: 3
     max-vl: 10
-    # Hotbar → axe then hit blocking player
-    shield-swap-ms: 180
-    shield-hit-gap-ms: 120
-    shield-streak: 3
-    # Combat cobweb place after hotbar swap
-    web-swap-ms: 200
-    web-place-streak: 3
+    # Exact same millisecond delay must repeat this many times before a flag
+    identical-streak: 3
     web-enemy-range: 4.5
     combat-window-ms: 2500
-    # Water emptied onto/next to cobweb (auto cobweb break)
+    # Context window: water emptied near a recent cobweb counts as cobweb-break
     web-water-ms: 900
-    web-water-streak: 2
-    bucket-swap-ms: 220
-    # Instant water pickup after place (auto drain)
-    drain-ms: 350
-    drain-streak: 2
   # Prestige / Vape combat modules via attack + arm-swing packet patterns
   prestige-combat:
     enabled: true
