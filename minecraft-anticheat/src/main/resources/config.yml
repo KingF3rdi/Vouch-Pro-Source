@@ -2,6 +2,10 @@
 
 prefix: "&8[&cHelixAC&8]&r "
 
+# Grim-style setbacks: resync to last valid position before bans pile up
+setbacks:
+  enabled: true
+
 # Auto-ban when a player accumulates enough flags
 punishment:
   enabled: true
@@ -22,18 +26,28 @@ storage:
   max-staff-logs: 300
 
 checks:
+  # Prediction engine (Grim-style) — primary movement detection
+  simulation:
+    enabled: true
+    weight: 2
+    max-vl: 16
+    # Blocks of unexplained offset after uncertainty reduction
+    offset-threshold: 0.55
+    # Consecutive bad predictions required before flag+setback
+    streak: 4
   invalid-packet:
     enabled: true
     # Weight added per flag (higher = reaches ban faster)
     weight: 3
     max-vl: 8
   invalid-movement:
+    # Secondary hard-limit safety net (simulation is primary)
     enabled: true
-    weight: 2
-    max-vl: 10
+    weight: 1
+    max-vl: 12
     # Blocks per tick roughly above sprint+jump that is suspicious
-    max-horizontal-speed: 1.35
-    max-vertical-speed: 1.10
+    max-horizontal-speed: 1.55
+    max-vertical-speed: 1.25
     max-teleport-distance: 80.0
   robotic-rotation:
     enabled: true

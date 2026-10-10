@@ -6,10 +6,12 @@ import de.helix.anticheat.check.impl.GhostClientCheck;
 import de.helix.anticheat.check.impl.InvalidMovementCheck;
 import de.helix.anticheat.check.impl.InvalidPacketCheck;
 import de.helix.anticheat.check.impl.RoboticRotationCheck;
+import de.helix.anticheat.check.impl.SimulationCheck;
 import de.helix.anticheat.check.impl.TickAbuseCheck;
 import de.helix.anticheat.config.PluginConfig;
 import de.helix.anticheat.data.PlayerData;
 import de.helix.anticheat.data.PlayerDataManager;
+import de.helix.anticheat.prediction.SetbackManager;
 import de.helix.anticheat.punishment.PunishmentManager;
 import de.helix.anticheat.util.Messages;
 import de.helix.anticheat.util.Permissions;
@@ -25,17 +27,21 @@ public final class CheckManager {
     private final PluginConfig config;
     private final PlayerDataManager playerDataManager;
     private final PunishmentManager punishmentManager;
+    private final SetbackManager setbackManager;
     private final Messages messages;
     private final List<Check> checks = new ArrayList<>();
 
     public CheckManager(HelixACPlugin plugin, PluginConfig config, PlayerDataManager playerDataManager,
-                        PunishmentManager punishmentManager, Messages messages) {
+                        PunishmentManager punishmentManager, SetbackManager setbackManager, Messages messages) {
         this.plugin = plugin;
         this.config = config;
         this.playerDataManager = playerDataManager;
         this.punishmentManager = punishmentManager;
+        this.setbackManager = setbackManager;
         this.messages = messages;
 
+        // Prediction-first (Grim-style), then packet / combat heuristics
+        checks.add(new SimulationCheck(this));
         checks.add(new InvalidPacketCheck(this));
         checks.add(new InvalidMovementCheck(this));
         checks.add(new RoboticRotationCheck(this));
@@ -56,6 +62,10 @@ public final class CheckManager {
         return punishmentManager;
     }
 
+    public SetbackManager getSetbackManager() {
+        return setbackManager;
+    }
+
     public Messages getMessages() {
         return messages;
     }
@@ -70,6 +80,8 @@ public final class CheckManager {
         }
         PlayerData data = playerDataManager.get(player);
         data.setExemptNextMove(true);
+        data.setUncertaintyTicks(40);
+        data.setLastValidLocation(player.getLocation());
         for (Check check : checks) {
             if (check.isEnabled()) {
                 check.onJoin(player, data);
@@ -149,5 +161,8 @@ public final class CheckManager {
         PlayerData data = playerDataManager.get(player);
         data.resetTickTracking();
         data.setExemptNextMove(true);
+        data.setUncertaintyTicks(Math.max(data.getUncertaintyTicks(), 10));
+        data.setSimulationStreak(0);
+        setbackManager.rememberValid(player, player.getLocation());
     }
 }

@@ -17,6 +17,8 @@ import de.helix.anticheat.listener.MovementListener;
 import de.helix.anticheat.listener.PacketChannelListener;
 import de.helix.anticheat.listener.StaffCommandListener;
 import de.helix.anticheat.listener.TickActionListener;
+import de.helix.anticheat.listener.VelocityListener;
+import de.helix.anticheat.prediction.SetbackManager;
 import de.helix.anticheat.punishment.PunishmentManager;
 import de.helix.anticheat.util.Messages;
 import org.bukkit.Bukkit;
@@ -32,6 +34,7 @@ public final class HelixACPlugin extends JavaPlugin {
     private LogStore logStore;
     private StaffLogStore staffLogStore;
     private PunishmentManager punishmentManager;
+    private SetbackManager setbackManager;
     private CheckManager checkManager;
     private MeteorSignProbe meteorSignProbe;
     private PacketChannelListener packetChannelListener;
@@ -48,7 +51,8 @@ public final class HelixACPlugin extends JavaPlugin {
         this.staffLogStore = new StaffLogStore(this);
         this.staffLogStore.setMaxLogs(pluginConfig.getMaxStaffLogs());
         this.punishmentManager = new PunishmentManager(this, pluginConfig, messages, logStore, whitelistStore, ipStore);
-        this.checkManager = new CheckManager(this, pluginConfig, playerDataManager, punishmentManager, messages);
+        this.setbackManager = new SetbackManager(this, playerDataManager);
+        this.checkManager = new CheckManager(this, pluginConfig, playerDataManager, punishmentManager, setbackManager, messages);
         this.meteorSignProbe = new MeteorSignProbe(this, pluginConfig, playerDataManager, punishmentManager, messages);
 
         whitelistStore.load();
@@ -63,6 +67,7 @@ public final class HelixACPlugin extends JavaPlugin {
                 new ConnectionListener(playerDataManager, checkManager, ipStore, meteorSignProbe), this);
         Bukkit.getPluginManager().registerEvents(new MovementListener(checkManager, playerDataManager), this);
         Bukkit.getPluginManager().registerEvents(new TickActionListener(checkManager, playerDataManager), this);
+        Bukkit.getPluginManager().registerEvents(new VelocityListener(playerDataManager), this);
         Bukkit.getPluginManager().registerEvents(packetChannelListener, this);
         Bukkit.getPluginManager().registerEvents(meteorSignProbe, this);
         Bukkit.getPluginManager().registerEvents(new StaffCommandListener(staffLogStore), this);
@@ -75,7 +80,7 @@ public final class HelixACPlugin extends JavaPlugin {
         getCommand("ac").setExecutor(acCommand);
         getCommand("ac").setTabCompleter(acCommand);
 
-        getLogger().info("HelixAC enabled — Meteor sign probe + staff command logging active.");
+        getLogger().info("HelixAC enabled — prediction engine + setbacks + tick abuse active.");
         if (Bukkit.getPluginManager().getPlugin("LuckPerms") != null) {
             getLogger().info("LuckPerms detected. Permissions: ac.flags, ac.logs, ac.ban, ac.clear, ac.wipe, ac.admin, …");
         }
@@ -144,6 +149,10 @@ public final class HelixACPlugin extends JavaPlugin {
 
     public PunishmentManager getPunishmentManager() {
         return punishmentManager;
+    }
+
+    public SetbackManager getSetbackManager() {
+        return setbackManager;
     }
 
     public CheckManager getCheckManager() {

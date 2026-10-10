@@ -71,6 +71,13 @@ public final class PluginConfig {
     private int tickAbuseMinMovesWithAttacks;
     private int tickAbuseMaxPingExempt;
 
+    private boolean simulationEnabled;
+    private int simulationWeight;
+    private int simulationMaxVl;
+    private double simulationOffsetThreshold;
+    private int simulationStreak;
+    private boolean setbacksEnabled;
+
     private int maxStaffLogs;
 
     public PluginConfig(HelixACPlugin plugin) {
@@ -143,6 +150,13 @@ public final class PluginConfig {
         tickAbuseAttackDesyncCount = c.getInt("checks.tick-abuse.attack-desync-count", 12);
         tickAbuseMinMovesWithAttacks = c.getInt("checks.tick-abuse.min-moves-with-attacks", 1);
         tickAbuseMaxPingExempt = c.getInt("checks.tick-abuse.max-ping-exempt", 450);
+
+        simulationEnabled = c.getBoolean("checks.simulation.enabled", true);
+        simulationWeight = c.getInt("checks.simulation.weight", 2);
+        simulationMaxVl = c.getInt("checks.simulation.max-vl", 16);
+        simulationOffsetThreshold = c.getDouble("checks.simulation.offset-threshold", 0.55);
+        simulationStreak = c.getInt("checks.simulation.streak", 4);
+        setbacksEnabled = c.getBoolean("setbacks.enabled", true);
     }
 
     private static List<String> normalizeList(List<String> input) {
@@ -357,6 +371,30 @@ public final class PluginConfig {
 
     public int getTickAbuseMaxPingExempt() {
         return tickAbuseMaxPingExempt;
+    }
+
+    public boolean isSimulationEnabled() {
+        return simulationEnabled;
+    }
+
+    public int getSimulationWeight() {
+        return simulationWeight;
+    }
+
+    public int getSimulationMaxVl() {
+        return simulationMaxVl;
+    }
+
+    public double getSimulationOffsetThreshold() {
+        return simulationOffsetThreshold;
+    }
+
+    public int getSimulationStreak() {
+        return simulationStreak;
+    }
+
+    public boolean isSetbacksEnabled() {
+        return setbacksEnabled;
     }
 
     public int getMaxStaffLogs() {

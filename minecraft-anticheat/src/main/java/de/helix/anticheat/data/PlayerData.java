@@ -1,6 +1,7 @@
 package de.helix.anticheat.data;
 
 import org.bukkit.Location;
+import org.bukkit.util.Vector;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -38,6 +39,14 @@ public final class PlayerData {
     private int actionDesyncStreak;
     private final Deque<Long> recentMoveTimestamps = new ArrayDeque<>();
     private final Deque<Long> recentActionTimestamps = new ArrayDeque<>();
+
+    // Prediction / setback state (Grim-style)
+    private Vector lastVelocity = new Vector();
+    private boolean wasOnGround = true;
+    private Location lastValidLocation;
+    private int uncertaintyTicks;
+    private int velocityTicks;
+    private int simulationStreak;
 
     public PlayerData(UUID uuid, String name) {
         this.uuid = uuid;
@@ -278,5 +287,53 @@ public final class PlayerData {
         actionDesyncStreak = 0;
         recentMoveTimestamps.clear();
         recentActionTimestamps.clear();
+    }
+
+    public Vector getLastVelocity() {
+        return lastVelocity == null ? new Vector() : lastVelocity.clone();
+    }
+
+    public void setLastVelocity(Vector lastVelocity) {
+        this.lastVelocity = lastVelocity == null ? new Vector() : lastVelocity.clone();
+    }
+
+    public boolean wasOnGround() {
+        return wasOnGround;
+    }
+
+    public void setWasOnGround(boolean wasOnGround) {
+        this.wasOnGround = wasOnGround;
+    }
+
+    public Location getLastValidLocation() {
+        return lastValidLocation == null ? null : lastValidLocation.clone();
+    }
+
+    public void setLastValidLocation(Location lastValidLocation) {
+        this.lastValidLocation = lastValidLocation == null ? null : lastValidLocation.clone();
+    }
+
+    public int getUncertaintyTicks() {
+        return uncertaintyTicks;
+    }
+
+    public void setUncertaintyTicks(int uncertaintyTicks) {
+        this.uncertaintyTicks = Math.max(0, uncertaintyTicks);
+    }
+
+    public int getVelocityTicks() {
+        return velocityTicks;
+    }
+
+    public void setVelocityTicks(int velocityTicks) {
+        this.velocityTicks = Math.max(0, velocityTicks);
+    }
+
+    public int getSimulationStreak() {
+        return simulationStreak;
+    }
+
+    public void setSimulationStreak(int simulationStreak) {
+        this.simulationStreak = Math.max(0, simulationStreak);
     }
 }

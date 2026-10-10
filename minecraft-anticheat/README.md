@@ -1,12 +1,12 @@
 # HelixAC
 
-Professional Paper/Spigot anti-cheat plugin with LuckPerms-compatible permissions.
+Prediction-first Paper anti-cheat (Grim-inspired) with LuckPerms permissions, setbacks, and staff tools.
 
 ## Requirements
 
 - Java 17+
 - Paper (or compatible) **1.20.4+** (`api-version: 1.20`)
-- Optional: [LuckPerms](https://luckperms.net/) for permission management
+- Optional: [LuckPerms](https://luckperms.net/)
 
 ## Build
 
@@ -15,89 +15,57 @@ cd minecraft-anticheat
 ./gradlew build
 ```
 
-Jar output: `build/libs/HelixAC-1.0.0.jar`
+Jar: `build/libs/HelixAC-1.0.0.jar`
 
-Drop the jar into your server `plugins/` folder and restart.
+## Architecture (Grim-like)
 
-## Features
+1. **Simulation** — predicts plausible client ticks (inputs × friction/gravity/jump) and measures **offset**
+2. **Uncertainty** — ping, knockback, teleport, vehicle, 0.03 movement forgiven
+3. **Setbacks** — illegal moves resync to last valid position (don’t ban on first hit)
+4. **TickAbuse** — timer / wrong-tick action bursts (streak + balance buffer)
+5. **Heuristics** — bad packets, robotic aim, ghost-client brands/channels, Meteor sign probe
 
-- **Invalid packets** — NaN/Inf positions, illegal pitch, out-of-bounds coords
-- **Invalid movement** — impossible horizontal/vertical deltas from forged move packets
-- **Robotic rotation** — identical yaw/pitch deltas, frozen-pitch snaps, constant micro-steps (aimbot-like)
-- **Bad packets** — onGround while falling, sprint+sneak, impossible yaw wraps
-- **Ghost client heuristics** — suspicious client brands and plugin channels (Vape / Prestige style indicators)
-- **Meteor sign technique** — on join, opens a probe sign with a Meteor-only translation key; resolved text → kick
-- **Tick abuse** — timer / wrong-tick move rates and impossible action bursts (lenient balance + streaks to limit false bans)
-- **Staff command log** — every staff command recorded for `/ac staff logs`
-- **Auto-ban** — after enough flags in a window → **7-day** ban with reason listing checks
-- **Whitelist** — still flags, never auto-bans
-- **Bypass** — complete exemption from checks
+Bans still require sustained flags (`punishment.flag-threshold`), not a single prediction miss.
 
 ## Commands
 
 | Command | Permission | Description |
 | --- | --- | --- |
 | `/ac logs [player]` | `ac.logs` | Latest bans (+ flags if `ac.flags`) |
-| `/ban logs [player]` | `ac.logs` | **Same as** `/ac logs` (does not steal normal `/ban`) |
-| `/ac staff logs` | `ac.logs` | Latest staff commands (player + command) |
-| `/ac ban <player> <duration> <reason>` | `ac.ban` | Easy name-ban |
-| `/ac ip ban <player> <duration> <reason>` | `ac.ban` | IP-ban (+ name-ban); needs a seen IP |
-| `/ac clear <player>` | `ac.clear` | Clear player inventory (armor/offhand too) |
-| `/ac wipe <player>` | `ac.wipe` | Wipe inventory, ender chest, XP, effects, stats |
-| `/ac whitelist add\|remove\|list [player]` | `ac.admin` | Manage AC whitelist |
-| `/ac reload` | `ac.admin` | Reload config |
-| `/ac info` | `ac.admin` | Status / LuckPerms / checks |
+| `/ban logs [player]` | `ac.logs` | Same as `/ac logs` |
+| `/ac staff logs` | `ac.logs` | Staff command audit |
+| `/ac ban <player> <duration> <reason>` | `ac.ban` | Name-ban |
+| `/ac ip ban <player> <duration> <reason>` | `ac.ban` | IP-ban |
+| `/ac clear <player>` | `ac.clear` | Clear inventory |
+| `/ac wipe <player>` | `ac.wipe` | Inv + EC + XP + stats |
+| `/ac whitelist …` | `ac.admin` | Flag-only whitelist |
+| `/ac reload` / `/ac info` | `ac.admin` | Reload / status |
 
-Duration examples: `7d`, `12h`, `30m`, `1w`, `permanent` (bare numbers = days).
+## LuckPerms
 
-## LuckPerms permissions
-
-```
-ac.flags      # See live flag alerts + flag lines in logs
-ac.ban        # /ac ban and /ac ip ban
-ac.clear      # /ac clear <player>
-ac.wipe       # /ac wipe <player> (inv + EC + stats)
-ac.logs       # Log commands (/ac logs, /ban logs, /ac staff logs)
-ac.admin      # includes EVERY ac.* permission (ban, clear, wipe, flags, logs, bypass, …)
-ac.bypass     # Completely bypasses HelixAC (no flags, no bans)
-ac.whitelist  # Flags normally but never auto-banned
-ac.banlogs    # Only /ac logs and /ban logs (also granted by ac.logs)
-ac.stafflogs  # Only /ac staff logs (also granted by ac.logs)
-ac.staff      # Marks player as staff for command logging
-ac.notify     # Ban/punishment broadcasts
-```
-
-Examples:
+`ac.admin` includes **every** `ac.*` permission.
 
 ```
-/lp group mod permission set ac.flags true
-/lp group mod permission set ac.ban true
-/lp group mod permission set ac.clear true
-/lp group mod permission set ac.wipe true
-/lp group mod permission set ac.logs true
+ac.flags   # live flags + flag lines in logs
+ac.logs    # /ac logs, /ban logs, /ac staff logs
+ac.ban / ac.clear / ac.wipe
+ac.bypass / ac.whitelist
+ac.notify / ac.staff
+```
+
+```
 /lp group admin permission set ac.admin true
-# ac.admin already grants ac.ban, ac.clear, ac.wipe, ac.flags, ac.logs,
-# ac.bypass, ac.whitelist, ac.notify, ac.staff, …
+/lp group mod permission set ac.flags true
+/lp group mod permission set ac.logs true
 ```
 
 ## Config highlights
 
-See `config.yml`:
+- `setbacks.enabled`
+- `checks.simulation.*` — offset threshold + streak
+- `checks.tick-abuse.*` — timer / action rates
+- `punishment.flag-threshold` — flags before 7d ban
 
-- `punishment.flag-threshold` (default `25`)
-- `punishment.flag-decay-seconds` (default `600`)
-- `punishment.ban-duration-days` (default `7`)
-- Per-check enable/weight/max-vl
-- Ghost-client channel/brand lists
+## Honest note
 
-## Data files
-
-Created under `plugins/HelixAC/`:
-
-- `config.yml`
-- `whitelist.yml`
-- `logs.yml` — persisted flags and bans for `/ac logs` and `/ban logs`
-
-## Notes on ghost clients
-
-Commercial clients (Vape, Prestige, etc.) rotate private payloads. HelixAC uses **public heuristics** (brand strings, channel names, payload keywords, robotic aim patterns). This is not a guaranteed fingerprint of any paid client, and false positives are possible if you add overly broad brand rules.
+Full Grim parity needs packet-level NMS / PacketEvents and a compensated world. HelixAC brings the same **prediction → uncertainty → setback → escalate** loop on the Paper API, tuned to avoid easy false bans.
