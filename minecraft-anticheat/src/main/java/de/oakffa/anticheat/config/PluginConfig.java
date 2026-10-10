@@ -244,7 +244,7 @@ public final class PluginConfig {
         combatUtilityWeight = c.getInt("checks.combat-utility.weight", 3);
         combatUtilityMaxVl = c.getInt("checks.combat-utility.max-vl", 10);
         // Same millisecond delay must repeat this many times before flag (plus the first sample)
-        combatUtilityIdenticalStreak = c.getInt("checks.combat-utility.identical-streak", 3);
+        combatUtilityIdenticalStreak = c.getInt("checks.combat-utility.identical-streak", 5);
         combatUtilityWebEnemyRange = c.getDouble("checks.combat-utility.web-enemy-range", 4.5);
         combatUtilityCombatWindowMs = c.getInt("checks.combat-utility.combat-window-ms", 2500);
         combatUtilityWebWaterMs = c.getInt("checks.combat-utility.web-water-ms", 900);
