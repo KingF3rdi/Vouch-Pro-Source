@@ -1,5 +1,8 @@
 prefix: "&8[&aOakFFA AC&8]&r "
 
+anti-armor-indicator:
+  enabled: true
+
 setbacks:
   enabled: true
 

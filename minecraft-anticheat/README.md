@@ -21,6 +21,12 @@ Jar: `build/libs/OakFFA-AntiCheat-1.0.0.jar`
 
 Simulation, TickAbuse, InvalidInput, InvalidAction, PrestigeCombat, CombatUtility, IllegalPlace, BadPackets, RoboticRotation, GhostClient, MeteorSign
 
+## Anti-armor-indicator
+
+Spoofs other players' armor / armor-toughness attributes so armor-stat mods cannot read real values. Health is not spoofed.
+
+Bypass: `ac.seearmor` (also in `ac.admin`).
+
 ## Commands
 
 | Command | Permission | Description |

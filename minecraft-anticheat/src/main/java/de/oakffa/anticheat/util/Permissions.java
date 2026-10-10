@@ -19,6 +19,7 @@ public final class Permissions {
     public static final String WIPE = "ac.wipe";
     public static final String NOTIFY = "ac.notify";
     public static final String STAFF = "ac.staff";
+    public static final String SEE_ARMOR = "ac.seearmor";
 
     private Permissions() {
     }
@@ -61,6 +62,10 @@ public final class Permissions {
 
     public static boolean canViewAnyLogs(CommandSender sender) {
         return canViewLogs(sender) || canViewStaffLogs(sender);
+    }
+
+    public static boolean canSeeArmorIndicators(Player player) {
+        return player != null && (player.hasPermission(SEE_ARMOR) || player.hasPermission(ADMIN));
     }
 
     public static boolean isStaff(Player player) {

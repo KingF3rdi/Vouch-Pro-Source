@@ -13,6 +13,7 @@ public final class PluginConfig {
     private final OakFFAPlugin plugin;
 
     private String prefix;
+    private boolean antiArmorIndicatorEnabled;
     private boolean punishmentEnabled;
     private int flagThreshold;
     private int flagDecaySeconds;
@@ -143,6 +144,8 @@ public final class PluginConfig {
     public void reload() {
         FileConfiguration c = plugin.getConfig();
         prefix = c.getString("prefix", "&8[&aOakFFA AC&8]&r ");
+
+        antiArmorIndicatorEnabled = c.getBoolean("anti-armor-indicator.enabled", true);
 
         punishmentEnabled = c.getBoolean("punishment.enabled", true);
         flagThreshold = c.getInt("punishment.flag-threshold", 25);
@@ -291,6 +294,10 @@ public final class PluginConfig {
 
     public String getPrefix() {
         return prefix;
+    }
+
+    public boolean isAntiArmorIndicatorEnabled() {
+        return antiArmorIndicatorEnabled;
     }
 
     public boolean isPunishmentEnabled() {
