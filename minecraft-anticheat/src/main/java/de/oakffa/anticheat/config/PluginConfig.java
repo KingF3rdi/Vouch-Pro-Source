@@ -100,7 +100,7 @@ public final class PluginConfig {
 
     public void reload() {
         FileConfiguration c = plugin.getConfig();
-        prefix = c.getString("prefix", "&8[&aOakFFA&8] &7AC&r ");
+        prefix = c.getString("prefix", "&8[&aOakFFA AC&8]&r ");
 
         punishmentEnabled = c.getBoolean("punishment.enabled", true);
         flagThreshold = c.getInt("punishment.flag-threshold", 25);

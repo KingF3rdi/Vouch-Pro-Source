@@ -190,7 +190,7 @@ public final class AcCommand implements CommandExecutor, TabCompleter {
             return;
         }
         List<StaffLogEntry> entries = plugin.getStaffLogStore().latest(25);
-        sender.sendMessage(messages.component("&8[&aOakFFA&8] &7AC &eStaff command logs:"));
+        sender.sendMessage(messages.component("&8[&aOakFFA AC&8] &eStaff command logs:"));
         if (entries.isEmpty()) {
             sender.sendMessage(messages.component("&7  (none)"));
             return;
@@ -254,7 +254,7 @@ public final class AcCommand implements CommandExecutor, TabCompleter {
     }
 
     private void sendHelp(CommandSender sender, String label) {
-        sender.sendMessage(messages.component("&8[&aOakFFA&8] &7Anti Cheat — commands:"));
+        sender.sendMessage(messages.component("&8[&aOakFFA AC&8] — commands:"));
         sender.sendMessage(messages.component("&e/" + label + " logs [player] &8- &7latest flags and bans"));
         sender.sendMessage(messages.component("&e/ban logs [player] &8- &7same as /ac logs"));
         sender.sendMessage(messages.component("&e/" + label + " staff logs &8- &7staff commands (name + command)"));
@@ -269,7 +269,7 @@ public final class AcCommand implements CommandExecutor, TabCompleter {
 
     private void showInfo(CommandSender sender) {
         boolean lp = Bukkit.getPluginManager().getPlugin("LuckPerms") != null;
-        sender.sendMessage(messages.component("&8[&aOakFFA&8] &fOakFFA Anti Cheat &7v" + plugin.getDescription().getVersion()));
+        sender.sendMessage(messages.component("&8[&aOakFFA AC&8] &fOakFFA Anti Cheat &7v" + plugin.getDescription().getVersion()));
         sender.sendMessage(messages.component("&7LuckPerms: " + (lp ? "&aDetected" : "&eNot installed (Bukkit perms still work)")));
         sender.sendMessage(messages.component("&7Checks: &f"
                 + plugin.getCheckManager().getChecks().stream()

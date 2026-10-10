@@ -31,7 +31,7 @@ public final class BanLogsCommand implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 0 || !args[0].equalsIgnoreCase("logs")) {
-            sender.sendMessage(messages.component("&8[&aOakFFA&8] &7Usage: &e/ban logs [player] &8(= /ac logs)"));
+            sender.sendMessage(messages.component("&8[&aOakFFA AC&8] &7Usage: &e/ban logs [player] &8(= /ac logs)"));
             return true;
         }
         if (!Permissions.canViewLogs(sender)) {

@@ -47,7 +47,7 @@ public final class StaffCommandListener implements Listener {
         }
         // Always log console commands that look staff-related (/ac, ban, kick, op, lp, …)
         String lower = command.toLowerCase();
-        if (!(lower.startsWith("ac") || lower.startsWith("oakffa") || lower.startsWith("anticheat")
+        if (!(lower.startsWith("ac") || lower.startsWith("oakffaac")
                 || lower.startsWith("ban") || lower.startsWith("kick") || lower.startsWith("op ")
                 || lower.startsWith("deop") || lower.startsWith("lp ") || lower.startsWith("luckperms")
                 || lower.startsWith("pardon") || lower.startsWith("whitelist"))) {

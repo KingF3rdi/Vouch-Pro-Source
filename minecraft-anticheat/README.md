@@ -38,7 +38,7 @@ Jar: `build/libs/OakFFA-AntiCheat-1.0.0.jar`
 | `/ac whitelist …` | `ac.admin` | Flag-only whitelist |
 | `/ac reload` / `/ac info` | `ac.admin` | Reload / status |
 
-Aliases: `/oakffa`, `/oakffaac`, `/anticheat`
+Aliases: `/ac`, `/oakffaac`
 
 ## LuckPerms
 

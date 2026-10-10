@@ -9,7 +9,7 @@ commands:
   ac:
     description: OakFFA Anti Cheat admin commands
     usage: /ac <logs|staff|ban|ip|clear|wipe|whitelist|reload|info> ...
-    aliases: [oakffa, oakffaac, anticheat]
+    aliases: [oakffaac]
 permissions:
   ac.bypass:
     description: Completely bypasses all OakFFA Anti Cheat checks (no flags, no bans)

@@ -1,6 +1,6 @@
 # OakFFA Anti Cheat configuration
 
-prefix: "&8[&aOakFFA&8] &7AC&r "
+prefix: "&8[&aOakFFA AC&8]&r "
 
 # Grim-style setbacks: resync to last valid position before bans pile up
 setbacks:

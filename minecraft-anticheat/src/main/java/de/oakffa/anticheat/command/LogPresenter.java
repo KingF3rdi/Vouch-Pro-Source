@@ -40,7 +40,7 @@ public final class LogPresenter {
 
         if (showFlags) {
             List<FlagLogEntry> flags = plugin.getLogStore().latestFlags(15);
-            sender.sendMessage(messages.component("&8[&aOakFFA&8] &7AC &eLatest flags:"));
+            sender.sendMessage(messages.component("&8[&aOakFFA AC&8] &eLatest flags:"));
             if (flags.isEmpty()) {
                 sender.sendMessage(messages.component("&7  (none)"));
             } else {
@@ -57,10 +57,10 @@ public final class LogPresenter {
                 }
             }
         } else {
-            sender.sendMessage(messages.component("&8[&aOakFFA&8] &7Flags hidden — requires &fac.flags"));
+            sender.sendMessage(messages.component("&8[&aOakFFA AC&8] &7Flags hidden — requires &fac.flags"));
         }
 
-        sender.sendMessage(messages.component("&8[&aOakFFA&8] &7AC &eLatest bans:"));
+        sender.sendMessage(messages.component("&8[&aOakFFA AC&8] &eLatest bans:"));
         if (bans.isEmpty()) {
             sender.sendMessage(messages.component("&7  (none)"));
         } else {
@@ -100,7 +100,7 @@ public final class LogPresenter {
         }
 
         String display = offline.getName() != null ? offline.getName() : targetName;
-        sender.sendMessage(messages.component("&8[&aOakFFA&8] &7AC &eLogs for &f" + display + "&e:"));
+        sender.sendMessage(messages.component("&8[&aOakFFA AC&8] &eLogs for &f" + display + "&e:"));
 
         sender.sendMessage(messages.component("&7Bans:"));
         if (bans.isEmpty()) {
