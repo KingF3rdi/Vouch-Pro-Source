@@ -71,6 +71,24 @@ public final class PlayerData {
     private int combatClickerStreak;
     private final Deque<Long> attackIntervals = new ArrayDeque<>();
 
+    // Combat utility modules (shield break / cobweb / water drain)
+    private long lastHotbarSwitchMs;
+    private int lastHotbarSlot = -1;
+    private long lastAxeSwitchMs;
+    private long lastCobwebSwitchMs;
+    private long lastBucketSwitchMs;
+    private long lastCombatMs;
+    private long lastShieldHitMs;
+    private long lastCobwebPlaceMs;
+    private long lastWaterPlaceMs;
+    private int lastWaterBlockX;
+    private int lastWaterBlockY;
+    private int lastWaterBlockZ;
+    private int shieldBreakStreak;
+    private int cobwebPlaceStreak;
+    private int webWaterStreak;
+    private int drainStreak;
+
     public PlayerData(UUID uuid, String name) {
         this.uuid = uuid;
         this.name = name;
@@ -545,5 +563,149 @@ public final class PlayerData {
         while (attackIntervals.size() > maxSamples) {
             attackIntervals.removeFirst();
         }
+    }
+
+    public long getLastHotbarSwitchMs() {
+        return lastHotbarSwitchMs;
+    }
+
+    public void setLastHotbarSwitchMs(long lastHotbarSwitchMs) {
+        this.lastHotbarSwitchMs = lastHotbarSwitchMs;
+    }
+
+    public int getLastHotbarSlot() {
+        return lastHotbarSlot;
+    }
+
+    public void setLastHotbarSlot(int lastHotbarSlot) {
+        this.lastHotbarSlot = lastHotbarSlot;
+    }
+
+    public long getLastAxeSwitchMs() {
+        return lastAxeSwitchMs;
+    }
+
+    public void setLastAxeSwitchMs(long lastAxeSwitchMs) {
+        this.lastAxeSwitchMs = lastAxeSwitchMs;
+    }
+
+    public long getLastCobwebSwitchMs() {
+        return lastCobwebSwitchMs;
+    }
+
+    public void setLastCobwebSwitchMs(long lastCobwebSwitchMs) {
+        this.lastCobwebSwitchMs = lastCobwebSwitchMs;
+    }
+
+    public long getLastBucketSwitchMs() {
+        return lastBucketSwitchMs;
+    }
+
+    public void setLastBucketSwitchMs(long lastBucketSwitchMs) {
+        this.lastBucketSwitchMs = lastBucketSwitchMs;
+    }
+
+    public long getLastCombatMs() {
+        return lastCombatMs;
+    }
+
+    public void setLastCombatMs(long lastCombatMs) {
+        this.lastCombatMs = lastCombatMs;
+    }
+
+    public long getLastShieldHitMs() {
+        return lastShieldHitMs;
+    }
+
+    public void setLastShieldHitMs(long lastShieldHitMs) {
+        this.lastShieldHitMs = lastShieldHitMs;
+    }
+
+    public long getLastCobwebPlaceMs() {
+        return lastCobwebPlaceMs;
+    }
+
+    public void setLastCobwebPlaceMs(long lastCobwebPlaceMs) {
+        this.lastCobwebPlaceMs = lastCobwebPlaceMs;
+    }
+
+    public long getLastWaterPlaceMs() {
+        return lastWaterPlaceMs;
+    }
+
+    public void setLastWaterPlaceMs(long lastWaterPlaceMs) {
+        this.lastWaterPlaceMs = lastWaterPlaceMs;
+    }
+
+    public int getLastWaterBlockX() {
+        return lastWaterBlockX;
+    }
+
+    public void setLastWaterBlockX(int lastWaterBlockX) {
+        this.lastWaterBlockX = lastWaterBlockX;
+    }
+
+    public int getLastWaterBlockY() {
+        return lastWaterBlockY;
+    }
+
+    public void setLastWaterBlockY(int lastWaterBlockY) {
+        this.lastWaterBlockY = lastWaterBlockY;
+    }
+
+    public int getLastWaterBlockZ() {
+        return lastWaterBlockZ;
+    }
+
+    public void setLastWaterBlockZ(int lastWaterBlockZ) {
+        this.lastWaterBlockZ = lastWaterBlockZ;
+    }
+
+    public int getShieldBreakStreak() {
+        return shieldBreakStreak;
+    }
+
+    public void setShieldBreakStreak(int shieldBreakStreak) {
+        this.shieldBreakStreak = Math.max(0, shieldBreakStreak);
+    }
+
+    public void addShieldBreakStreak(int amount) {
+        this.shieldBreakStreak = Math.max(0, this.shieldBreakStreak + amount);
+    }
+
+    public int getCobwebPlaceStreak() {
+        return cobwebPlaceStreak;
+    }
+
+    public void setCobwebPlaceStreak(int cobwebPlaceStreak) {
+        this.cobwebPlaceStreak = Math.max(0, cobwebPlaceStreak);
+    }
+
+    public void addCobwebPlaceStreak(int amount) {
+        this.cobwebPlaceStreak = Math.max(0, this.cobwebPlaceStreak + amount);
+    }
+
+    public int getWebWaterStreak() {
+        return webWaterStreak;
+    }
+
+    public void setWebWaterStreak(int webWaterStreak) {
+        this.webWaterStreak = Math.max(0, webWaterStreak);
+    }
+
+    public void addWebWaterStreak(int amount) {
+        this.webWaterStreak = Math.max(0, this.webWaterStreak + amount);
+    }
+
+    public int getDrainStreak() {
+        return drainStreak;
+    }
+
+    public void setDrainStreak(int drainStreak) {
+        this.drainStreak = Math.max(0, drainStreak);
+    }
+
+    public void addDrainStreak(int amount) {
+        this.drainStreak = Math.max(0, this.drainStreak + amount);
     }
 }

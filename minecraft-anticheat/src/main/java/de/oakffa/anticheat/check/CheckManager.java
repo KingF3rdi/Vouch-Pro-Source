@@ -2,6 +2,7 @@ package de.oakffa.anticheat.check;
 
 import de.oakffa.anticheat.OakFFAPlugin;
 import de.oakffa.anticheat.check.impl.BadPacketsCheck;
+import de.oakffa.anticheat.check.impl.CombatUtilityCheck;
 import de.oakffa.anticheat.check.impl.GhostClientCheck;
 import de.oakffa.anticheat.check.impl.InvalidActionCheck;
 import de.oakffa.anticheat.check.impl.InvalidInputCheck;
@@ -51,6 +52,7 @@ public final class CheckManager {
         checks.add(new InvalidMovementCheck(this));
         checks.add(new RoboticRotationCheck(this));
         checks.add(new PrestigeCombatCheck(this));
+        checks.add(new CombatUtilityCheck(this));
         checks.add(new BadPacketsCheck(this));
         checks.add(new GhostClientCheck(this));
         checks.add(new TickAbuseCheck(this));

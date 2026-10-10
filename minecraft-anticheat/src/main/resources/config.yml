@@ -117,6 +117,27 @@ checks:
     timeout-ticks: 200
     # If true, also ban for ban-duration-days; otherwise kick only
     ban-on-detect: false
+  # Auto shield breaker / cobweb placer / water cobweb-break / auto drain
+  combat-utility:
+    enabled: true
+    weight: 3
+    max-vl: 10
+    # Hotbar → axe then hit blocking player
+    shield-swap-ms: 180
+    shield-hit-gap-ms: 120
+    shield-streak: 3
+    # Combat cobweb place after hotbar swap
+    web-swap-ms: 200
+    web-place-streak: 3
+    web-enemy-range: 4.5
+    combat-window-ms: 2500
+    # Water emptied onto/next to cobweb (auto cobweb break)
+    web-water-ms: 900
+    web-water-streak: 2
+    bucket-swap-ms: 220
+    # Instant water pickup after place (auto drain)
+    drain-ms: 350
+    drain-streak: 2
   # Prestige / Vape combat modules via attack + arm-swing packet patterns
   prestige-combat:
     enabled: true
@@ -159,6 +180,13 @@ checks:
       - "velocity"
       - "prestige"
       - "vape"
+      - "shieldbreaker"
+      - "shield breaker"
+      - "cobweb"
+      - "autoweb"
+      - "autodrain"
+      - "auto drain"
+      - "webbreaker"
   # Timer / wrong-tick usage (lenient — low weight, high streaks)
   tick-abuse:
     enabled: true

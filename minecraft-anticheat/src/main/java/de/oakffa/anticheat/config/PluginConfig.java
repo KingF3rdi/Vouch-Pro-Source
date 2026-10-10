@@ -91,6 +91,22 @@ public final class PluginConfig {
     private double invalidActionMinAttackDot;
     private int invalidActionMinDropMs;
 
+    private boolean combatUtilityEnabled;
+    private int combatUtilityWeight;
+    private int combatUtilityMaxVl;
+    private int combatUtilityShieldSwapMs;
+    private int combatUtilityShieldHitGapMs;
+    private int combatUtilityShieldStreak;
+    private int combatUtilityWebSwapMs;
+    private int combatUtilityWebPlaceStreak;
+    private double combatUtilityWebEnemyRange;
+    private int combatUtilityCombatWindowMs;
+    private int combatUtilityWebWaterMs;
+    private int combatUtilityWebWaterStreak;
+    private int combatUtilityBucketSwapMs;
+    private int combatUtilityDrainMs;
+    private int combatUtilityDrainStreak;
+
     private boolean prestigeCombatEnabled;
     private int prestigeCombatWeight;
     private int prestigeCombatMaxVl;
@@ -204,6 +220,22 @@ public final class PluginConfig {
         invalidActionMinAttackDot = c.getDouble("checks.invalid-action.min-attack-dot", -0.15);
         invalidActionMinDropMs = c.getInt("checks.invalid-action.min-drop-ms", 35);
 
+        combatUtilityEnabled = c.getBoolean("checks.combat-utility.enabled", true);
+        combatUtilityWeight = c.getInt("checks.combat-utility.weight", 3);
+        combatUtilityMaxVl = c.getInt("checks.combat-utility.max-vl", 10);
+        combatUtilityShieldSwapMs = c.getInt("checks.combat-utility.shield-swap-ms", 180);
+        combatUtilityShieldHitGapMs = c.getInt("checks.combat-utility.shield-hit-gap-ms", 120);
+        combatUtilityShieldStreak = c.getInt("checks.combat-utility.shield-streak", 3);
+        combatUtilityWebSwapMs = c.getInt("checks.combat-utility.web-swap-ms", 200);
+        combatUtilityWebPlaceStreak = c.getInt("checks.combat-utility.web-place-streak", 3);
+        combatUtilityWebEnemyRange = c.getDouble("checks.combat-utility.web-enemy-range", 4.5);
+        combatUtilityCombatWindowMs = c.getInt("checks.combat-utility.combat-window-ms", 2500);
+        combatUtilityWebWaterMs = c.getInt("checks.combat-utility.web-water-ms", 900);
+        combatUtilityWebWaterStreak = c.getInt("checks.combat-utility.web-water-streak", 2);
+        combatUtilityBucketSwapMs = c.getInt("checks.combat-utility.bucket-swap-ms", 220);
+        combatUtilityDrainMs = c.getInt("checks.combat-utility.drain-ms", 350);
+        combatUtilityDrainStreak = c.getInt("checks.combat-utility.drain-streak", 2);
+
         prestigeCombatEnabled = c.getBoolean("checks.prestige-combat.enabled", true);
         prestigeCombatWeight = c.getInt("checks.prestige-combat.weight", 3);
         prestigeCombatMaxVl = c.getInt("checks.prestige-combat.max-vl", 12);
@@ -227,7 +259,10 @@ public final class PluginConfig {
             prestigeCombatPayloadKeywords = List.of(
                     "killaura", "kill aura", "aimassist", "aim assist", "triggerbot",
                     "autoblock", "keep sprint", "keepsprint", "criticals", "reach",
-                    "hitbox", "velocity", "prestige", "vape");
+                    "hitbox", "velocity", "prestige", "vape",
+                    "shieldbreaker", "shield breaker", "autoshield",
+                    "cobweb", "autoweb", "auto web", "autodrain", "auto drain",
+                    "waterplace", "webbreaker");
         }
     }
 
@@ -511,6 +546,66 @@ public final class PluginConfig {
 
     public int getInvalidActionMinDropMs() {
         return invalidActionMinDropMs;
+    }
+
+    public boolean isCombatUtilityEnabled() {
+        return combatUtilityEnabled;
+    }
+
+    public int getCombatUtilityWeight() {
+        return combatUtilityWeight;
+    }
+
+    public int getCombatUtilityMaxVl() {
+        return combatUtilityMaxVl;
+    }
+
+    public int getCombatUtilityShieldSwapMs() {
+        return combatUtilityShieldSwapMs;
+    }
+
+    public int getCombatUtilityShieldHitGapMs() {
+        return combatUtilityShieldHitGapMs;
+    }
+
+    public int getCombatUtilityShieldStreak() {
+        return combatUtilityShieldStreak;
+    }
+
+    public int getCombatUtilityWebSwapMs() {
+        return combatUtilityWebSwapMs;
+    }
+
+    public int getCombatUtilityWebPlaceStreak() {
+        return combatUtilityWebPlaceStreak;
+    }
+
+    public double getCombatUtilityWebEnemyRange() {
+        return combatUtilityWebEnemyRange;
+    }
+
+    public int getCombatUtilityCombatWindowMs() {
+        return combatUtilityCombatWindowMs;
+    }
+
+    public int getCombatUtilityWebWaterMs() {
+        return combatUtilityWebWaterMs;
+    }
+
+    public int getCombatUtilityWebWaterStreak() {
+        return combatUtilityWebWaterStreak;
+    }
+
+    public int getCombatUtilityBucketSwapMs() {
+        return combatUtilityBucketSwapMs;
+    }
+
+    public int getCombatUtilityDrainMs() {
+        return combatUtilityDrainMs;
+    }
+
+    public int getCombatUtilityDrainStreak() {
+        return combatUtilityDrainStreak;
     }
 
     public boolean isPrestigeCombatEnabled() {

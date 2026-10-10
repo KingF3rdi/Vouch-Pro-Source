@@ -1,6 +1,7 @@
 package de.oakffa.anticheat.listener;
 
 import de.oakffa.anticheat.check.CheckManager;
+import de.oakffa.anticheat.check.impl.CombatUtilityCheck;
 import de.oakffa.anticheat.check.impl.InvalidActionCheck;
 import de.oakffa.anticheat.check.impl.InvalidInputCheck;
 import de.oakffa.anticheat.check.impl.PrestigeCombatCheck;
@@ -19,6 +20,8 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.player.PlayerAnimationEvent;
 import org.bukkit.event.player.PlayerAnimationType;
+import org.bukkit.event.player.PlayerBucketEmptyEvent;
+import org.bukkit.event.player.PlayerBucketFillEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -55,9 +58,13 @@ public final class InputActionListener implements Listener {
         if (bypass(player)) {
             return;
         }
+        PlayerData pd = data(player);
         for (var check : checkManager.getChecks()) {
             if (check instanceof InvalidInputCheck input && input.isEnabled()) {
-                input.onHotbarSwitch(player, data(player), event.getNewSlot());
+                input.onHotbarSwitch(player, pd, event.getNewSlot());
+            }
+            if (check instanceof CombatUtilityCheck utility && utility.isEnabled()) {
+                utility.onHotbarSwitch(player, pd, event.getNewSlot());
             }
         }
     }
@@ -133,12 +140,42 @@ public final class InputActionListener implements Listener {
         if (bypass(player)) {
             return;
         }
+        PlayerData pd = data(player);
+        var against = event.getBlockAgainst();
+        var placed = event.getBlockPlaced();
         for (var check : checkManager.getChecks()) {
             if (check instanceof InvalidActionCheck action && action.isEnabled()) {
-                var against = event.getBlockAgainst();
-                var placed = event.getBlockPlaced();
                 var face = against == null || placed == null ? null : against.getFace(placed);
-                action.onPlace(player, data(player), against, face, placed);
+                action.onPlace(player, pd, against, face, placed);
+            }
+            if (check instanceof CombatUtilityCheck utility && utility.isEnabled()) {
+                utility.onPlace(player, pd, placed);
+            }
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onBucketEmpty(PlayerBucketEmptyEvent event) {
+        Player player = event.getPlayer();
+        if (bypass(player)) {
+            return;
+        }
+        for (var check : checkManager.getChecks()) {
+            if (check instanceof CombatUtilityCheck utility && utility.isEnabled()) {
+                utility.onBucketEmpty(player, data(player), event.getBlockClicked(), event.getBlockFace());
+            }
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onBucketFill(PlayerBucketFillEvent event) {
+        Player player = event.getPlayer();
+        if (bypass(player)) {
+            return;
+        }
+        for (var check : checkManager.getChecks()) {
+            if (check instanceof CombatUtilityCheck utility && utility.isEnabled()) {
+                utility.onBucketFill(player, data(player), event.getBlockClicked());
             }
         }
     }
@@ -207,6 +244,9 @@ public final class InputActionListener implements Listener {
             }
             if (check instanceof PrestigeCombatCheck combat && combat.isEnabled()) {
                 combat.onAttack(player, pd, target);
+            }
+            if (check instanceof CombatUtilityCheck utility && utility.isEnabled()) {
+                utility.onAttack(player, pd, target);
             }
         }
     }

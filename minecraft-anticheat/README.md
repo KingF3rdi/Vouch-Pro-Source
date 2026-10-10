@@ -25,7 +25,8 @@ Jar: `build/libs/OakFFA-AntiCheat-1.0.0.jar`
 4. **TickAbuse** — timer / wrong-tick action bursts
 5. **InvalidInput / InvalidAction** — forged key combos, dig spoof, reach, off-angle hits
 6. **PrestigeCombat** — KillAura / silent aim / multi-aura / autoclicker packet patterns
-7. **Heuristics** — bad packets, robotic aim, ghost-client brands/channels, Meteor sign probe
+7. **CombatUtility** — auto shield breaker, cobweb placer, water cobweb-break, auto drain
+8. **Heuristics** — bad packets, robotic aim, ghost-client brands/channels, Meteor sign probe
 
 ## Commands
 
