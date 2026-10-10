@@ -89,6 +89,12 @@ public final class PlayerData {
     private int webWaterStreak;
     private int drainStreak;
 
+    // Fast / silent place
+    private long lastBlockPlaceMs;
+    private int fastPlaceStreak;
+    private int silentPlaceStreak;
+    private final Deque<Long> placeIntervals = new ArrayDeque<>();
+
     public PlayerData(UUID uuid, String name) {
         this.uuid = uuid;
         this.name = name;
@@ -707,5 +713,48 @@ public final class PlayerData {
 
     public void addDrainStreak(int amount) {
         this.drainStreak = Math.max(0, this.drainStreak + amount);
+    }
+
+    public long getLastBlockPlaceMs() {
+        return lastBlockPlaceMs;
+    }
+
+    public void setLastBlockPlaceMs(long lastBlockPlaceMs) {
+        this.lastBlockPlaceMs = lastBlockPlaceMs;
+    }
+
+    public int getFastPlaceStreak() {
+        return fastPlaceStreak;
+    }
+
+    public void setFastPlaceStreak(int fastPlaceStreak) {
+        this.fastPlaceStreak = Math.max(0, fastPlaceStreak);
+    }
+
+    public void addFastPlaceStreak(int amount) {
+        this.fastPlaceStreak = Math.max(0, this.fastPlaceStreak + amount);
+    }
+
+    public int getSilentPlaceStreak() {
+        return silentPlaceStreak;
+    }
+
+    public void setSilentPlaceStreak(int silentPlaceStreak) {
+        this.silentPlaceStreak = Math.max(0, silentPlaceStreak);
+    }
+
+    public void addSilentPlaceStreak(int amount) {
+        this.silentPlaceStreak = Math.max(0, this.silentPlaceStreak + amount);
+    }
+
+    public Deque<Long> getPlaceIntervals() {
+        return placeIntervals;
+    }
+
+    public void pushPlaceInterval(long intervalMs, int maxSamples) {
+        placeIntervals.addLast(intervalMs);
+        while (placeIntervals.size() > maxSamples) {
+            placeIntervals.removeFirst();
+        }
     }
 }

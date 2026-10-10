@@ -91,6 +91,20 @@ public final class PluginConfig {
     private double invalidActionMinAttackDot;
     private int invalidActionMinDropMs;
 
+    private boolean illegalPlaceEnabled;
+    private int illegalPlaceWeight;
+    private int illegalPlaceMaxVl;
+    private int illegalPlaceMaxPingExempt;
+    private int illegalPlaceMinGapMs;
+    private int illegalPlaceFastStreak;
+    private int illegalPlaceSamples;
+    private double illegalPlaceMaxMeanMs;
+    private double illegalPlaceMaxStdDev;
+    private int illegalPlaceRegularStreak;
+    private double illegalPlaceSilentMinDot;
+    private double illegalPlaceSilentMaxRayMiss;
+    private int illegalPlaceSilentStreak;
+
     private boolean combatUtilityEnabled;
     private int combatUtilityWeight;
     private int combatUtilityMaxVl;
@@ -220,6 +234,20 @@ public final class PluginConfig {
         invalidActionMinAttackDot = c.getDouble("checks.invalid-action.min-attack-dot", -0.15);
         invalidActionMinDropMs = c.getInt("checks.invalid-action.min-drop-ms", 35);
 
+        illegalPlaceEnabled = c.getBoolean("checks.illegal-place.enabled", true);
+        illegalPlaceWeight = c.getInt("checks.illegal-place.weight", 2);
+        illegalPlaceMaxVl = c.getInt("checks.illegal-place.max-vl", 12);
+        illegalPlaceMaxPingExempt = c.getInt("checks.illegal-place.max-ping-exempt", 400);
+        illegalPlaceMinGapMs = c.getInt("checks.illegal-place.min-gap-ms", 45);
+        illegalPlaceFastStreak = c.getInt("checks.illegal-place.fast-streak", 5);
+        illegalPlaceSamples = c.getInt("checks.illegal-place.samples", 10);
+        illegalPlaceMaxMeanMs = c.getDouble("checks.illegal-place.max-mean-ms", 95.0);
+        illegalPlaceMaxStdDev = c.getDouble("checks.illegal-place.max-stddev", 4.0);
+        illegalPlaceRegularStreak = c.getInt("checks.illegal-place.regular-streak", 2);
+        illegalPlaceSilentMinDot = c.getDouble("checks.illegal-place.silent-min-dot", 0.35);
+        illegalPlaceSilentMaxRayMiss = c.getDouble("checks.illegal-place.silent-max-ray-miss", 1.35);
+        illegalPlaceSilentStreak = c.getInt("checks.illegal-place.silent-streak", 4);
+
         combatUtilityEnabled = c.getBoolean("checks.combat-utility.enabled", true);
         combatUtilityWeight = c.getInt("checks.combat-utility.weight", 3);
         combatUtilityMaxVl = c.getInt("checks.combat-utility.max-vl", 10);
@@ -262,7 +290,8 @@ public final class PluginConfig {
                     "hitbox", "velocity", "prestige", "vape",
                     "shieldbreaker", "shield breaker", "autoshield",
                     "cobweb", "autoweb", "auto web", "autodrain", "auto drain",
-                    "waterplace", "webbreaker");
+                    "waterplace", "webbreaker",
+                    "fastplace", "fast place", "silentplace", "silent place", "scaffold");
         }
     }
 
@@ -546,6 +575,58 @@ public final class PluginConfig {
 
     public int getInvalidActionMinDropMs() {
         return invalidActionMinDropMs;
+    }
+
+    public boolean isIllegalPlaceEnabled() {
+        return illegalPlaceEnabled;
+    }
+
+    public int getIllegalPlaceWeight() {
+        return illegalPlaceWeight;
+    }
+
+    public int getIllegalPlaceMaxVl() {
+        return illegalPlaceMaxVl;
+    }
+
+    public int getIllegalPlaceMaxPingExempt() {
+        return illegalPlaceMaxPingExempt;
+    }
+
+    public int getIllegalPlaceMinGapMs() {
+        return illegalPlaceMinGapMs;
+    }
+
+    public int getIllegalPlaceFastStreak() {
+        return illegalPlaceFastStreak;
+    }
+
+    public int getIllegalPlaceSamples() {
+        return illegalPlaceSamples;
+    }
+
+    public double getIllegalPlaceMaxMeanMs() {
+        return illegalPlaceMaxMeanMs;
+    }
+
+    public double getIllegalPlaceMaxStdDev() {
+        return illegalPlaceMaxStdDev;
+    }
+
+    public int getIllegalPlaceRegularStreak() {
+        return illegalPlaceRegularStreak;
+    }
+
+    public double getIllegalPlaceSilentMinDot() {
+        return illegalPlaceSilentMinDot;
+    }
+
+    public double getIllegalPlaceSilentMaxRayMiss() {
+        return illegalPlaceSilentMaxRayMiss;
+    }
+
+    public int getIllegalPlaceSilentStreak() {
+        return illegalPlaceSilentStreak;
     }
 
     public boolean isCombatUtilityEnabled() {

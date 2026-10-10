@@ -117,6 +117,24 @@ checks:
     timeout-ticks: 200
     # If true, also ban for ban-duration-days; otherwise kick only
     ban-on-detect: false
+  # Fast place + silent place (scaffold / ghost-client place packets)
+  illegal-place:
+    enabled: true
+    weight: 2
+    max-vl: 12
+    max-ping-exempt: 400
+    # Minimum ms between place packets before streaking
+    min-gap-ms: 45
+    fast-streak: 5
+    # Robotic regular placer (low mean + low stddev)
+    samples: 10
+    max-mean-ms: 95.0
+    max-stddev: 4.0
+    regular-streak: 2
+    # Look vector not facing the place face / large ray miss
+    silent-min-dot: 0.35
+    silent-max-ray-miss: 1.35
+    silent-streak: 4
   # Auto shield breaker / cobweb placer / water cobweb-break / auto drain
   combat-utility:
     enabled: true
@@ -187,6 +205,11 @@ checks:
       - "autodrain"
       - "auto drain"
       - "webbreaker"
+      - "fastplace"
+      - "fast place"
+      - "silentplace"
+      - "silent place"
+      - "scaffold"
   # Timer / wrong-tick usage (lenient — low weight, high streaks)
   tick-abuse:
     enabled: true

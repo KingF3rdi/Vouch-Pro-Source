@@ -2,6 +2,7 @@ package de.oakffa.anticheat.listener;
 
 import de.oakffa.anticheat.check.CheckManager;
 import de.oakffa.anticheat.check.impl.CombatUtilityCheck;
+import de.oakffa.anticheat.check.impl.IllegalPlaceCheck;
 import de.oakffa.anticheat.check.impl.InvalidActionCheck;
 import de.oakffa.anticheat.check.impl.InvalidInputCheck;
 import de.oakffa.anticheat.check.impl.PrestigeCombatCheck;
@@ -143,13 +144,16 @@ public final class InputActionListener implements Listener {
         PlayerData pd = data(player);
         var against = event.getBlockAgainst();
         var placed = event.getBlockPlaced();
+        var face = against == null || placed == null ? null : against.getFace(placed);
         for (var check : checkManager.getChecks()) {
             if (check instanceof InvalidActionCheck action && action.isEnabled()) {
-                var face = against == null || placed == null ? null : against.getFace(placed);
                 action.onPlace(player, pd, against, face, placed);
             }
             if (check instanceof CombatUtilityCheck utility && utility.isEnabled()) {
                 utility.onPlace(player, pd, placed);
+            }
+            if (check instanceof IllegalPlaceCheck illegal && illegal.isEnabled()) {
+                illegal.onPlace(player, pd, against, face, placed);
             }
         }
     }
