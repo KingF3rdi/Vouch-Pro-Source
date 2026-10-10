@@ -1,18 +1,18 @@
-name: HelixAC
+name: OakFFAAntiCheat
 version: ${version}
-main: de.helix.anticheat.HelixACPlugin
+main: de.oakffa.anticheat.OakFFAPlugin
 api-version: '1.20'
-description: Professional packet and movement anti-cheat with LuckPerms support
-author: Helix
+description: OakFFA Anti Cheat — prediction-based anti-cheat with LuckPerms support
+author: OakFFA
 softdepend: [LuckPerms]
 commands:
   ac:
-    description: HelixAC admin commands (logs, ban, clear, wipe, staff logs, whitelist)
+    description: OakFFA Anti Cheat admin commands
     usage: /ac <logs|staff|ban|ip|clear|wipe|whitelist|reload|info> ...
-    aliases: [helixac, anticheat]
+    aliases: [oakffa, oakffaac, anticheat]
 permissions:
   ac.bypass:
-    description: Completely bypasses all HelixAC checks (no flags, no bans)
+    description: Completely bypasses all OakFFA Anti Cheat checks (no flags, no bans)
     default: false
   ac.whitelist:
     description: Player flags but is never auto-banned (permission whitelist)
@@ -30,7 +30,7 @@ permissions:
     description: See live flag alerts and flag entries in /ac logs
     default: op
   ac.logs:
-    description: Access to HelixAC log commands (/ac logs, /ban logs, /ac staff logs)
+    description: Access to OakFFA Anti Cheat log commands
     default: op
     children:
       ac.banlogs: true
@@ -48,7 +48,7 @@ permissions:
     description: Receive ban/punishment broadcasts in chat
     default: op
   ac.admin:
-    description: Full HelixAC access — includes every ac.* permission
+    description: Full OakFFA Anti Cheat access — includes every ac.* permission
     default: op
     children:
       ac.bypass: true

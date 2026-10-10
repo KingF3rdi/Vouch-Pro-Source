@@ -1,6 +1,6 @@
-# HelixAC configuration
+# OakFFA Anti Cheat configuration
 
-prefix: "&8[&cHelixAC&8]&r "
+prefix: "&8[&aOakFFA&8] &7AC&r "
 
 # Grim-style setbacks: resync to last valid position before bans pile up
 setbacks:
@@ -15,7 +15,7 @@ punishment:
   flag-decay-seconds: 600
   # Ban duration in days
   ban-duration-days: 7
-  ban-reason: "Cheating (HelixAC: %checks%)"
+  ban-reason: "Cheating (OakFFA Anti Cheat: %checks%)"
   # Kick message shown on ban
   ban-kick-message: "&cYou have been banned for 7 days.\n&7Reason: &fCheating\n&8Flags: %checks%"
 

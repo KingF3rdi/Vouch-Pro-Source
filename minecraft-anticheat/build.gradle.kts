@@ -2,7 +2,7 @@ plugins {
     java
 }
 
-group = "de.helix"
+group = "de.oakffa"
 version = "1.0.0"
 
 java {
@@ -34,7 +34,7 @@ tasks.processResources {
 }
 
 tasks.register<Jar>("pluginJar") {
-    archiveBaseName.set("HelixAC")
+    archiveBaseName.set("OakFFA-AntiCheat")
     from(sourceSets.main.get().output)
 }
 

@@ -1,1 +1,1 @@
-rootProject.name = "helix-anticheat"
+rootProject.name = "oakffa-anticheat"
