@@ -1,6 +1,7 @@
 package de.helix.anticheat.command;
 
 import de.helix.anticheat.HelixACPlugin;
+import de.helix.anticheat.data.StaffLogEntry;
 import de.helix.anticheat.util.DurationParser;
 import de.helix.anticheat.util.Messages;
 import de.helix.anticheat.util.Permissions;
@@ -12,8 +13,10 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -21,6 +24,8 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 public final class AcCommand implements CommandExecutor, TabCompleter {
+
+    private static final SimpleDateFormat TIME = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
     private final HelixACPlugin plugin;
     private final Messages messages;
@@ -36,7 +41,7 @@ public final class AcCommand implements CommandExecutor, TabCompleter {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 0) {
             if (!sender.hasPermission(Permissions.ADMIN) && !Permissions.canBan(sender)
-                    && !Permissions.canViewLogs(sender)) {
+                    && !Permissions.canViewLogs(sender) && !Permissions.canViewStaffLogs(sender)) {
                 messages.send(sender, messages.get("no-permission", "%prefix%&cYou do not have permission."), Map.of());
                 return true;
             }
@@ -53,6 +58,8 @@ public final class AcCommand implements CommandExecutor, TabCompleter {
                 }
                 logPresenter.show(sender, args.length >= 2 ? args[1] : null);
             }
+            case "staff" -> handleStaff(sender, args);
+            case "stafflogs" -> showStaffLogs(sender);
             case "ban" -> handleBan(sender, args, false);
             case "ip" -> {
                 if (args.length >= 2 && args[1].equalsIgnoreCase("ban")) {
@@ -165,15 +172,42 @@ public final class AcCommand implements CommandExecutor, TabCompleter {
         }
     }
 
+    private void handleStaff(CommandSender sender, String[] args) {
+        if (args.length < 2 || !args[1].equalsIgnoreCase("logs")) {
+            sender.sendMessage(messages.component("&e/ac staff logs &7— latest staff commands"));
+            return;
+        }
+        showStaffLogs(sender);
+    }
+
+    private void showStaffLogs(CommandSender sender) {
+        if (!Permissions.canViewStaffLogs(sender)) {
+            messages.send(sender, messages.get("no-permission", "%prefix%&cYou do not have permission."), Map.of());
+            return;
+        }
+        List<StaffLogEntry> entries = plugin.getStaffLogStore().latest(25);
+        sender.sendMessage(messages.component("&8[&cHelixAC&8] &eStaff command logs:"));
+        if (entries.isEmpty()) {
+            sender.sendMessage(messages.component("&7  (none)"));
+            return;
+        }
+        for (StaffLogEntry e : entries) {
+            sender.sendMessage(messages.component("&8- &7" + TIME.format(new Date(e.getTimestamp()))
+                    + " &e" + e.getPlayerName()
+                    + " &f" + e.getCommand()));
+        }
+    }
+
     private void sendHelp(CommandSender sender, String label) {
         sender.sendMessage(messages.component("&8[&cHelixAC&8] &7Commands:"));
         sender.sendMessage(messages.component("&e/" + label + " logs [player] &8- &7latest flags and bans"));
         sender.sendMessage(messages.component("&e/ban logs [player] &8- &7same as /ac logs"));
+        sender.sendMessage(messages.component("&e/" + label + " staff logs &8- &7staff commands (name + command)"));
         sender.sendMessage(messages.component("&e/" + label + " ban <player> <duration> <reason>"));
         sender.sendMessage(messages.component("&e/" + label + " ip ban <player> <duration> <reason>"));
         sender.sendMessage(messages.component("&e/" + label + " whitelist <add|remove|list> [player]"));
         sender.sendMessage(messages.component("&e/" + label + " reload &8| &e/" + label + " info"));
-        sender.sendMessage(messages.component("&7LuckPerms: &fac.bypass&7, &fac.whitelist&7, &fac.ban&7, &fac.admin&7, &fac.banlogs&7, &fac.notify"));
+        sender.sendMessage(messages.component("&7LuckPerms: &fac.bypass&7, &fac.whitelist&7, &fac.ban&7, &fac.admin&7, &fac.banlogs&7, &fac.stafflogs&7, &fac.notify"));
     }
 
     private void showInfo(CommandSender sender) {
@@ -268,6 +302,10 @@ public final class AcCommand implements CommandExecutor, TabCompleter {
             if (Permissions.canViewLogs(sender)) {
                 opts.add("logs");
             }
+            if (Permissions.canViewStaffLogs(sender)) {
+                opts.add("staff");
+                opts.add("stafflogs");
+            }
             if (Permissions.canBan(sender)) {
                 opts.add("ban");
                 opts.add("ip");
@@ -279,6 +317,9 @@ public final class AcCommand implements CommandExecutor, TabCompleter {
                 opts.add("info");
             }
             return filter(opts, args[0]);
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("staff") && Permissions.canViewStaffLogs(sender)) {
+            return filter(List.of("logs"), args[1]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("logs") && Permissions.canViewLogs(sender)) {
             return onlineNames(args[1]);

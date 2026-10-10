@@ -1,6 +1,7 @@
 package de.helix.anticheat;
 
 import de.helix.anticheat.check.CheckManager;
+import de.helix.anticheat.check.MeteorSignProbe;
 import de.helix.anticheat.command.AcCommand;
 import de.helix.anticheat.command.BanLogsCommand;
 import de.helix.anticheat.command.LogPresenter;
@@ -8,11 +9,13 @@ import de.helix.anticheat.config.PluginConfig;
 import de.helix.anticheat.data.IpStore;
 import de.helix.anticheat.data.LogStore;
 import de.helix.anticheat.data.PlayerDataManager;
+import de.helix.anticheat.data.StaffLogStore;
 import de.helix.anticheat.data.WhitelistStore;
 import de.helix.anticheat.listener.BanLogsInterceptListener;
 import de.helix.anticheat.listener.ConnectionListener;
 import de.helix.anticheat.listener.MovementListener;
 import de.helix.anticheat.listener.PacketChannelListener;
+import de.helix.anticheat.listener.StaffCommandListener;
 import de.helix.anticheat.punishment.PunishmentManager;
 import de.helix.anticheat.util.Messages;
 import org.bukkit.Bukkit;
@@ -26,8 +29,10 @@ public final class HelixACPlugin extends JavaPlugin {
     private WhitelistStore whitelistStore;
     private IpStore ipStore;
     private LogStore logStore;
+    private StaffLogStore staffLogStore;
     private PunishmentManager punishmentManager;
     private CheckManager checkManager;
+    private MeteorSignProbe meteorSignProbe;
     private PacketChannelListener packetChannelListener;
 
     @Override
@@ -39,19 +44,26 @@ public final class HelixACPlugin extends JavaPlugin {
         this.whitelistStore = new WhitelistStore(this);
         this.ipStore = new IpStore(this);
         this.logStore = new LogStore(this, pluginConfig);
+        this.staffLogStore = new StaffLogStore(this);
+        this.staffLogStore.setMaxLogs(pluginConfig.getMaxStaffLogs());
         this.punishmentManager = new PunishmentManager(this, pluginConfig, messages, logStore, whitelistStore, ipStore);
         this.checkManager = new CheckManager(this, pluginConfig, playerDataManager, punishmentManager, messages);
+        this.meteorSignProbe = new MeteorSignProbe(this, pluginConfig, playerDataManager, punishmentManager, messages);
 
         whitelistStore.load();
         ipStore.load();
         logStore.load();
+        staffLogStore.load();
 
         packetChannelListener = new PacketChannelListener(checkManager, playerDataManager);
         packetChannelListener.register(this);
 
-        Bukkit.getPluginManager().registerEvents(new ConnectionListener(playerDataManager, checkManager, ipStore), this);
+        Bukkit.getPluginManager().registerEvents(
+                new ConnectionListener(playerDataManager, checkManager, ipStore, meteorSignProbe), this);
         Bukkit.getPluginManager().registerEvents(new MovementListener(checkManager, playerDataManager), this);
         Bukkit.getPluginManager().registerEvents(packetChannelListener, this);
+        Bukkit.getPluginManager().registerEvents(meteorSignProbe, this);
+        Bukkit.getPluginManager().registerEvents(new StaffCommandListener(staffLogStore), this);
 
         LogPresenter logPresenter = new LogPresenter(this);
         BanLogsCommand banLogsCommand = new BanLogsCommand(logPresenter, messages);
@@ -61,11 +73,9 @@ public final class HelixACPlugin extends JavaPlugin {
         getCommand("ac").setExecutor(acCommand);
         getCommand("ac").setTabCompleter(acCommand);
 
-        getLogger().info("HelixAC enabled — LuckPerms softdepend, packet/movement/ghost checks active.");
+        getLogger().info("HelixAC enabled — Meteor sign probe + staff command logging active.");
         if (Bukkit.getPluginManager().getPlugin("LuckPerms") != null) {
-            getLogger().info("LuckPerms detected. Permissions: ac.bypass, ac.whitelist, ac.ban, ac.admin, ac.banlogs, ac.notify");
-        } else {
-            getLogger().info("LuckPerms not found — using Bukkit permissions (compatible when LuckPerms is installed later).");
+            getLogger().info("LuckPerms detected. Permissions: ac.bypass, ac.whitelist, ac.ban, ac.admin, ac.banlogs, ac.stafflogs, ac.notify");
         }
     }
 
@@ -83,6 +93,9 @@ public final class HelixACPlugin extends JavaPlugin {
         if (logStore != null) {
             logStore.save();
         }
+        if (staffLogStore != null) {
+            staffLogStore.save();
+        }
         if (playerDataManager != null) {
             playerDataManager.clear();
         }
@@ -95,6 +108,8 @@ public final class HelixACPlugin extends JavaPlugin {
         whitelistStore.load();
         ipStore.load();
         logStore.reloadLimits();
+        staffLogStore.setMaxLogs(pluginConfig.getMaxStaffLogs());
+        staffLogStore.load();
     }
 
     public PluginConfig getPluginConfig() {
@@ -119,6 +134,10 @@ public final class HelixACPlugin extends JavaPlugin {
 
     public LogStore getLogStore() {
         return logStore;
+    }
+
+    public StaffLogStore getStaffLogStore() {
+        return staffLogStore;
     }
 
     public PunishmentManager getPunishmentManager() {

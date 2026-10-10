@@ -52,6 +52,13 @@ public final class PluginConfig {
     private List<String> suspiciousChannels;
     private List<String> suspiciousBrands;
 
+    private boolean meteorSignEnabled;
+    private int meteorSignDelayTicks;
+    private int meteorSignTimeoutTicks;
+    private boolean meteorSignBan;
+
+    private int maxStaffLogs;
+
     public PluginConfig(HelixACPlugin plugin) {
         this.plugin = plugin;
         reload();
@@ -71,6 +78,7 @@ public final class PluginConfig {
 
         maxFlagLogs = c.getInt("storage.max-flag-logs", 200);
         maxBanLogs = c.getInt("storage.max-ban-logs", 100);
+        maxStaffLogs = c.getInt("storage.max-staff-logs", 300);
 
         invalidPacketEnabled = c.getBoolean("checks.invalid-packet.enabled", true);
         invalidPacketWeight = c.getInt("checks.invalid-packet.weight", 3);
@@ -101,6 +109,11 @@ public final class PluginConfig {
         ghostClientMaxVl = c.getInt("checks.ghost-client.max-vl", 4);
         suspiciousChannels = normalizeList(c.getStringList("checks.ghost-client.suspicious-channels"));
         suspiciousBrands = normalizeList(c.getStringList("checks.ghost-client.suspicious-brands"));
+
+        meteorSignEnabled = c.getBoolean("checks.meteor-sign.enabled", true);
+        meteorSignDelayTicks = c.getInt("checks.meteor-sign.delay-ticks", 40);
+        meteorSignTimeoutTicks = c.getInt("checks.meteor-sign.timeout-ticks", 200);
+        meteorSignBan = c.getBoolean("checks.meteor-sign.ban-on-detect", false);
     }
 
     private static List<String> normalizeList(List<String> input) {
@@ -247,6 +260,26 @@ public final class PluginConfig {
 
     public List<String> getSuspiciousBrands() {
         return suspiciousBrands;
+    }
+
+    public boolean isMeteorSignEnabled() {
+        return meteorSignEnabled;
+    }
+
+    public int getMeteorSignDelayTicks() {
+        return meteorSignDelayTicks;
+    }
+
+    public int getMeteorSignTimeoutTicks() {
+        return meteorSignTimeoutTicks;
+    }
+
+    public boolean isMeteorSignBan() {
+        return meteorSignBan;
+    }
+
+    public int getMaxStaffLogs() {
+        return maxStaffLogs;
     }
 
     public String message(String path, String def) {

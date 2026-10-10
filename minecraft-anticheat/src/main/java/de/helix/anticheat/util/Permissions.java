@@ -14,7 +14,9 @@ public final class Permissions {
     public static final String ADMIN = "ac.admin";
     public static final String BAN = "ac.ban";
     public static final String BAN_LOGS = "ac.banlogs";
+    public static final String STAFF_LOGS = "ac.stafflogs";
     public static final String NOTIFY = "ac.notify";
+    public static final String STAFF = "ac.staff";
 
     private Permissions() {
     }
@@ -33,5 +35,23 @@ public final class Permissions {
 
     public static boolean canViewLogs(CommandSender sender) {
         return sender.hasPermission(BAN_LOGS) || sender.hasPermission(ADMIN);
+    }
+
+    public static boolean canViewStaffLogs(CommandSender sender) {
+        return sender.hasPermission(STAFF_LOGS) || sender.hasPermission(ADMIN);
+    }
+
+    /** Players whose commands are recorded in /ac staff logs. */
+    public static boolean isStaff(Player player) {
+        if (player == null) {
+            return false;
+        }
+        return player.hasPermission(STAFF)
+                || player.hasPermission(ADMIN)
+                || player.hasPermission(BAN)
+                || player.hasPermission(BAN_LOGS)
+                || player.hasPermission(STAFF_LOGS)
+                || player.hasPermission(NOTIFY)
+                || player.isOp();
     }
 }

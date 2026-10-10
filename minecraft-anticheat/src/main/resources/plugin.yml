@@ -7,8 +7,8 @@ author: Helix
 softdepend: [LuckPerms]
 commands:
   ac:
-    description: HelixAC admin commands (logs, ban, ip ban, whitelist)
-    usage: /ac <logs|ban|ip|whitelist|reload|info> ...
+    description: HelixAC admin commands (logs, ban, ip ban, staff logs, whitelist)
+    usage: /ac <logs|staff|ban|ip|whitelist|reload|info> ...
     aliases: [helixac, anticheat]
 permissions:
   ac.bypass:
@@ -26,9 +26,17 @@ permissions:
     children:
       ac.ban: true
       ac.banlogs: true
+      ac.stafflogs: true
       ac.notify: true
+      ac.staff: true
   ac.banlogs:
     description: Access to /ac logs and /ban logs
+    default: op
+  ac.stafflogs:
+    description: Access to /ac staff logs
+    default: op
+  ac.staff:
+    description: Marks the player as staff for command logging
     default: op
   ac.notify:
     description: Receive live flag notifications in chat

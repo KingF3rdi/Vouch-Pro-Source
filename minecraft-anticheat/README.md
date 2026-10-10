@@ -26,6 +26,8 @@ Drop the jar into your server `plugins/` folder and restart.
 - **Robotic rotation** — identical yaw/pitch deltas, frozen-pitch snaps, constant micro-steps (aimbot-like)
 - **Bad packets** — onGround while falling, sprint+sneak, impossible yaw wraps
 - **Ghost client heuristics** — suspicious client brands and plugin channels (Vape / Prestige style indicators)
+- **Meteor sign technique** — on join, opens a probe sign with a Meteor-only translation key; resolved text → kick
+- **Staff command log** — every staff command recorded for `/ac staff logs`
 - **Auto-ban** — after enough flags in a window → **7-day** ban with reason listing checks
 - **Whitelist** — still flags, never auto-bans
 - **Bypass** — complete exemption from checks
@@ -36,6 +38,7 @@ Drop the jar into your server `plugins/` folder and restart.
 | --- | --- | --- |
 | `/ac logs [player]` | `ac.banlogs` | Latest flags and bans (optional player filter) |
 | `/ban logs [player]` | `ac.banlogs` | **Same as** `/ac logs` (does not steal normal `/ban`) |
+| `/ac staff logs` | `ac.stafflogs` | Latest staff commands (player + command) |
 | `/ac ban <player> <duration> <reason>` | `ac.ban` | Easy name-ban |
 | `/ac ip ban <player> <duration> <reason>` | `ac.ban` | IP-ban (+ name-ban); needs a seen IP |
 | `/ac whitelist add\|remove\|list [player]` | `ac.admin` | Manage AC whitelist |
@@ -50,8 +53,10 @@ Duration examples: `7d`, `12h`, `30m`, `1w`, `permanent` (bare numbers = days).
 ac.bypass      # Completely bypasses HelixAC (no flags, no bans)
 ac.whitelist  # Flags normally but never auto-banned
 ac.ban        # /ac ban and /ac ip ban
-ac.admin      # whitelist / reload / info (includes ac.ban + ac.banlogs)
+ac.admin      # whitelist / reload / info (includes ban/logs/staff)
 ac.banlogs    # /ac logs and /ban logs
+ac.stafflogs  # /ac staff logs
+ac.staff      # Marks player as staff for command logging
 ac.notify     # Live flag notifications
 ```
 
@@ -63,6 +68,7 @@ Examples:
 /lp group admin permission set ac.admin true
 /lp group mod permission set ac.ban true
 /lp group mod permission set ac.banlogs true
+/lp group mod permission set ac.stafflogs true
 /lp group mod permission set ac.notify true
 ```
 
