@@ -3,7 +3,7 @@
 	"id": "frameboost",
 	"version": "${version}",
 	"name": "FrameBoost",
-	"description": "Aggressive client FPS companion for Sodium or VulkanMod. Culls entities/block-entities, caps particles, skips weather/clouds/overlays/shadows — without touching chunk meshing.",
+	"description": "PvP-first FPS companion for Sodium or VulkanMod. Keeps players/pearls/arrows/crystals visible, cuts explosion clutter + hurtcam, culls mobs hard — no combat cheats, no chunk-meshing conflict.",
 	"authors": [
 		"FrameBoost"
 	],

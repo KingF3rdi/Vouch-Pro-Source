@@ -14,7 +14,8 @@
 		"MinecraftClientMixin",
 		"InGameHudMixin",
 		"LightmapTextureManagerMixin",
-		"BeaconBlockEntityRendererMixin"
+		"BeaconBlockEntityRendererMixin",
+		"HeldItemRendererSwingMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

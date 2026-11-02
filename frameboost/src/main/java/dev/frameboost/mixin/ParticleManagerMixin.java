@@ -28,6 +28,8 @@ public abstract class ParticleManagerMixin {
 	private int frameboost$cachedCount;
 	@Unique
 	private int frameboost$cacheAge;
+	@Unique
+	private int frameboost$combatSkipStride;
 
 	@Inject(method = "addParticle(Lnet/minecraft/client/particle/Particle;)V", at = @At("HEAD"), cancellable = true)
 	private void frameboost$capParticles(Particle particle, CallbackInfo ci) {
@@ -45,7 +47,7 @@ public abstract class ParticleManagerMixin {
 			at = @At("HEAD"),
 			cancellable = true
 	)
-	private void frameboost$blockCheapAmbient(
+	private void frameboost$filterParticles(
 			ParticleEffect parameters,
 			double x,
 			double y,
@@ -59,10 +61,27 @@ public abstract class ParticleManagerMixin {
 		if (!cfg.enabled) {
 			return;
 		}
+
 		if (cfg.disableWeatherParticles && frameboost$isWeatherJunk(parameters)) {
 			cir.setReturnValue(null);
 			return;
 		}
+
+		// PvP clarity: drop most explosion / effect spam (keep 1/N so it isn't fully silent).
+		if (cfg.reduceCombatClutterParticles && frameboost$isCombatClutter(parameters)) {
+			if ((++frameboost$combatSkipStride % 5) != 0) {
+				cir.setReturnValue(null);
+				return;
+			}
+		}
+
+		if (cfg.reducePotionParticles && frameboost$isPotionClutter(parameters)) {
+			if ((frameboost$combatSkipStride % 4) != 0) {
+				cir.setReturnValue(null);
+				return;
+			}
+		}
+
 		if (cfg.hardParticleCap && cfg.maxParticles > 0 && frameboost$countParticles() >= cfg.maxParticles) {
 			cir.setReturnValue(null);
 		}
@@ -87,8 +106,33 @@ public abstract class ParticleManagerMixin {
 	}
 
 	@Unique
+	private static boolean frameboost$isCombatClutter(ParticleEffect parameters) {
+		return parameters.getType() == ParticleTypes.EXPLOSION
+				|| parameters.getType() == ParticleTypes.EXPLOSION_EMITTER
+				|| parameters.getType() == ParticleTypes.LARGE_SMOKE
+				|| parameters.getType() == ParticleTypes.SMOKE
+				|| parameters.getType() == ParticleTypes.POOF
+				|| parameters.getType() == ParticleTypes.FLASH
+				|| parameters.getType() == ParticleTypes.FIREWORK
+				|| parameters.getType() == ParticleTypes.LAVA
+				|| parameters.getType() == ParticleTypes.FLAME
+				|| parameters.getType() == ParticleTypes.SOUL_FIRE_FLAME
+				|| parameters.getType() == ParticleTypes.TOTEM_OF_UNDYING;
+	}
+
+	@Unique
+	private static boolean frameboost$isPotionClutter(ParticleEffect parameters) {
+		return parameters.getType() == ParticleTypes.ENTITY_EFFECT
+				|| parameters.getType() == ParticleTypes.EFFECT
+				|| parameters.getType() == ParticleTypes.WITCH
+				|| parameters.getType() == ParticleTypes.INSTANT_EFFECT
+				|| parameters.getType() == ParticleTypes.DRAGON_BREATH
+				|| parameters.getType() == ParticleTypes.SPIT;
+	}
+
+	@Unique
 	private int frameboost$countParticles() {
-		if (++frameboost$cacheAge < 3) {
+		if (++frameboost$cacheAge < 2) {
 			return frameboost$cachedCount;
 		}
 		frameboost$cacheAge = 0;

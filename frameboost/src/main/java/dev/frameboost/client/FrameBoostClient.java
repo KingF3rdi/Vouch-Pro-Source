@@ -18,24 +18,23 @@ public final class FrameBoostClient implements ClientModInitializer {
 		boolean vulkan = FabricLoader.getInstance().isModLoaded("vulkanmod");
 
 		if (sodium && vulkan) {
-			LOGGER.warn("Sodium + VulkanMod together usually crash/conflict — pick ONE. FrameBoost still applies culls.");
+			LOGGER.warn("Sodium + VulkanMod conflict — pick ONE renderer.");
 		} else if (sodium) {
-			LOGGER.info("Sodium detected — FrameBoost stacks (entities/particles/fog/overlays).");
+			LOGGER.info("Sodium + FrameBoost PvP profile.");
 		} else if (vulkan) {
-			LOGGER.info("VulkanMod detected — FrameBoost stacks (entities/particles/overlays).");
+			LOGGER.info("VulkanMod + FrameBoost PvP profile.");
 		} else {
-			LOGGER.info("Install Sodium (recommended) OR VulkanMod under FrameBoost for max FPS.");
+			LOGGER.info("Add Sodium (best) or VulkanMod under FrameBoost.");
 		}
 
 		FrameBoostConfig c = FrameBoostConfig.INSTANCE;
 		LOGGER.info(
-				"FrameBoost v1.1 ready | particles≤{} | entityCull={} | itemCull={} | BE cull={} | clouds={} | weather={}",
+				"FrameBoost 1.2 PvP | pvpMode={} | particles≤{} | mobCull={} | hurtCam={} | totemAnim={}",
+				c.pvpMode,
 				c.maxParticles,
-				c.entityHardCullDistance,
-				c.itemEntityCullDistance,
-				c.blockEntityCullDistance,
-				!c.disableClouds,
-				!c.disableWeatherRendering
+				c.mobCullDistance,
+				!c.disableHurtCam,
+				!c.disableTotemAnimation
 		);
 	}
 }

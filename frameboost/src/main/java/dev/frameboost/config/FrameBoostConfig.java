@@ -11,7 +11,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * Aggressive-by-default tunables that stack with Sodium / VulkanMod.
+ * PvP-first performance profile. Stacks with Sodium / VulkanMod.
+ * Clarity + FPS — not combat cheats.
  */
 public final class FrameBoostConfig {
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -19,70 +20,75 @@ public final class FrameBoostConfig {
 
 	public static FrameBoostConfig INSTANCE = new FrameBoostConfig();
 
-	/** Master switch. */
 	public boolean enabled = true;
 
-	/** Max particles alive at once. */
-	public int maxParticles = 256;
+	/**
+	 * PvP profile: never hide players / pearls / arrows / crystals;
+	 * cut explosion/potion clutter; disable hurtcam/bob.
+	 */
+	public boolean pvpMode = true;
 
-	/** Extra entity render-distance multiplier (1.0 = vanilla). */
-	public double entityRenderDistanceScale = 0.55;
+	/** Max particles alive at once. Lower = clearer fights + more FPS. */
+	public int maxParticles = 128;
 
-	/** Hard entity cull distance in blocks (after scale). 0 = off. */
-	public double entityHardCullDistance = 48.0;
+	public double entityRenderDistanceScale = 0.50;
 
-	/** Tighter cull for dropped items / XP orbs. */
-	public double itemEntityCullDistance = 28.0;
+	/** Generic mob / entity cull distance. */
+	public double entityHardCullDistance = 40.0;
 
-	/** Cull distance for block entities (chests, signs, skulls…). */
-	public double blockEntityCullDistance = 40.0;
+	/** Dropped items / XP (totems, gaps matter in PvP — keep a bit farther). */
+	public double itemEntityCullDistance = 36.0;
 
-	/** Always render players + the camera entity. */
+	/** Hostile/passive mobs get this tighter cull in pvpMode. */
+	public double mobCullDistance = 28.0;
+
+	public double blockEntityCullDistance = 32.0;
+
 	public boolean keepPlayersVisible = true;
 
-	/** Don't render entity shadows. */
+	/** Pearls, arrows, tridents, potions, crystals, fireballs. */
+	public boolean keepCombatProjectilesVisible = true;
+
 	public boolean disableEntityShadows = true;
 
-	/** Shorter / cheaper terrain fog. */
 	public boolean reduceFog = true;
 
-	/** Fog length multiplier when reduceFog is on (lower = more FPS). */
-	public float fogLengthScale = 0.72f;
+	public float fogLengthScale = 0.68f;
 
-	/** Skip cloud rendering. */
 	public boolean disableClouds = true;
 
-	/** Skip weather (rain/snow) rendering. */
 	public boolean disableWeatherRendering = true;
 
-	/** Skip rain splash / drip ambient particles. */
 	public boolean disableWeatherParticles = true;
 
-	/** Cap FPS when the window is unfocused. */
-	public int unfocusedFpsLimit = 15;
+	/** Cut explosion / crystal blast smoke that hides enemies. */
+	public boolean reduceCombatClutterParticles = true;
 
-	/** Disable view bobbing. */
+	/** Soften potion swirl / effect particles. */
+	public boolean reducePotionParticles = true;
+
+	/** Skip totem pop fullscreen animation (less blind frames). */
+	public boolean disableTotemAnimation = true;
+
+	public int unfocusedFpsLimit = 10;
+
 	public boolean disableViewBobbing = true;
 
-	/** Drop particle spawns when over the cap. */
+	/** Separate hurt-cam kill — critical for PvP aim. */
+	public boolean disableHurtCam = true;
+
 	public boolean hardParticleCap = true;
 
-	/** Skip vignette overlay. */
 	public boolean disableVignette = true;
 
-	/** Skip portal / nausea overlay distortion. */
 	public boolean disableNauseaOverlay = true;
 
-	/** Throttle lightmap updates (smoother FPS on CPU-bound PCs). */
 	public boolean throttleLightmap = true;
 
-	/** Only update lightmap every N client ticks when throttling. */
-	public int lightmapUpdateInterval = 2;
+	public int lightmapUpdateInterval = 3;
 
-	/** Skip beacon beams beyond this distance (blocks). 0 = always render. */
-	public double beaconBeamCullDistance = 64.0;
+	public double beaconBeamCullDistance = 48.0;
 
-	/** Skip armor stands beyond entity cull (they are expensive). */
 	public boolean aggressiveArmorStandCull = true;
 
 	public static void load() {

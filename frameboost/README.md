@@ -1,51 +1,36 @@
-# FrameBoost 1.1
+# FrameBoost 1.2 — PvP FPS profile
 
-Aggressive client-side Fabric performance companion for **Minecraft 1.21.1**.
+Fabric **1.21.1** client companion for **Sodium** *or* **VulkanMod** (not both).
 
-Does **not** replace the chunk renderer. Use with:
+Built for **crystal / pot / dia PvP**: clearer fights + higher FPS.  
+**No combat cheats** (no aura, reach, ESP, velocity…).
 
-- [Sodium](https://modrinth.com/mod/sodium) (recommended), **or**
-- [VulkanMod](https://modrinth.com/mod/vulkanmod)
+## PvP defaults
 
-**Never both.** They conflict. FrameBoost stacks on top of either.
-
-## What 1.1 does harder
-
-| Feature | Default |
-|--------|---------|
-| Particle hard cap | **256** |
-| Entity hard cull | **48** blocks × 0.55 |
-| Item/XP cull | **28** blocks |
-| Block-entity cull | **40** blocks |
-| Armor-stand cull | aggressive |
-| Beacon beam cull | 64 blocks |
-| Entity shadows | **off** |
-| Clouds | **off** |
-| Weather + rain splash | **off** |
-| Ambient drip/ash particles | **off** |
-| Vignette / portal overlay | **off** |
-| View bob + hurt tilt | **off** |
-| Shorter fog | **on** (0.72×) |
-| Lightmap throttle | every 2 ticks |
-| Unfocused FPS | **15** |
-
-Players + camera entity always stay visible.
+| Behavior | Default |
+|----------|---------|
+| `pvpMode` | **on** |
+| Never hide | players, pearls, arrows, tridents, pots, crystals, projectiles |
+| Mob cull | **28** blocks (aggressive) |
+| Item/XP cull | **36** (totems/gaps still visible) |
+| Particles | ≤ **128**, explosion/smoke/totem clutter cut ~80% |
+| Potion swirls | reduced |
+| Hurtcam | **off** |
+| View bob + hand swing bob | **off** |
+| Totem fullscreen anim | **off** |
+| Nausea / vignette / portal | **off** |
+| Clouds / weather / shadows | **off** |
 
 ## Install
 
-1. Fabric Loader + Fabric API (1.21.1)  
+1. Fabric Loader + Fabric API  
 2. Sodium **or** VulkanMod  
-3. `frameboost-1.1.0.jar` → `mods/`  
-4. Optional: edit `.minecraft/config/frameboost.json`
+3. `frameboost-1.2.0.jar` → `mods/`
+
+Config: `.minecraft/config/frameboost.json`
 
 ## Build
 
 ```bash
-cd frameboost
-./gradlew build
+cd frameboost && ./gradlew build
 ```
-
-## Honest FPS note
-
-Sodium/VulkanMod = big chunk win. FrameBoost = leftover entity/particle/overlay/fog cost.  
-Busy servers / mob farms / item spam → often large uplift. Empty singleplayer meadows → smaller.
