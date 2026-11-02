@@ -1,0 +1,18 @@
+{
+	"required": true,
+	"minVersion": "0.8",
+	"package": "dev.frameboost.mixin",
+	"compatibilityLevel": "JAVA_21",
+	"client": [
+		"ParticleManagerMixin",
+		"EntityRenderDispatcherMixin",
+		"EntityShadowMixin",
+		"BackgroundRendererMixin",
+		"WorldRendererMixin",
+		"GameRendererMixin",
+		"MinecraftClientMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}
