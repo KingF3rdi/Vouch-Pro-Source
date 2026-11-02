@@ -1,0 +1,39 @@
+{
+	"schemaVersion": 1,
+	"id": "frameboost",
+	"version": "${version}",
+	"name": "FrameBoost",
+	"description": "PvP-first FPS companion for Sodium or VulkanMod. Keeps players/pearls/arrows/crystals visible, cuts explosion clutter + hurtcam, culls mobs hard — no combat cheats, no chunk-meshing conflict.",
+	"authors": [
+		"FrameBoost"
+	],
+	"contact": {},
+	"license": "MIT",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"dev.frameboost.client.FrameBoostClient"
+		]
+	},
+	"mixins": [
+		"frameboost.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.16.0",
+		"minecraft": "~1.21.1",
+		"java": ">=21",
+		"fabric-api": "*"
+	},
+	"suggests": {
+		"sodium": "*",
+		"vulkanmod": "*",
+		"lithium": "*",
+		"entityculling": "*"
+	},
+	"breaks": {
+		"optifabric": "*"
+	},
+	"custom": {
+		"frameboost:note": "Do not run Sodium and VulkanMod together. FrameBoost works with either renderer."
+	}
+}
