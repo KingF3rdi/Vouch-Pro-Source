@@ -1,33 +1,42 @@
-# FrameBoost
+# FrameBoost 1.1
 
-Client-side Fabric performance companion for **Minecraft 1.21.1**.
+Aggressive client-side Fabric performance companion for **Minecraft 1.21.1**.
 
-It does **not** replace the chunk renderer. Install **either**:
+Does **not** replace the chunk renderer. Use with:
 
-- [Sodium](https://modrinth.com/mod/sodium) (OpenGL, recommended), **or**
-- [VulkanMod](https://modrinth.com/mod/vulkanmod) (Vulkan)
+- [Sodium](https://modrinth.com/mod/sodium) (recommended), **or**
+- [VulkanMod](https://modrinth.com/mod/vulkanmod)
 
-Do **not** run Sodium and VulkanMod together — they conflict. FrameBoost stacks on top of whichever one you pick.
+**Never both.** They conflict. FrameBoost stacks on top of either.
 
-## What it does
+## What 1.1 does harder
 
-| Feature | Default | Effect |
-|--------|---------|--------|
-| Particle hard cap | 512 | Stops particle FPS spikes |
-| Entity distance cull | 64 blocks × 0.65 | Fewer entity draws |
-| Disable entity shadows | on | Big win on weak GPUs |
-| Shorter terrain fog | on | Less overdraw |
-| Unfocused FPS cap | 30 | Saves CPU/GPU in background |
-| Optional: no clouds / weather / view bob | off | Extra toggles in config |
+| Feature | Default |
+|--------|---------|
+| Particle hard cap | **256** |
+| Entity hard cull | **48** blocks × 0.55 |
+| Item/XP cull | **28** blocks |
+| Block-entity cull | **40** blocks |
+| Armor-stand cull | aggressive |
+| Beacon beam cull | 64 blocks |
+| Entity shadows | **off** |
+| Clouds | **off** |
+| Weather + rain splash | **off** |
+| Ambient drip/ash particles | **off** |
+| Vignette / portal overlay | **off** |
+| View bob + hurt tilt | **off** |
+| Shorter fog | **on** (0.72×) |
+| Lightmap throttle | every 2 ticks |
+| Unfocused FPS | **15** |
 
-**Honest note:** Nobody can guarantee “2× FPS” on every PC. Sodium/VulkanMod do the heavy lifting; FrameBoost cuts leftover entity/particle/fog cost. On busy servers/mob farms the uplift is often large; in empty worlds it’s smaller.
+Players + camera entity always stay visible.
 
 ## Install
 
-1. Fabric Loader + Fabric API for 1.21.1  
+1. Fabric Loader + Fabric API (1.21.1)  
 2. Sodium **or** VulkanMod  
-3. Drop `frameboost-1.0.0.jar` into `.minecraft/mods`  
-4. (Optional) Edit `.minecraft/config/frameboost.json`
+3. `frameboost-1.1.0.jar` → `mods/`  
+4. Optional: edit `.minecraft/config/frameboost.json`
 
 ## Build
 
@@ -36,23 +45,7 @@ cd frameboost
 ./gradlew build
 ```
 
-JAR output: `build/libs/frameboost-1.0.0.jar`
+## Honest FPS note
 
-## Config (`config/frameboost.json`)
-
-```json
-{
-  "maxParticles": 512,
-  "entityRenderDistanceScale": 0.65,
-  "entityHardCullDistance": 64.0,
-  "disableEntityShadows": true,
-  "reduceFog": true,
-  "disableClouds": false,
-  "disableWeatherRendering": false,
-  "unfocusedFpsLimit": 30,
-  "disableViewBobbing": false,
-  "hardParticleCap": true
-}
-```
-
-Aggressive profile (more FPS, less pretty): set `disableClouds` + `disableWeatherRendering` to `true`, `entityHardCullDistance` to `48`, `maxParticles` to `256`.
+Sodium/VulkanMod = big chunk win. FrameBoost = leftover entity/particle/overlay/fog cost.  
+Busy servers / mob farms / item spam → often large uplift. Empty singleplayer meadows → smaller.

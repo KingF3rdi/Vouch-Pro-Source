@@ -3,7 +3,7 @@
 	"id": "frameboost",
 	"version": "${version}",
 	"name": "FrameBoost",
-	"description": "Client performance companion for Sodium or VulkanMod. Cuts entity/particle/fog overhead without touching the chunk renderer.",
+	"description": "Aggressive client FPS companion for Sodium or VulkanMod. Culls entities/block-entities, caps particles, skips weather/clouds/overlays/shadows — without touching chunk meshing.",
 	"authors": [
 		"FrameBoost"
 	],

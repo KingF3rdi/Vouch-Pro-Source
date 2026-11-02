@@ -13,7 +13,14 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class WorldRendererMixin {
 	@Inject(method = "renderWeather", at = @At("HEAD"), cancellable = true)
 	private void frameboost$skipWeather(CallbackInfo ci) {
-		if (FrameBoostConfig.INSTANCE.disableWeatherRendering) {
+		if (FrameBoostConfig.INSTANCE.enabled && FrameBoostConfig.INSTANCE.disableWeatherRendering) {
+			ci.cancel();
+		}
+	}
+
+	@Inject(method = "tickRainSplashing", at = @At("HEAD"), cancellable = true)
+	private void frameboost$skipRainSplash(CallbackInfo ci) {
+		if (FrameBoostConfig.INSTANCE.enabled && FrameBoostConfig.INSTANCE.disableWeatherParticles) {
 			ci.cancel();
 		}
 	}
@@ -33,7 +40,7 @@ public abstract class WorldRendererMixin {
 			double cameraZ,
 			CallbackInfo ci
 	) {
-		if (FrameBoostConfig.INSTANCE.disableClouds) {
+		if (FrameBoostConfig.INSTANCE.enabled && FrameBoostConfig.INSTANCE.disableClouds) {
 			ci.cancel();
 		}
 	}

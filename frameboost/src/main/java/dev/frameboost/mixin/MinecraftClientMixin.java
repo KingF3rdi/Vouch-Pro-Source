@@ -15,9 +15,13 @@ public abstract class MinecraftClientMixin {
 
 	@Inject(method = "getFramerateLimit", at = @At("HEAD"), cancellable = true)
 	private void frameboost$limitUnfocused(CallbackInfoReturnable<Integer> cir) {
-		int cap = FrameBoostConfig.INSTANCE.unfocusedFpsLimit;
+		FrameBoostConfig cfg = FrameBoostConfig.INSTANCE;
+		if (!cfg.enabled) {
+			return;
+		}
+		int cap = cfg.unfocusedFpsLimit;
 		if (cap > 0 && !this.isWindowFocused()) {
-			cir.setReturnValue(Math.max(10, cap));
+			cir.setReturnValue(Math.max(5, cap));
 		}
 	}
 }

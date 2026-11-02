@@ -12,10 +12,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(BackgroundRenderer.class)
 public abstract class BackgroundRendererMixin {
-	/**
-	 * After vanilla fog apply, push a slightly shorter fog end for cheaper overdraw.
-	 * Safe with Sodium; VulkanMod may ignore GL fog — then this is a no-op.
-	 */
 	@Inject(method = "applyFog", at = @At("TAIL"))
 	private static void frameboost$shortenFog(
 			Camera camera,
@@ -25,7 +21,8 @@ public abstract class BackgroundRendererMixin {
 			float tickDelta,
 			CallbackInfo ci
 	) {
-		if (!FrameBoostConfig.INSTANCE.reduceFog) {
+		FrameBoostConfig cfg = FrameBoostConfig.INSTANCE;
+		if (!cfg.enabled || !cfg.reduceFog) {
 			return;
 		}
 		if (fogType != BackgroundRenderer.FogType.FOG_TERRAIN) {
@@ -34,7 +31,8 @@ public abstract class BackgroundRendererMixin {
 		float start = RenderSystem.getShaderFogStart();
 		float end = RenderSystem.getShaderFogEnd();
 		if (end > start) {
-			float shortened = start + (end - start) * 0.82f;
+			float scale = Math.max(0.35f, Math.min(1.0f, cfg.fogLengthScale));
+			float shortened = start + (end - start) * scale;
 			RenderSystem.setShaderFogStart(start);
 			RenderSystem.setShaderFogEnd(shortened);
 			RenderSystem.setShaderFogShape(FogShape.CYLINDER);

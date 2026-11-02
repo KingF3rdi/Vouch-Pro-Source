@@ -7,10 +7,14 @@
 		"ParticleManagerMixin",
 		"EntityRenderDispatcherMixin",
 		"EntityShadowMixin",
+		"BlockEntityRenderDispatcherMixin",
 		"BackgroundRendererMixin",
 		"WorldRendererMixin",
 		"GameRendererMixin",
-		"MinecraftClientMixin"
+		"MinecraftClientMixin",
+		"InGameHudMixin",
+		"LightmapTextureManagerMixin",
+		"BeaconBlockEntityRendererMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

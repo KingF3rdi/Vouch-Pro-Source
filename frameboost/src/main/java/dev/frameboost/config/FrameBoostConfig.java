@@ -11,7 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * Tunables that stack with Sodium / VulkanMod without replacing chunk meshing.
+ * Aggressive-by-default tunables that stack with Sodium / VulkanMod.
  */
 public final class FrameBoostConfig {
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -19,35 +19,71 @@ public final class FrameBoostConfig {
 
 	public static FrameBoostConfig INSTANCE = new FrameBoostConfig();
 
-	/** Max particles alive at once. Vanilla can explode during fights/weather. */
-	public int maxParticles = 512;
+	/** Master switch. */
+	public boolean enabled = true;
 
-	/** Extra entity render-distance multiplier (1.0 = vanilla). Lower = more FPS. */
-	public double entityRenderDistanceScale = 0.65;
+	/** Max particles alive at once. */
+	public int maxParticles = 256;
 
-	/** Skip rendering entities farther than this (blocks), after scale. 0 = disabled. */
-	public double entityHardCullDistance = 64.0;
+	/** Extra entity render-distance multiplier (1.0 = vanilla). */
+	public double entityRenderDistanceScale = 0.55;
 
-	/** Don't render entity shadows (big win on low-end GPUs). */
+	/** Hard entity cull distance in blocks (after scale). 0 = off. */
+	public double entityHardCullDistance = 48.0;
+
+	/** Tighter cull for dropped items / XP orbs. */
+	public double itemEntityCullDistance = 28.0;
+
+	/** Cull distance for block entities (chests, signs, skulls…). */
+	public double blockEntityCullDistance = 40.0;
+
+	/** Always render players + the camera entity. */
+	public boolean keepPlayersVisible = true;
+
+	/** Don't render entity shadows. */
 	public boolean disableEntityShadows = true;
 
-	/** Thinner / cheaper fog. */
+	/** Shorter / cheaper terrain fog. */
 	public boolean reduceFog = true;
 
-	/** Skip cloud rendering. Sodium already helps; this is extra. */
-	public boolean disableClouds = false;
+	/** Fog length multiplier when reduceFog is on (lower = more FPS). */
+	public float fogLengthScale = 0.72f;
+
+	/** Skip cloud rendering. */
+	public boolean disableClouds = true;
 
 	/** Skip weather (rain/snow) rendering. */
-	public boolean disableWeatherRendering = false;
+	public boolean disableWeatherRendering = true;
+
+	/** Skip rain splash / drip ambient particles. */
+	public boolean disableWeatherParticles = true;
 
 	/** Cap FPS when the window is unfocused. */
-	public int unfocusedFpsLimit = 30;
+	public int unfocusedFpsLimit = 15;
 
-	/** Disable view bobbing (tiny CPU/feel tweak). */
-	public boolean disableViewBobbing = false;
+	/** Disable view bobbing. */
+	public boolean disableViewBobbing = true;
 
-	/** Drop particle spawn attempts when over the cap instead of queueing. */
+	/** Drop particle spawns when over the cap. */
 	public boolean hardParticleCap = true;
+
+	/** Skip vignette overlay. */
+	public boolean disableVignette = true;
+
+	/** Skip portal / nausea overlay distortion. */
+	public boolean disableNauseaOverlay = true;
+
+	/** Throttle lightmap updates (smoother FPS on CPU-bound PCs). */
+	public boolean throttleLightmap = true;
+
+	/** Only update lightmap every N client ticks when throttling. */
+	public int lightmapUpdateInterval = 2;
+
+	/** Skip beacon beams beyond this distance (blocks). 0 = always render. */
+	public double beaconBeamCullDistance = 64.0;
+
+	/** Skip armor stands beyond entity cull (they are expensive). */
+	public boolean aggressiveArmorStandCull = true;
 
 	public static void load() {
 		if (Files.exists(PATH)) {

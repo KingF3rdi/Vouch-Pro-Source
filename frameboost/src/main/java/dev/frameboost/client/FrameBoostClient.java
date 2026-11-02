@@ -18,18 +18,24 @@ public final class FrameBoostClient implements ClientModInitializer {
 		boolean vulkan = FabricLoader.getInstance().isModLoaded("vulkanmod");
 
 		if (sodium && vulkan) {
-			LOGGER.warn("Sodium and VulkanMod are both loaded. They usually conflict — pick ONE renderer. FrameBoost still applies entity/particle cuts.");
+			LOGGER.warn("Sodium + VulkanMod together usually crash/conflict — pick ONE. FrameBoost still applies culls.");
 		} else if (sodium) {
-			LOGGER.info("Sodium detected — FrameBoost stacks on top (no chunk-meshing conflict).");
+			LOGGER.info("Sodium detected — FrameBoost stacks (entities/particles/fog/overlays).");
 		} else if (vulkan) {
-			LOGGER.info("VulkanMod detected — FrameBoost stacks on top (no chunk-meshing conflict).");
+			LOGGER.info("VulkanMod detected — FrameBoost stacks (entities/particles/overlays).");
 		} else {
-			LOGGER.info("No Sodium/VulkanMod found. FrameBoost still helps; install Sodium (OpenGL) OR VulkanMod (Vulkan) for best FPS.");
+			LOGGER.info("Install Sodium (recommended) OR VulkanMod under FrameBoost for max FPS.");
 		}
 
-		LOGGER.info("FrameBoost ready | particles≤{} | entityScale={} | shadows={}",
-				FrameBoostConfig.INSTANCE.maxParticles,
-				FrameBoostConfig.INSTANCE.entityRenderDistanceScale,
-				!FrameBoostConfig.INSTANCE.disableEntityShadows);
+		FrameBoostConfig c = FrameBoostConfig.INSTANCE;
+		LOGGER.info(
+				"FrameBoost v1.1 ready | particles≤{} | entityCull={} | itemCull={} | BE cull={} | clouds={} | weather={}",
+				c.maxParticles,
+				c.entityHardCullDistance,
+				c.itemEntityCullDistance,
+				c.blockEntityCullDistance,
+				!c.disableClouds,
+				!c.disableWeatherRendering
+		);
 	}
 }

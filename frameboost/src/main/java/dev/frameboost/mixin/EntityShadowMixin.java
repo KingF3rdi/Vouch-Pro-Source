@@ -28,7 +28,7 @@ public abstract class EntityShadowMixin {
 			float radius,
 			CallbackInfo ci
 	) {
-		if (FrameBoostConfig.INSTANCE.disableEntityShadows) {
+		if (FrameBoostConfig.INSTANCE.enabled && FrameBoostConfig.INSTANCE.disableEntityShadows) {
 			ci.cancel();
 		}
 	}

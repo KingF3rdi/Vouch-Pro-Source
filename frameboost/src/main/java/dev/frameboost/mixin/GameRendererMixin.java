@@ -12,7 +12,15 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class GameRendererMixin {
 	@Inject(method = "bobView", at = @At("HEAD"), cancellable = true)
 	private void frameboost$skipBob(MatrixStack matrices, float tickDelta, CallbackInfo ci) {
-		if (FrameBoostConfig.INSTANCE.disableViewBobbing) {
+		if (FrameBoostConfig.INSTANCE.enabled && FrameBoostConfig.INSTANCE.disableViewBobbing) {
+			ci.cancel();
+		}
+	}
+
+	@Inject(method = "tiltViewWhenHurt", at = @At("HEAD"), cancellable = true)
+	private void frameboost$skipHurtTilt(MatrixStack matrices, float tickDelta, CallbackInfo ci) {
+		// Hurt tilt is cheap but stacks with bobbing; keep off in performance profile.
+		if (FrameBoostConfig.INSTANCE.enabled && FrameBoostConfig.INSTANCE.disableViewBobbing) {
 			ci.cancel();
 		}
 	}
